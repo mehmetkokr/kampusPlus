@@ -1,0 +1,140 @@
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Heart, MessageCircle, UserPlus, Users, Eye, Bell, Trash2 } from 'lucide-react';
+import api from '../api';
+import { API_BASE_URL } from '../config';
+import { useToast } from '../context/ToastContext';
+import { formatNotification } from '../constants/notifications';
+import PageHeader from '../components/PageHeader';
+
+const TYPE_ICON = {
+  follow: UserPlus,
+  message: MessageCircle,
+  match: Heart,
+  club_join: Users,
+  profile_view: Eye,
+  like: Heart,
+  comment: MessageCircle,
+  comment_like: Heart,
+};
+
+function timeAgo(dateStr) {
+  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'şimdi';
+  if (mins < 60) return `${mins} dk önce`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} sa önce`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days} gün önce`;
+  return new Date(dateStr).toLocaleDateString('tr-TR');
+}
+
+export default function NotificationsPage() {
+  const navigate = useNavigate();
+  const toast = useToast();
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  async function load() {
+    setLoading(true);
+    try {
+      const res = await api.get('/notifications');
+      setNotifications(res.data);
+      // Sayfa açıldığında hepsini okundu say (rozet sıfırlansın)
+      api.put('/notifications/read-all').catch(() => {});
+    } catch (err) {
+      toast.error('Bildirimler yüklenemedi.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function handleClick(n) {
+    if (!n.isRead) {
+      setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, isRead: true } : x)));
+      api.put(`/notifications/${n.id}/read`).catch(() => {});
+    }
+    const { link } = formatNotification(n);
+    if (link) navigate(link);
+  }
+
+  async function handleDelete(e, id) {
+    e.stopPropagation();
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    try {
+      await api.delete(`/notifications/${id}`);
+    } catch {
+      toast.error('Bildirim silinemedi.');
+      load();
+    }
+  }
+
+  return (
+    <div className="container">
+      <PageHeader
+        compact
+        tone="amber"
+        icon={Bell}
+        eyebrow="Son hareketler"
+        title="Bildirimler"
+        onBack={() => navigate(-1)}
+      />
+
+      {loading && <p className="muted center-text">Yükleniyor...</p>}
+
+      {!loading && notifications.length === 0 && (
+        <div className="card center-text">
+          <p className="muted">Henüz hiç bildirimin yok.</p>
+        </div>
+      )}
+
+      {!loading && notifications.length > 0 && (
+        <div className="notification-list">
+          {notifications.map((n) => {
+            const { text } = formatNotification(n);
+            const Icon = TYPE_ICON[n.type] || Bell;
+            return (
+              <div
+                key={n.id}
+                className={`notification-row ${n.isRead ? '' : 'unread'}`}
+                onClick={() => handleClick(n)}
+              >
+                <div className="notification-avatar-wrap">
+                  {n.actor?.photoUrl ? (
+                    <img
+                      className="notification-avatar"
+                      src={`${API_BASE_URL}${n.actor.photoUrl}`}
+                      alt={n.actor.fullName}
+                    />
+                  ) : (
+                    <div className="notification-avatar notification-avatar-fallback">
+                      <Icon size={16} />
+                    </div>
+                  )}
+                </div>
+                <div className="notification-body">
+                  <div className="notification-text">{text}</div>
+                  <div className="notification-time">{timeAgo(n.createdAt)}</div>
+                </div>
+                {!n.isRead && <span className="notification-dot" />}
+                <button
+                  className="notification-delete-btn"
+                  aria-label="Bildirimi sil"
+                  onClick={(e) => handleDelete(e, n.id)}
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}

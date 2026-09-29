@@ -1,0 +1,32 @@
+# Bağımlılıklar
+node_modules/
+
+# Derleme çıktıları
+dist/
+build/
+
+# Ortam değişkenleri (gizli anahtarlar) — şablon için .env.example kullanın
+.env
+.env.*
+!.env.example
+
+# Yerel veritabanı
+server/prisma/*.db
+server/prisma/*.db-journal
+
+# Kullanıcı yüklemeleri (fotoğraflar, öğrenci belgeleri)
+server/uploads/*
+server/private-uploads/*
+!server/uploads/.gitkeep
+!server/private-uploads/.gitkeep
+
+# Loglar ve sistem dosyaları
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# Yerel editör / araç ayarları
+.vscode/
+.idea/
+.claude/

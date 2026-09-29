@@ -1,0 +1,132 @@
+// Ana sunucu dosyası
+// Express (HTTP API) + Socket.io (gerçek zamanlı mesajlaşma) birlikte çalışır.
+
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const { ipKeyGenerator } = require('express-rate-limit');
+const jwt = require('jsonwebtoken');
+const http = require('http');
+const { Server } = require('socket.io');
+const path = require('path');
+
+const authRoutes = require('./routes/auth');
+const universityRoutes = require('./routes/universities');
+const profileRoutes = require('./routes/profile');
+const matchRoutes = require('./routes/matches');
+const messageRoutes = require('./routes/messages');
+const clubRoutes = require('./routes/clubs');
+const socialRoutes = require('./routes/social');
+const groupRoutes = require('./routes/groups');
+const adminRoutes = require('./routes/admin');
+const reportRoutes = require('./routes/reports');
+const notificationRoutes = require('./routes/notifications');
+const discoverRoutes = require('./routes/discover');
+const filesRoutes = require('./routes/files');
+const premiumRoutes = require('./routes/premium');
+const monetizationRoutes = require('./routes/monetization');
+const confessionRoutes = require('./routes/confessions');
+const classmatesRoutes = require('./routes/classmates');
+const { setupSocket } = require('./socket');
+const { startCronJobs } = require('./lib/cron');
+
+const app = express();
+const server = http.createServer(app);
+
+// Eğer sunucu bir ters proxy (nginx, Cloudflare, Render/Railway vb.) arkasında
+// çalışıyorsa, rate limiter'ın gerçek istemci IP'sini görebilmesi için bu
+// açılmalıdır. Proxy YOKSA bunu açmayın: aksi halde istemciler
+// X-Forwarded-For header'ını sahteleyerek rate limit'i by-pass edebilir.
+if (process.env.TRUST_PROXY === 'true') {
+  app.set('trust proxy', 1);
+}
+
+const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
+
+const io = new Server(server, {
+  cors: {
+    origin: CLIENT_URL,
+    methods: ['GET', 'POST'],
+  },
+});
+
+app.use(cors({ origin: CLIENT_URL }));
+// Helmet, güvenlik açısından önemli HTTP başlıklarını (XSS koruması,
+// clickjacking koruması, MIME sniffing engeli vb.) otomatik olarak ekler.
+// crossOriginResourcePolicy 'cross-origin' yapılır çünkü /uploads ve
+// /api/files altındaki dosyalar frontend'in farklı origin'inden (5173)
+// <img>/<audio> etiketleriyle doğrudan yükleniyor.
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
+app.use(express.json());
+
+// Genel API isteklerini sınırlar (kaba kuvvet / otomatik istismar araçlarına
+// karşı temel bir savunma katmanı). Auth rotalarının kendi daha sıkı
+// limitleri auth.js içinde ayrıca tanımlıdır.
+// Not: Bu limiter'ın anahtarı mümkünse kullanıcı ID'sidir (JWT'den çıkarılır),
+// böylece aynı kampüs WiFi'sini/NAT'ı paylaşan farklı kullanıcılar birbirinin
+// limitini tüketmez. Token yoksa/geçersizse IP'ye düşülür (login öncesi trafik
+// ve misafir istekler için). Bu, imzayı DOĞRULAMAZ - sadece kaba bir anahtar
+// seçimi içindir; gerçek yetkilendirme hâlâ requireAuth middleware'inde yapılır.
+function rateLimitKey(req) {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    try {
+      const decoded = jwt.decode(authHeader.split(' ')[1]);
+      if (decoded && decoded.userId) return `user:${decoded.userId}`;
+    } catch {
+      // token çözümlenemedi, IP'ye düş
+    }
+  }
+  return ipKeyGenerator(req.ip);
+}
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 600, // kullanıcı (veya IP) başına 15 dakikada 600 istek
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: rateLimitKey,
+  message: { error: 'Çok fazla istek gönderildi. Lütfen biraz sonra tekrar deneyin.' },
+});
+app.use('/api', apiLimiter);
+
+// Yüklenen dosyalara (profil fotoğrafı, öğrenci belgesi) erişim
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+
+// Sağlık kontrolü - sunucu çalışıyor mu test etmek için
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', message: 'Sunucu çalışıyor' });
+});
+
+app.use('/api/auth', authRoutes);
+app.use('/api/universities', universityRoutes);
+app.use('/api/profile', profileRoutes);
+app.use('/api/matches', matchRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/clubs', clubRoutes);
+app.use('/api/groups', groupRoutes);
+app.use('/api', socialRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/discover', discoverRoutes);
+app.use('/api/files', filesRoutes);
+app.use('/api/premium', premiumRoutes);
+app.use('/api/monetization', monetizationRoutes);
+app.use('/api/confessions', confessionRoutes);
+app.use('/api/classmates', classmatesRoutes);
+
+app.set('io', io);
+setupSocket(io);
+startCronJobs(io);
+
+const PORT = process.env.PORT || 4000;
+server.listen(PORT, () => {
+  console.log(`Sunucu http://localhost:${PORT} adresinde çalışıyor`);
+});
