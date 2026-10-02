@@ -3,12 +3,13 @@
 // çünkü burada daha geniş bir dosya türü seti ve daha büyük boyut sınırı gerekir.
 const multer = require('multer');
 const path = require('path');
+const { PUBLIC_UPLOADS, PRIVATE_UPLOADS } = require('../lib/paths');
 const fs = require('fs');
 
-const publicDir = path.join(__dirname, '..', '..', 'uploads');
+const publicDir = PUBLIC_UPLOADS;
 // Sohbet ekleri (DM / grup / kulüp mesajları) herkese açık olmamalı — sadece
 // ilgili sohbetin üyeleri routes/files.js üzerinden indirebilir.
-const privateDir = path.join(__dirname, '..', '..', 'private-uploads');
+const privateDir = PRIVATE_UPLOADS;
 
 for (const dir of [publicDir, privateDir]) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });

@@ -1,14 +1,15 @@
 // Profil fotoğrafı ve öğrenci belgesi yükleme ayarları
 const multer = require('multer');
 const path = require('path');
+const { PUBLIC_UPLOADS, PRIVATE_UPLOADS } = require('../lib/paths');
 const fs = require('fs');
 
 // Herkese açık dosyalar (profil fotoğrafı, gönderi/hikaye görseli) — /uploads
 // altında statik olarak servis edilir, kimlik doğrulama gerekmez.
-const publicDir = path.join(__dirname, '..', '..', 'uploads');
+const publicDir = PUBLIC_UPLOADS;
 // Özel/hassas dosyalar (öğrenci belgesi gibi) — statik olarak servis edilmez,
 // yalnızca routes/files.js üzerinden yetki kontrolüyle indirilebilir.
-const privateDir = path.join(__dirname, '..', '..', 'private-uploads');
+const privateDir = PRIVATE_UPLOADS;
 
 for (const dir of [publicDir, privateDir]) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });

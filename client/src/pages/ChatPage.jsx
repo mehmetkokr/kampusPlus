@@ -71,7 +71,7 @@ export default function ChatPage() {
     }).catch((err) => console.error('Eşleşmeler alınamadı:', err));
 
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-    const socket = io(API_BASE_URL, { auth: { token } });
+    const socket = io(API_BASE_URL || undefined, { auth: { token } });
     socketRef.current = socket;
 
     socket.emit('join_match', matchId);

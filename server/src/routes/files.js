@@ -5,12 +5,13 @@
 
 const express = require('express');
 const path = require('path');
+const { PRIVATE_UPLOADS } = require('../lib/paths');
 const fs = require('fs');
 const jwt = require('jsonwebtoken');
 const prisma = require('../lib/prisma');
 
 const router = express.Router();
-const privateDir = path.join(__dirname, '..', '..', 'private-uploads');
+const privateDir = PRIVATE_UPLOADS;
 
 // requireAuth ortak middleware'i yalnızca Authorization header'ına bakar.
 // Ama bu dosyalar <img>/<audio>/<a> etiketleriyle doğrudan tarayıcı

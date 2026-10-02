@@ -33,7 +33,7 @@ export default function NotificationBell() {
 
     const interval = setInterval(loadUnreadCount, 30000);
 
-    const socket = io(API_BASE_URL, { auth: { token } });
+    const socket = io(API_BASE_URL || undefined, { auth: { token } });
     socketRef.current = socket;
     socket.on('new_notification', () => {
       setUnreadCount((c) => c + 1);

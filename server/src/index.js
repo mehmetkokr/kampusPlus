@@ -11,6 +11,8 @@ const jwt = require('jsonwebtoken');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
+const fs = require('fs');
+const { PUBLIC_UPLOADS } = require('./lib/paths');
 
 const authRoutes = require('./routes/auth');
 const universityRoutes = require('./routes/universities');
@@ -55,9 +57,26 @@ app.use(cors({ origin: CLIENT_URL }));
 // crossOriginResourcePolicy 'cross-origin' yapılır çünkü /uploads ve
 // /api/files altındaki dosyalar frontend'in farklı origin'inden (5173)
 // <img>/<audio> etiketleriyle doğrudan yükleniyor.
+// İçerik Güvenlik Politikası: sitenin açılış betiği satır içi (tema ve
+// yükleniyor ekranı), yazı tipleri Google Fonts'tan gelir; gerçek zamanlı
+// bağlantı (socket.io) aynı adrese ws/wss ile yapılır.
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+        fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
+        imgSrc: ["'self'", 'data:', 'blob:'],
+        mediaSrc: ["'self'", 'blob:'],
+        connectSrc: ["'self'", 'ws:', 'wss:'],
+        frameSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        frameAncestors: ["'self'"],
+      },
+    },
   })
 );
 app.use(express.json());
@@ -94,7 +113,7 @@ const apiLimiter = rateLimit({
 app.use('/api', apiLimiter);
 
 // Yüklenen dosyalara (profil fotoğrafı, öğrenci belgesi) erişim
-app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+app.use('/uploads', express.static(PUBLIC_UPLOADS));
 
 // Sağlık kontrolü - sunucu çalışıyor mu test etmek için
 app.get('/api/health', (req, res) => {
@@ -115,6 +134,22 @@ app.use('/api/discover', discoverRoutes);
 app.use('/api/files', filesRoutes);
 app.use('/api/premium', premiumRoutes);
 app.use('/api/announcements', announcementRoutes);
+
+// Yayın ortamında web sitesini (client/dist) de bu sunucu verir: tek adres,
+// tek servis. /api, /uploads ve /socket.io dışındaki her istek index.html'e
+// düşer (React Router sayfaları).
+const CLIENT_DIST = path.join(__dirname, '..', '..', 'client', 'dist');
+if (fs.existsSync(path.join(CLIENT_DIST, 'index.html'))) {
+  app.use(express.static(CLIENT_DIST, { index: false, maxAge: '7d', setHeaders: noCacheHtml }));
+  app.get(/^\/(?!api\/|uploads\/|socket\.io\/).*/, (req, res) => {
+    res.setHeader('Cache-Control', 'no-cache');
+    res.sendFile(path.join(CLIENT_DIST, 'index.html'));
+  });
+}
+
+function noCacheHtml(res, filePath) {
+  if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache');
+}
 
 app.set('io', io);
 const { checkMailer } = require('./lib/mailer');

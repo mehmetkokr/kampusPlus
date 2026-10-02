@@ -73,7 +73,7 @@ export default function ClubDetailPage() {
       .catch((err) => console.error('Kulüp mesajları alınamadı:', err));
 
     const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-    const socket = io(API_BASE_URL, { auth: { token } });
+    const socket = io(API_BASE_URL || undefined, { auth: { token } });
     socketRef.current = socket;
 
     socket.emit('join_club', clubId);

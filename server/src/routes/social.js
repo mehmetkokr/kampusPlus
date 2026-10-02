@@ -4,6 +4,7 @@ const express = require('express');
 const { visibleIntentFor } = require('../lib/intents');
 const fsp = require('fs/promises');
 const path = require('path');
+const { PUBLIC_UPLOADS } = require('../lib/paths');
 const prisma = require('../lib/prisma');
 const { requireAuth } = require('../middleware/auth');
 const upload = require('../middleware/upload');
@@ -312,7 +313,7 @@ router.delete('/posts/:id', requireAuth, async (req, res) => {
 // /uploads altında bağlantıyı bilen herkese açık kalmaya devam ederdi.
 async function removeUploadedFile(url) {
   if (!url || !url.startsWith('/uploads/')) return;
-  const filePath = path.join(__dirname, '..', '..', 'uploads', path.basename(url));
+  const filePath = path.join(PUBLIC_UPLOADS, path.basename(url));
   await fsp.unlink(filePath).catch(() => {});
 }
 

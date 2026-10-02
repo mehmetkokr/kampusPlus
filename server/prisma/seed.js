@@ -220,6 +220,11 @@ const universities = [
 ];
 
 async function main() {
+  // Yayında her açılışta çağrılır: liste zaten varsa admin panelindeki düzenlemelere dokunma
+  if (process.argv.includes('--if-empty') && (await prisma.university.count()) > 0) {
+    console.log('Üniversite listesi zaten var, seed atlandı.');
+    return;
+  }
   for (const uni of universities) {
     await prisma.university.upsert({
       where: { name: uni.name },

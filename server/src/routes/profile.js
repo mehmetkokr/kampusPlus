@@ -9,6 +9,7 @@ const { isPremiumActive } = require('../lib/premium');
 const { runDocumentOcr } = require('../lib/ocr');
 const fsp = require('fs/promises');
 const path = require('path');
+const { PUBLIC_UPLOADS, PRIVATE_UPLOADS } = require('../lib/paths');
 const { parseBirthDate, withLiveAge } = require('../lib/age');
 const { discoverableUserWhere } = require('../lib/privacy');
 const { ALLOWED_INTENTS, wantsDating, visibleIntentFor } = require('../lib/intents');
@@ -19,9 +20,9 @@ const MAX_PHOTOS = 6;
 async function removeUploadedFile(url) {
   if (!url) return;
   // /uploads/... herkese açık klasör; /api/files/... kimlik belgesi gibi özel dosyalar
-  const dir = url.startsWith('/uploads/') ? 'uploads' : url.startsWith('/api/files/') ? 'private-uploads' : null;
+  const dir = url.startsWith('/uploads/') ? PUBLIC_UPLOADS : url.startsWith('/api/files/') ? PRIVATE_UPLOADS : null;
   if (!dir) return;
-  await fsp.unlink(path.join(__dirname, '..', '..', dir, path.basename(url))).catch(() => {});
+  await fsp.unlink(path.join(dir, path.basename(url))).catch(() => {});
 }
 
 // İlgi alanı / hobi listesi: virgülle ayrılmış, en fazla 10 benzersiz öğe,
