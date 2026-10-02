@@ -1,5 +1,6 @@
 import React from 'react';
 import { ArrowLeft } from 'lucide-react';
+import { useI18n } from '../i18n';
 
 // Her menü sayfasının üstündeki cam "hero" başlığı. `tone` vurgu rengini
 // belirler (amber, sky, violet, teal, rose); `children` başlığın altına
@@ -16,12 +17,14 @@ export default function PageHeader({
   compact = false,
   children,
 }) {
+  const { t } = useI18n();
+  const tr = (v) => (typeof v === 'string' ? t(v) : v);
   return (
     <header className={`page-hero tone-${tone} ${compact ? 'is-compact' : ''}`}>
       <span className="page-hero-glow" aria-hidden="true" />
       <div className="page-hero-row">
         {onBack && (
-          <button type="button" className="glass-icon-btn" onClick={onBack} aria-label="Geri">
+          <button type="button" className="glass-icon-btn" onClick={onBack} aria-label={t("Geri")}>
             <ArrowLeft size={18} />
           </button>
         )}
@@ -31,15 +34,15 @@ export default function PageHeader({
           </span>
         )}
         <div className="page-hero-text">
-          {eyebrow && <div className="page-hero-eyebrow">{eyebrow}</div>}
+          {eyebrow && <div className="page-hero-eyebrow">{tr(eyebrow)}</div>}
           <h1 className="page-hero-title">
-            {title}
+            {tr(title)}
             {badge}
           </h1>
         </div>
         {actions && <div className="page-hero-actions">{actions}</div>}
       </div>
-      {subtitle && <p className="page-hero-sub">{subtitle}</p>}
+      {subtitle && <p className="page-hero-sub">{tr(subtitle)}</p>}
       {children}
     </header>
   );

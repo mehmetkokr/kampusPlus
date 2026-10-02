@@ -6,8 +6,51 @@ const { requireAuth } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 const { verifyFileSignature } = require('../lib/fileValidation');
 const { isPremiumActive } = require('../lib/premium');
-const { syncUserClassmateGroup } = require('../lib/classmateGroups');
 const { runDocumentOcr } = require('../lib/ocr');
+const fsp = require('fs/promises');
+const path = require('path');
+const { parseBirthDate, withLiveAge } = require('../lib/age');
+const { discoverableUserWhere } = require('../lib/privacy');
+const { ALLOWED_INTENTS, wantsDating, visibleIntentFor } = require('../lib/intents');
+
+const MAX_PHOTOS = 6;
+
+// Galeriden silinen fotoğrafı diskten de kaldır (bağlantıyı bilen erişemesin)
+async function removeUploadedFile(url) {
+  if (!url) return;
+  // /uploads/... herkese açık klasör; /api/files/... kimlik belgesi gibi özel dosyalar
+  const dir = url.startsWith('/uploads/') ? 'uploads' : url.startsWith('/api/files/') ? 'private-uploads' : null;
+  if (!dir) return;
+  await fsp.unlink(path.join(__dirname, '..', '..', dir, path.basename(url))).catch(() => {});
+}
+
+// İlgi alanı / hobi listesi: virgülle ayrılmış, en fazla 10 benzersiz öğe,
+// her biri en fazla 40 karakter. undefined gelirse alan değiştirilmez.
+const MAX_TAGS = 10;
+function cleanTags(value) {
+  if (value === undefined) return undefined;
+  const seen = new Set();
+  const tags = String(value || '')
+    .split(',')
+    .map((s) => s.trim().slice(0, 40))
+    .filter((s) => s && !seen.has(s.toLocaleLowerCase('tr')) && seen.add(s.toLocaleLowerCase('tr')));
+  return tags.slice(0, MAX_TAGS).join(', ') || null;
+}
+
+// Galerinin ilk fotoğrafını ana profil fotoğrafı (photoUrl) olarak eşitle
+async function syncMainPhoto(userId) {
+  const first = await prisma.userPhoto.findFirst({ where: { userId }, orderBy: { position: 'asc' } });
+  await prisma.user.update({ where: { id: userId }, data: { photoUrl: first ? first.url : null } });
+  return first ? first.url : null;
+}
+
+async function listPhotos(userId) {
+  return prisma.userPhoto.findMany({
+    where: { userId },
+    orderBy: { position: 'asc' },
+    select: { id: true, url: true, position: true },
+  });
+}
 
 const router = express.Router();
 
@@ -29,32 +72,30 @@ router.get('/me', requireAuth, async (req, res) => {
         hobbies: true,
         instagramUrl: true,
         twitterUrl: true,
-        linkedinUrl: true,
         intent: true,
         verificationStatus: true,
+        studentDocStatus: true,
         rejectionReason: true,
         isAdmin: true,
+        photos: { orderBy: { position: 'asc' }, select: { id: true, url: true, position: true } },
         notifyMatches: true,
         notifyMessages: true,
         profileVisibility: true,
         showActivityStatus: true,
+  swipeEnabled: true,
+        swipeEnabled: true,
         theme: true,
         language: true,
         university: { select: { id: true, name: true } },
         isPremium: true,
         premiumUntil: true,
         birthDate: true,
-        currentStreak: true,
-        longestStreak: true,
         weeklySummaryEnabled: true,
-        // Grup C: profil boost + öncelikli doğrulama durumu
-        boostedUntil: true,
-        verificationPriority: true,
       },
     });
     // isPremium alanını, süresi dolmuş olsa bile ham haliyle değil,
     // gerçek (anlık) durumuyla döndür.
-    res.json({ ...user, isPremium: isPremiumActive(user) });
+    res.json(withLiveAge({ ...user, isPremium: isPremiumActive(user) }));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Profil alınamadı.' });
@@ -74,9 +115,10 @@ const PROFILE_SELECT = {
   hobbies: true,
   instagramUrl: true,
   twitterUrl: true,
-  linkedinUrl: true,
   intent: true,
+  photos: { orderBy: { position: 'asc' }, select: { id: true, url: true, position: true } },
   verificationStatus: true,
+  studentDocStatus: true,
   rejectionReason: true,
   isAdmin: true,
   notifyMatches: true,
@@ -84,35 +126,21 @@ const PROFILE_SELECT = {
   notifyPostActivity: true,
   profileVisibility: true,
   showActivityStatus: true,
+  swipeEnabled: true,
   theme: true,
   language: true,
   university: { select: { id: true, name: true } },
   birthDate: true,
-  currentStreak: true,
-  longestStreak: true,
   weeklySummaryEnabled: true,
-  boostedUntil: true,
-  verificationPriority: true,
 };
 
-// Profili güncelle (bio, ilgi alanları, hobiler, sosyal medya, amaç, bölüm, sınıf, yaş)
+// Profili güncelle (bio, ilgi alanları, hobiler, sosyal medya, amaç).
+// Üniversite, bölüm ve sınıf kayıt sırasında belirlenir ve buradan değiştirilemez;
+// yaş doğum tarihinden hesaplanır. Doğum tarihi yalnızca hiç girilmemişse bir kez eklenebilir.
 router.put('/me', requireAuth, async (req, res) => {
   try {
-    const {
-      bio,
-      interests,
-      hobbies,
-      intent,
-      department,
-      classYear,
-      age,
-      instagramUrl,
-      twitterUrl,
-      linkedinUrl,
-      birthDate,
-    } = req.body;
+    const { bio, interests, hobbies, intent, instagramUrl, twitterUrl, birthDate } = req.body;
 
-    const ALLOWED_INTENTS = ['friendship', 'dating', 'study', 'event', 'club'];
     let intentValue;
     if (intent !== undefined) {
       const selected = (intent || '')
@@ -122,59 +150,38 @@ router.put('/me', requireAuth, async (req, res) => {
       intentValue = selected.length > 0 ? selected.join(',') : 'friendship';
     }
 
-    let ageValue;
-    if (age !== undefined) {
-      const parsed = age === '' || age === null ? null : Number(age);
-      if (parsed !== null && (Number.isNaN(parsed) || parsed < 16 || parsed > 100)) {
-        return res.status(400).json({ error: 'Geçerli bir yaş giriniz (16-100).' });
-      }
-      ageValue = parsed;
-    }
-
-    // Doğum günü bildirimi için doğum tarihi (isteğe bağlı). Tarih değiştiğinde
-    // "bu yıl zaten bildirim gitti" bayrağı da sıfırlanır - aksi halde kullanıcı
-    // yanlış girdiği tarihi düzeltse bile o yıl için bir daha bildirim alamaz.
+    // Doğum tarihi: kayıtta alınır; bu değişiklikten önce kaydolmuş ve hiç
+    // girmemiş kullanıcılar bir kez ekleyebilir, sonradan değiştirilemez.
     let birthDateValue;
-    let resetBirthdayFlag = false;
-    if (birthDate !== undefined) {
-      if (birthDate === '' || birthDate === null) {
-        birthDateValue = null;
-      } else {
-        const parsedDate = new Date(birthDate);
-        if (Number.isNaN(parsedDate.getTime())) {
-          return res.status(400).json({ error: 'Geçerli bir doğum tarihi giriniz.' });
-        }
-        birthDateValue = parsedDate;
+    let ageValue;
+    if (birthDate) {
+      const current = await prisma.user.findUnique({ where: { id: req.userId }, select: { birthDate: true } });
+      if (current.birthDate) {
+        return res.status(400).json({ error: 'Doğum tarihi bir kez girildikten sonra değiştirilemez.' });
       }
-      resetBirthdayFlag = true;
+      const birth = parseBirthDate(birthDate);
+      if (birth.error) return res.status(400).json({ error: birth.error });
+      birthDateValue = birth.date;
+      ageValue = birth.age;
     }
 
     const updated = await prisma.user.update({
       where: { id: req.userId },
       data: {
         bio,
-        interests,
-        hobbies,
+        interests: cleanTags(interests),
+        hobbies: cleanTags(hobbies),
         intent: intentValue,
-        department,
-        classYear: classYear ? Number(classYear) : undefined,
         age: ageValue,
-        instagramUrl: instagramUrl || null,
-        twitterUrl: twitterUrl || null,
-        linkedinUrl: linkedinUrl || null,
+        // Gönderilmeyen alan değişmez (kısmi güncelleme, ör. başlangıç adımları)
+        instagramUrl: instagramUrl === undefined ? undefined : instagramUrl || null,
+        twitterUrl: twitterUrl === undefined ? undefined : twitterUrl || null,
         birthDate: birthDateValue,
-        lastBirthdayNotifiedYear: resetBirthdayFlag ? null : undefined,
       },
       select: PROFILE_SELECT,
     });
 
-    res.json({ message: 'Profil güncellendi.', user: updated });
-
-    // Bölüm veya sınıf değişmiş olabilir - ders arkadaşı grubunu buna göre
-    // yeniden senkronize et. Yanıt gönderildikten sonra çalışır, isteği bekletmez.
-    if (department !== undefined || classYear !== undefined) {
-      syncUserClassmateGroup(req.userId).catch((err) => console.error('Ders arkadaşı grubu senkronize edilemedi:', err));
-    }
+    res.json({ message: 'Profil güncellendi.', user: withLiveAge(updated) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Profil güncellenemedi.' });
@@ -205,7 +212,7 @@ router.put('/me/notifications', requireAuth, async (req, res) => {
 // Gizlilik tercihlerini güncelle (profil görünürlüğü, çevrimiçi durumu)
 router.put('/me/privacy', requireAuth, async (req, res) => {
   try {
-    const { profileVisibility, showActivityStatus } = req.body;
+    const { profileVisibility, showActivityStatus, swipeEnabled } = req.body;
     const ALLOWED_VISIBILITY = ['everyone', 'university', 'nobody'];
 
     if (profileVisibility !== undefined && !ALLOWED_VISIBILITY.includes(profileVisibility)) {
@@ -217,10 +224,17 @@ router.put('/me/privacy', requireAuth, async (req, res) => {
       data: {
         profileVisibility: profileVisibility ?? undefined,
         showActivityStatus: typeof showActivityStatus === 'boolean' ? showActivityStatus : undefined,
+        swipeEnabled: typeof swipeEnabled === 'boolean' ? swipeEnabled : undefined,
       },
       select: PROFILE_SELECT,
     });
-    res.json({ message: 'Gizlilik tercihleri güncellendi.', user: updated });
+
+    // Çevrimiçi durumu gizlendiyse, açık sohbet ekranlarında da hemen gizlensin
+    if (showActivityStatus === false) {
+      req.app.get('io')?.emit('presence_update', { userId: req.userId, online: false, lastSeenAt: null });
+    }
+
+    res.json({ message: 'Gizlilik tercihleri güncellendi.', user: withLiveAge(updated) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Tercihler güncellenemedi.' });
@@ -286,20 +300,45 @@ router.delete('/me', requireAuth, async (req, res) => {
       return res.status(401).json({ error: 'Şifre hatalı.' });
     }
 
-    const [ownedClubs, ownedGroups, ownedEvents] = await Promise.all([
+    const [ownedClubs, ownedEvents] = await Promise.all([
       prisma.club.count({ where: { creatorId: req.userId } }),
-      prisma.groupChat.count({ where: { creatorId: req.userId } }),
       prisma.event.count({ where: { creatorId: req.userId } }),
     ]);
 
-    if (ownedClubs > 0 || ownedGroups > 0 || ownedEvents > 0) {
+    if (ownedClubs > 0 || ownedEvents > 0) {
       return res.status(409).json({
-        error:
-          'Hesabını silmeden önce sahibi olduğun kulüp, grup sohbeti veya etkinlikleri başka birine devretmeli ya da silmelisin.',
+        error: 'Hesabını silmeden önce sahibi olduğun kulüp veya etkinlikleri başka birine devretmeli ya da silmelisin.',
       });
     }
 
+    // Silinen hesabın fotoğraf dosyaları diskte kalmasın (profil, galeri,
+    // gönderi ve hikaye fotoğrafları): kayıtlar cascade ile silinir ama dosyalar değil.
+    // Eşleşmeler silinince içindeki tüm sohbet mesajları da silinir; bu yüzden
+    // iki tarafın da gönderdiği sohbet ekleri (fotoğraf, ses, dosya) temizlenir.
+    // Kulüp sohbetinde yalnızca bu hesabın kendi mesajları silinir.
+    const attachment = { OR: [{ photoUrl: { not: null } }, { audioUrl: { not: null } }, { fileUrl: { not: null } }] };
+    const attachmentFields = { photoUrl: true, audioUrl: true, fileUrl: true };
+    const [photos, posts, stories, chatFiles, clubChatFiles] = await Promise.all([
+      prisma.userPhoto.findMany({ where: { userId: req.userId }, select: { url: true } }),
+      prisma.post.findMany({ where: { authorId: req.userId, imageUrl: { not: null } }, select: { imageUrl: true } }),
+      prisma.story.findMany({ where: { authorId: req.userId }, select: { imageUrl: true } }),
+      prisma.message.findMany({
+        where: { ...attachment, match: { OR: [{ userAId: req.userId }, { userBId: req.userId }] } },
+        select: attachmentFields,
+      }),
+      prisma.clubMessage.findMany({ where: { ...attachment, senderId: req.userId }, select: attachmentFields }),
+    ]);
+    const fileUrls = new Set([
+      me.photoUrl,
+      me.studentDocUrl,
+      ...photos.map((p) => p.url),
+      ...posts.map((p) => p.imageUrl),
+      ...stories.map((s) => s.imageUrl),
+      ...[...chatFiles, ...clubChatFiles].flatMap((m) => [m.photoUrl, m.audioUrl, m.fileUrl]),
+    ]);
+
     await prisma.user.delete({ where: { id: req.userId } });
+    await Promise.all([...fileUrls].map((url) => removeUploadedFile(url)));
     res.json({ message: 'Hesabın kalıcı olarak silindi.' });
   } catch (err) {
     console.error(err);
@@ -315,16 +354,76 @@ router.post('/me/photo', requireAuth, upload.single('photo'), verifyFileSignatur
     }
 
     const photoUrl = `/uploads/${req.file.filename}`;
+    const count = await prisma.userPhoto.count({ where: { userId: req.userId } });
+    if (count >= MAX_PHOTOS) {
+      await removeUploadedFile(photoUrl);
+      return res.status(400).json({ error: `En fazla ${MAX_PHOTOS} fotoğraf ekleyebilirsin. Önce birini sil.` });
+    }
 
-    await prisma.user.update({
-      where: { id: req.userId },
-      data: { photoUrl },
-    });
+    // Yeni ana fotoğraf galerinin en başına geçer
+    await prisma.$transaction([
+      prisma.userPhoto.updateMany({ where: { userId: req.userId }, data: { position: { increment: 1 } } }),
+      prisma.userPhoto.create({ data: { userId: req.userId, url: photoUrl, position: 0 } }),
+    ]);
+    await syncMainPhoto(req.userId);
 
-    res.json({ message: 'Fotoğraf yüklendi.', photoUrl });
+    res.json({ message: 'Fotoğraf yüklendi.', photoUrl, photos: await listPhotos(req.userId) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Fotoğraf yüklenemedi.' });
+  }
+});
+
+// POST /api/profile/me/photos — galeriye fotoğraf ekle (sona)
+router.post('/me/photos', requireAuth, upload.single('photo'), verifyFileSignature, async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'Fotoğraf dosyası gerekli.' });
+    const url = `/uploads/${req.file.filename}`;
+    const existing = await listPhotos(req.userId);
+    if (existing.length >= MAX_PHOTOS) {
+      await removeUploadedFile(url);
+      return res.status(400).json({ error: `En fazla ${MAX_PHOTOS} fotoğraf ekleyebilirsin. Önce birini sil.` });
+    }
+    const nextPosition = existing.length ? existing[existing.length - 1].position + 1 : 0;
+    await prisma.userPhoto.create({ data: { userId: req.userId, url, position: nextPosition } });
+    const photoUrl = await syncMainPhoto(req.userId);
+    res.status(201).json({ photos: await listPhotos(req.userId), photoUrl });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Fotoğraf eklenemedi.' });
+  }
+});
+
+// PUT /api/profile/me/photos/:id/main — seçilen fotoğrafı ana fotoğraf yap
+router.put('/me/photos/:id/main', requireAuth, async (req, res) => {
+  try {
+    const photo = await prisma.userPhoto.findUnique({ where: { id: Number(req.params.id) } });
+    if (!photo || photo.userId !== req.userId) return res.status(404).json({ error: 'Fotoğraf bulunamadı.' });
+    const ordered = await listPhotos(req.userId);
+    const reordered = [photo, ...ordered.filter((p) => p.id !== photo.id)];
+    await prisma.$transaction(
+      reordered.map((p, i) => prisma.userPhoto.update({ where: { id: p.id }, data: { position: i } }))
+    );
+    const photoUrl = await syncMainPhoto(req.userId);
+    res.json({ photos: await listPhotos(req.userId), photoUrl });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Ana fotoğraf değiştirilemedi.' });
+  }
+});
+
+// DELETE /api/profile/me/photos/:id — galeriden fotoğraf sil
+router.delete('/me/photos/:id', requireAuth, async (req, res) => {
+  try {
+    const photo = await prisma.userPhoto.findUnique({ where: { id: Number(req.params.id) } });
+    if (!photo || photo.userId !== req.userId) return res.status(404).json({ error: 'Fotoğraf bulunamadı.' });
+    await prisma.userPhoto.delete({ where: { id: photo.id } });
+    await removeUploadedFile(photo.url);
+    const photoUrl = await syncMainPhoto(req.userId);
+    res.json({ photos: await listPhotos(req.userId), photoUrl });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Fotoğraf silinemedi.' });
   }
 });
 
@@ -337,21 +436,31 @@ router.get('/discover', requireAuth, async (req, res) => {
     if (me.verificationStatus !== 'auto_verified' && me.verificationStatus !== 'verified') {
       return res.status(403).json({ error: 'Hesabınız henüz doğrulanmadı.' });
     }
+    if (!me.swipeEnabled) {
+      return res.status(403).json({ error: "Kart Modu kapalı. Ayarlar'dan açabilirsin.", swipeDisabled: true });
+    }
 
-    const alreadyLiked = await prisma.like.findMany({
-      where: { fromUserId: req.userId },
-      select: { toUserId: true },
-    });
-    const excludeIds = [req.userId, ...alreadyLiked.map((l) => l.toUserId)];
+    const [alreadyLiked, blockedByMe, blockingMe] = await Promise.all([
+      prisma.like.findMany({ where: { fromUserId: req.userId }, select: { toUserId: true } }),
+      prisma.block.findMany({ where: { blockerId: req.userId }, select: { blockedId: true } }),
+      prisma.block.findMany({ where: { blockedId: req.userId }, select: { blockerId: true } }),
+    ]);
+    const excludeIds = [
+      req.userId,
+      ...alreadyLiked.map((l) => l.toUserId),
+      ...blockedByMe.map((b) => b.blockedId),
+      ...blockingMe.map((b) => b.blockerId),
+    ];
 
     const myIntents = (me.intent || 'friendship').split(',').map((s) => s.trim()).filter(Boolean);
 
     const candidates = await prisma.user.findMany({
       where: {
+        ...discoverableUserWhere(me.universityId),
         universityId: me.universityId,
         id: { notIn: excludeIds },
         verificationStatus: { in: ['auto_verified', 'verified'] },
-        isFrozen: false,
+        swipeEnabled: true, // Kart Modu'nu kapatanlar destede görünmez
       },
       select: {
         id: true,
@@ -364,18 +473,36 @@ router.get('/discover', requireAuth, async (req, res) => {
         interests: true,
         hobbies: true,
         intent: true,
+        birthDate: true,
+        studentDocStatus: true,
         university: { select: { name: true } },
+        photos: { orderBy: { position: 'asc' }, select: { id: true, url: true, position: true } },
       },
       take: 60,
     });
 
-    // En az bir ortak "ne arıyorsun" etiketi olan adayları öne çıkar
-    const withOverlap = candidates.filter((c) => {
+    // En az bir ortak "ne arıyorsun" etiketi olan adayları öne çıkar; ortak
+    // etiketi olmayanlar da listenin sonunda yer alır (eskiden tamamen
+    // eleniyordu ve kart modu çoğu kullanıcı için boş kalıyordu).
+    const overlapCount = (c) => {
       const theirIntents = (c.intent || 'friendship').split(',').map((s) => s.trim());
-      return theirIntents.some((t) => myIntents.includes(t));
-    });
+      return theirIntents.filter((t) => myIntents.includes(t)).length;
+    };
+    // Flört modu: yalnızca flört arayan biri, flört modunda olmayan kişinin
+    // destesinde çıkmaz (tercihi zaten ona görünmeyecekti).
+    const iWantDating = wantsDating(me.intent);
+    const visibleCandidates = candidates.filter((c) => iWantDating || visibleIntentFor(c.intent, me.intent) !== null);
+    const sorted = visibleCandidates
+      .map((c) => ({ c, score: overlapCount(c) }))
+      .sort((a, b) => b.score - a.score)
+      .map(({ c }) => c);
 
-    res.json(withOverlap.slice(0, 20));
+    res.json(
+      sorted.slice(0, 20).map((c) => {
+        const { birthDate: _b, studentDocStatus, ...rest } = withLiveAge(c);
+        return { ...rest, intent: visibleIntentFor(c.intent, me.intent), isStudentVerified: studentDocStatus === 'approved' };
+      })
+    );
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Kullanıcılar listelenemedi.' });
@@ -412,21 +539,36 @@ router.post(
       if (!req.file) {
         return res.status(400).json({ error: 'Belge dosyası bulunamadı.' });
       }
+      // Onaylı öğrenci rozeti yalnızca e-Devlet barkodlu öğrenci belgesiyle (PDF) verilir
+      if (req.file.mimetype !== 'application/pdf') {
+        await fsp.unlink(req.file.path).catch(() => {});
+        return res.status(400).json({ error: 'Yalnızca e-Devlet öğrenci belgesi (PDF) yükleyebilirsin.' });
+      }
 
       const me = await prisma.user.findUnique({
         where: { id: req.userId },
-        select: { verificationStatus: true, university: { select: { name: true } } },
+        select: { verificationStatus: true, studentDocStatus: true, university: { select: { name: true } } },
       });
-      if (!['pending', 'rejected'].includes(me.verificationStatus)) {
-        return res.status(400).json({ error: 'Hesabın zaten doğrulanmış ya da inceleme sürecinde.' });
+      // Reddedilen yüklemede dosya diskte kalmasın
+      if (me.studentDocStatus === 'approved' || me.studentDocStatus === 'pending') {
+        await fsp.unlink(req.file.path).catch(() => {});
+        return res.status(400).json({
+          error: me.studentDocStatus === 'approved'
+            ? 'Öğrenci belgen zaten onaylanmış.'
+            : 'Belgen zaten inceleniyor. Sonucu sana bildireceğiz.',
+        });
       }
 
+      // E-postası okul alan adıyla doğrulanmış hesap erişimini korur; yalnızca
+      // rozet başvurusu incelemeye girer. Erişimi olmayan hesap ise incelemeye alınır.
+      const hasAccess = ['auto_verified', 'verified'].includes(me.verificationStatus);
       const docUrl = `/api/files/${req.file.filename}`;
       await prisma.user.update({
         where: { id: req.userId },
         data: {
           studentDocUrl: docUrl,
-          verificationStatus: 'manual_review',
+          studentDocStatus: 'pending',
+          verificationStatus: hasAccess ? undefined : 'manual_review',
           rejectionReason: null,
           ocrExtractedText: null,
           ocrAutoCheckPassed: null,
@@ -444,7 +586,11 @@ router.post(
         })
         .catch((err) => console.error('OCR ön kontrolü işlenemedi:', err));
 
-      res.json({ message: 'Belge yüklendi, incelemeye alındı.', verificationStatus: 'manual_review' });
+      res.json({
+        message: 'Belge yüklendi, incelemeye alındı.',
+        verificationStatus: hasAccess ? me.verificationStatus : 'manual_review',
+        studentDocStatus: 'pending',
+      });
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: 'Belge yüklenemedi.' });

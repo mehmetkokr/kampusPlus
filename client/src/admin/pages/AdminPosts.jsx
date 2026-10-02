@@ -2,8 +2,10 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Search, Trash2, Heart, MessageCircle } from 'lucide-react';
 import adminApi from '../adminApi';
 import { API_BASE_URL } from '../../config';
+import { useConfirm } from '../../context/ConfirmContext';
 
 export default function AdminPosts() {
+  const confirm = useConfirm();
   const [posts, setPosts] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -30,7 +32,7 @@ export default function AdminPosts() {
   useEffect(() => { load(); }, [load]);
 
   async function handleDelete(id) {
-    if (!window.confirm('Bu ilan kalıcı olarak silinsin mi?')) return;
+    if (!await confirm('Bu ilan kalıcı olarak silinsin mi?')) return;
     try {
       await adminApi.deletePost(id);
       load();

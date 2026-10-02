@@ -98,25 +98,37 @@ function setupSocket(io) {
     // presence yayınları için kullanılır.
     socket.join(`user_${socket.userId}`);
     onlineUsers.add(socket.userId);
-    io.emit('presence_update', { userId: socket.userId, online: true });
+
+    // "Çevrimiçi durumumu göster" kapalıysa varlık bilgisi kimseye yayınlanmaz
+    const sharesPresence = async () => {
+      const u = await prisma.user.findUnique({ where: { id: socket.userId }, select: { showActivityStatus: true } });
+      return u?.showActivityStatus !== false;
+    };
+    sharesPresence()
+      .then((ok) => ok && io.emit('presence_update', { userId: socket.userId, online: true }))
+      .catch((err) => console.error(err));
 
     // Kullanıcı bir sohbet odasına katılır (her eşleşme = bir oda)
     socket.on('join_match', async (matchId) => {
-      socket.join(`match_${matchId}`);
-
-      // Karşı tarafa çevrimiçi/son görülme bilgisini bildir
       try {
+        // Yalnızca eşleşmenin iki tarafı odaya katılabilir; aksi halde başkası
+        // odaya girip özel mesajları canlı olarak dinleyebilirdi.
         const match = await prisma.match.findUnique({ where: { id: Number(matchId) } });
-        if (match) {
+        if (!match || (match.userAId !== socket.userId && match.userBId !== socket.userId)) return;
+        socket.join(`match_${matchId}`);
+
+        // Karşı tarafa çevrimiçi/son görülme bilgisini bildir
+        {
           const otherUserId = match.userAId === socket.userId ? match.userBId : match.userAId;
           const otherUser = await prisma.user.findUnique({
             where: { id: otherUserId },
-            select: { lastSeenAt: true },
+            select: { lastSeenAt: true, showActivityStatus: true },
           });
+          const shares = otherUser?.showActivityStatus !== false;
           socket.emit('presence_state', {
             userId: otherUserId,
-            online: isUserOnline(otherUserId),
-            lastSeenAt: otherUser?.lastSeenAt || null,
+            online: shares && isUserOnline(otherUserId),
+            lastSeenAt: shares ? otherUser?.lastSeenAt || null : null,
           });
         }
       } catch (err) {
@@ -126,6 +138,7 @@ function setupSocket(io) {
 
     // "Yazıyor..." göstergesi
     socket.on('typing', ({ matchId, isTyping }) => {
+      if (!socket.rooms.has(`match_${matchId}`)) return; // yalnızca sohbetin tarafları
       socket.to(`match_${matchId}`).emit('typing', { matchId: Number(matchId), userId: socket.userId, isTyping: !!isTyping });
     });
 
@@ -235,89 +248,6 @@ function setupSocket(io) {
       }
     });
 
-    // Genel grup sohbeti odasına katılır (yalnızca üyeler)
-    socket.on('join_group', async (groupId) => {
-      const membership = await prisma.groupChatMember.findUnique({
-        where: { groupId_userId: { groupId: Number(groupId), userId: socket.userId } },
-      });
-      if (membership) socket.join(`group_${groupId}`);
-    });
-
-    // Genel grup sohbetine metin mesajı gönderme
-    socket.on('send_group_message', async ({ groupId, content }) => {
-      try {
-        if (!content || !content.trim()) return;
-        if (isRateLimited(socket.userId)) {
-          return socket.emit('error_message', 'Çok hızlı mesaj gönderiyorsun, biraz yavaşla.');
-        }
-
-        const membership = await prisma.groupChatMember.findUnique({
-          where: { groupId_userId: { groupId: Number(groupId), userId: socket.userId } },
-        });
-        if (!membership) {
-          return socket.emit('error_message', 'Bu sohbete mesaj gönderme yetkiniz yok.');
-        }
-
-        const message = await prisma.groupMessage.create({
-          data: {
-            groupId: Number(groupId),
-            senderId: socket.userId,
-            content: content.trim(),
-          },
-          include: { sender: { select: { id: true, fullName: true, photoUrl: true } } },
-        });
-
-        await broadcastToRoomExcludingBlocked(io, `group_${groupId}`, 'new_group_message', message, socket.userId);
-      } catch (err) {
-        console.error(err);
-        socket.emit('error_message', 'Mesaj gönderilemedi.');
-      }
-    });
-
-    // Ders/Bölüm arkadaşı grubu odasına katılır (yalnızca üyeler)
-    socket.on('join_classmate_group', async (groupId) => {
-      const membership = await prisma.classmateGroupMember.findUnique({
-        where: { groupId_userId: { groupId: Number(groupId), userId: socket.userId } },
-      });
-      if (membership) socket.join(`classmate_group_${groupId}`);
-    });
-
-    // Ders/Bölüm arkadaşı grubuna metin mesajı gönderme
-    socket.on('send_classmate_message', async ({ groupId, content }) => {
-      try {
-        if (!content || !content.trim()) return;
-        if (isRateLimited(socket.userId)) {
-          return socket.emit('error_message', 'Çok hızlı mesaj gönderiyorsun, biraz yavaşla.');
-        }
-
-        const membership = await prisma.classmateGroupMember.findUnique({
-          where: { groupId_userId: { groupId: Number(groupId), userId: socket.userId } },
-        });
-        if (!membership) {
-          return socket.emit('error_message', 'Bu sohbete mesaj gönderme yetkiniz yok.');
-        }
-
-        const group = await prisma.classmateGroup.findUnique({ where: { id: Number(groupId) }, select: { isArchived: true } });
-        if (!group || group.isArchived) {
-          return socket.emit('error_message', 'Bu dönem sona erdi, bu grup artık salt-okunur.');
-        }
-
-        const message = await prisma.classmateGroupMessage.create({
-          data: {
-            groupId: Number(groupId),
-            senderId: socket.userId,
-            content: content.trim(),
-          },
-          include: { sender: { select: { id: true, fullName: true, photoUrl: true } } },
-        });
-
-        await broadcastToRoomExcludingBlocked(io, `classmate_group_${groupId}`, 'new_classmate_message', message, socket.userId);
-      } catch (err) {
-        console.error(err);
-        socket.emit('error_message', 'Mesaj gönderilemedi.');
-      }
-    });
-
     socket.on('disconnect', async () => {
       console.log(`Kullanıcı ayrıldı: ${socket.userId}`);
 
@@ -332,9 +262,11 @@ function setupSocket(io) {
         const updated = await prisma.user.update({
           where: { id: socket.userId },
           data: { lastSeenAt: new Date() },
-          select: { lastSeenAt: true },
+          select: { lastSeenAt: true, showActivityStatus: true },
         });
-        io.emit('presence_update', { userId: socket.userId, online: false, lastSeenAt: updated.lastSeenAt });
+        if (updated.showActivityStatus !== false) {
+          io.emit('presence_update', { userId: socket.userId, online: false, lastSeenAt: updated.lastSeenAt });
+        }
       } catch (err) {
         console.error(err);
       }

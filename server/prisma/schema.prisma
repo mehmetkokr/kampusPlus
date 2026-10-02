@@ -22,8 +22,6 @@ model University {
 
   users User[]
   clubs Club[]
-  classmateGroups ClassmateGroup[]
-  confessions Confession[]
 }
 
 // ----------------------------
@@ -84,6 +82,9 @@ model User {
   // Ayarlar: gizlilik
   profileVisibility  String  @default("everyone") // everyone | university | nobody
   showActivityStatus Boolean @default(true)        // çevrimiçi / son görülme bilgisini başkalarına göster
+  // Kart Modu: kapatan kişi Kart Modu'nu kullanmaz ve kimsenin destesinde görünmez
+  // (yalnızca akış ve kulüpleri kullanmak isteyenler için)
+  swipeEnabled       Boolean @default(true)
 
   // Ayarlar: görünüm ve dil
   theme    String @default("dark")  // dark | light
@@ -98,6 +99,9 @@ model User {
   // Kullanıcı belgeyi yenileyip tekrar manual_review'a düşerse temizlenir.
   rejectionReason    String?
   studentDocUrl      String? // yüklenen öğrenci belgesi dosya yolu
+  // Onaylı öğrenci rozeti (yeşil tik): hesap erişiminden (verificationStatus) bağımsızdır.
+  // Aktif öğrenci belgesini yükleyip admin onayından geçenlere verilir.
+  studentDocStatus   String  @default("none") // none | pending | approved | rejected
 
   // Şifre sıfırlama token'larını geçersiz kılmak için kullanılır: her başarılı
   // sıfırlamada 1 artar, böylece eski (kullanılmış veya sızmış) reset token'ları
@@ -119,17 +123,8 @@ model User {
 
   paymentLogs PaymentLog[]
 
-  // ----------------------------
-  // Grup C: Ek gelir kanalları (profil boost + öncelikli doğrulama)
-  // Kulüp/etkinlik öne çıkarma Club/Event modellerinde tutulur.
-  // ----------------------------
-  // Profil boost aktifken keşfet/discover listelerinde öne alınır.
-  boostedUntil DateTime?
-  // Kullanıcı "öncelikli doğrulama" satın aldıysa, manuel inceleme kuyruğunda
-  // (verificationStatus: manual_review) en üste alınır. Talep zamanı da
-  // tutulur ki aynı önceliğe sahip kullanıcılar arasında da sıralama net olsun.
-  verificationPriority   Boolean   @default(false)
-  verificationPriorityAt DateTime?
+  // Profil fotoğraf galerisi (photoUrl ana fotoğraftır ve bu listede de yer alır)
+  photos UserPhoto[]
 
   // ----------------------------
   // Grup D: OCR doğrulama
@@ -142,22 +137,8 @@ model User {
   ocrProcessedAt     DateTime?
 
   // ----------------------------
-  // Grup D: Anonim itiraf kutusu
-  // authorId dahili tutulur, API üzerinden başka kullanıcılara ASLA açılmaz
-  // (bkz. routes/confessions.js). Sadece moderasyon/ban amaçlı saklanır.
-  confessions         Confession[]
-  confessionReactions ConfessionReaction[]
-
+  // Retention çekirdeği: Doğum Günü + Haftalık Özet
   // ----------------------------
-  // Retention çekirdeği: Streak + Doğum Günü + Haftalık Özet
-  // ----------------------------
-  // Art arda giriş serisi. lastStreakDate sadece "hangi gün sayıldı" bilgisini
-  // tutar (bkz. lib/streak.js -> touchStreak); saat dilimi Europe/Istanbul'a
-  // göre normalize edilir.
-  currentStreak  Int       @default(0)
-  longestStreak  Int       @default(0)
-  lastStreakDate DateTime?
-
   // Doğum günü bildirimi. Sadece ay/gün kullanılır (yıl önemsiz).
   // lastBirthdayNotifiedYear, aynı yıl içinde cron birden fazla kez tetiklense
   // bile (ör. sunucu yeniden başlarsa) tekrar bildirim/e-posta gitmesini önler.
@@ -200,10 +181,6 @@ model User {
   following    Follow[]  @relation("Follower")
   followers    Follow[]  @relation("Following")
 
-  createdGroups   GroupChat[]       @relation("GroupCreator")
-  groupMemberships GroupChatMember[]
-  groupMessages   GroupMessage[]
-
   createdEvents Event[]     @relation("EventCreator")
   eventRSVPs    EventRSVP[]
 
@@ -214,9 +191,6 @@ model User {
 
   blocksMade     Block[] @relation("BlocksMade")
   blocksReceived Block[] @relation("BlocksReceived")
-
-  classmateGroupMemberships ClassmateGroupMember[]
-  classmateGroupMessages    ClassmateGroupMessage[]
 
   @@index([universityId])
 }
@@ -290,10 +264,6 @@ model Club {
   creatorId    Int
   createdAt    DateTime @default(now())
 
-  // Grup C: kulüp öne çıkarma. Dolana kadar keşfet/kulüp listesinde en üstte,
-  // rozetli gösterilir (bkz. lib/monetization.js -> isHighlightActive).
-  highlightedUntil DateTime?
-
   memberships ClubMembership[]
   messages    ClubMessage[]
   events      Event[]
@@ -349,6 +319,8 @@ model Post {
   // (create route caption veya fotoğraftan en az birini zorunlu kılar)
   imageUrl  String?
   caption   String?
+  // Kimler görebilir: campus (kampüsteki herkes) | followers (takipçilerim) | mutual (karşılıklı takip)
+  visibility String  @default("campus")
   createdAt DateTime @default(now())
 
   likes     PostLike[]
@@ -460,50 +432,6 @@ model Follow {
 }
 
 // ----------------------------
-// Genel Grup Sohbeti (eşleşmelerden serbestçe kurulan gruplar)
-// ----------------------------
-model GroupChat {
-  id        Int      @id @default(autoincrement())
-  name      String
-  // Kasıtlı olarak Restrict: kurucu, grubu silmeden/devretmeden hesabını
-  // silemez - aksi halde diğer üyelerin sohbet geçmişinin sahibi kalmaz.
-  creator   User     @relation("GroupCreator", fields: [creatorId], references: [id])
-  creatorId Int
-  createdAt DateTime @default(now())
-
-  members  GroupChatMember[]
-  messages GroupMessage[]
-}
-
-model GroupChatMember {
-  id       Int      @id @default(autoincrement())
-  group    GroupChat @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  groupId  Int
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId   Int
-  joinedAt DateTime @default(now())
-
-  @@unique([groupId, userId])
-  @@index([userId])
-}
-
-model GroupMessage {
-  id        Int      @id @default(autoincrement())
-  group     GroupChat @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  groupId   Int
-  sender    User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
-  senderId  Int
-  content   String?
-  photoUrl  String?
-  audioUrl  String?
-  fileUrl   String?
-  fileName  String?
-  createdAt DateTime @default(now())
-
-  @@index([groupId])
-}
-
-// ----------------------------
 // Kulüp Etkinlikleri + Katılım (RSVP)
 // ----------------------------
 model Event {
@@ -519,9 +447,6 @@ model Event {
   location    String?
   startsAt    DateTime
   createdAt   DateTime @default(now())
-
-  // Grup C: etkinlik öne çıkarma (bkz. Club.highlightedUntil ile aynı mantık)
-  highlightedUntil DateTime?
 
   rsvps EventRSVP[]
 
@@ -552,7 +477,7 @@ model Report {
   id          Int       @id @default(autoincrement())
   reporter    User      @relation("ReportsFiled", fields: [reporterId], references: [id], onDelete: Cascade)
   reporterId  Int
-  targetType  String    // "user" | "post" | "comment" | "message" | "club" | "club_message" | "group_message" | "confession"
+  targetType  String    // "user" | "post" | "comment" | "message" | "club" | "club_message" | "story"
   targetId    Int
   reason      String    // "spam" | "harassment" | "inappropriate_content" | "fake_profile" | "other"
   description String?
@@ -604,97 +529,29 @@ model Block {
 }
 
 // ----------------------------
-// Ders/Bölüm Arkadaşı Bulma
+// Profil fotoğraf galerisi (en fazla 6 fotoğraf)
 // ----------------------------
-// Aynı üniversite + bölüm + sınıfta olan kullanıcılar, dönem bazlı (semesterKey)
-// otomatik olarak tek bir gruba toplanır (bkz. lib/classmateGroups.js). Manuel
-// oluşturulan GroupChat'ten kasıtlı olarak ayrı bir model: sahiplik/izin
-// mantığı yok, üyelik tamamen profil bilgisine göre otomatik yönetiliyor.
-// isArchived, dönem değiştiğinde eski grupları salt-okunur hâle getirmek için
-// dönemlik temizlik cron'u tarafından işaretlenir (bkz. lib/classmateGroups.js
-// -> runSemesterCleanup); geçmiş sohbet silinmez, sadece pasifleştirilir.
-model ClassmateGroup {
-  id           Int      @id @default(autoincrement())
-  university   University @relation(fields: [universityId], references: [id], onDelete: Cascade)
-  universityId Int
-  department   String
-  classYear    Int
-  semesterKey  String   // örn. "2025-guz", "2026-bahar" - dönemi belirler
-  name         String   // örn. "Bilgisayar Mühendisliği - 2. Sınıf (2025 Güz)"
-  isArchived   Boolean  @default(false)
-  createdAt    DateTime @default(now())
+model UserPhoto {
+  id        Int      @id @default(autoincrement())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int
+  url       String
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
 
-  members  ClassmateGroupMember[]
-  messages ClassmateGroupMessage[]
-
-  @@unique([universityId, department, classYear, semesterKey])
-  @@index([universityId, department, classYear])
-}
-
-model ClassmateGroupMember {
-  id       Int      @id @default(autoincrement())
-  group    ClassmateGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  groupId  Int
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId   Int
-  joinedAt DateTime @default(now())
-
-  @@unique([groupId, userId])
   @@index([userId])
 }
 
-model ClassmateGroupMessage {
-  id        Int      @id @default(autoincrement())
-  group     ClassmateGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  groupId   Int
-  sender    User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
-  senderId  Int
-  content   String?
-  photoUrl  String?
-  createdAt DateTime @default(now())
-
-  @@index([groupId])
-}
-
 // ----------------------------
-// Grup D: Anonim İtiraf Kutusu
+// Kayıt sırasında e-postaya gönderilen doğrulama kodu (hesap oluşmadan önce)
+// Kodun kendisi değil SHA-256 özeti saklanır.
 // ----------------------------
-// Riskli/hassas bir özellik olduğu için tasarım kasıtlı olarak temkinli:
-// - authorId dahili tutulur; hiçbir API yanıtında başka kullanıcılara ASLA
-//   döndürülmez (bkz. routes/confessions.js -> PUBLIC_SELECT). Sadece kötüye
-//   kullanım/ban soruşturması için adminAuth korumalı uçlarda kullanılır.
-// - reportCount, generic Report tablosuna (targetType: "confession") düşen her
-//   şikayette lib/moderation.js -> registerConfessionReport() ile artırılır;
-//   eşik aşılınca status otomatik "hidden_auto" olur (bkz. o dosya).
-// - status admin tarafından da elle "hidden_admin" / "removed" yapılabilir.
-model Confession {
-  id           Int      @id @default(autoincrement())
-  university   University @relation(fields: [universityId], references: [id], onDelete: Cascade)
-  universityId Int
-  // Kasıtlı olarak Restrict DEĞİL: kullanıcı hesabını silerse itirafları da
-  // silinir (anonim olsa da kalıcı veri bırakmamak tercih edildi).
-  author       User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  authorId     Int
-  content      String
-  status       String   @default("visible") // visible | hidden_auto | hidden_admin | removed
-  reportCount  Int      @default(0)
-  createdAt    DateTime @default(now())
-
-  reactions ConfessionReaction[]
-
-  @@index([universityId, status, createdAt])
-  @@index([authorId])
-}
-
-model ConfessionReaction {
-  id           Int      @id @default(autoincrement())
-  confession   Confession @relation(fields: [confessionId], references: [id], onDelete: Cascade)
-  confessionId Int
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId       Int
-  type         String   @default("heart") // heart | laugh | sad | support
-  createdAt    DateTime @default(now())
-
-  @@unique([confessionId, userId])
-  @@index([confessionId])
+model EmailVerificationCode {
+  id         Int      @id @default(autoincrement())
+  email      String   @unique
+  codeHash   String
+  expiresAt  DateTime
+  attempts   Int      @default(0)
+  lastSentAt DateTime @default(now())
+  createdAt  DateTime @default(now())
 }

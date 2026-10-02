@@ -4,6 +4,7 @@ const prisma = require('../lib/prisma');
 const { requireAuth } = require('../middleware/auth');
 const { createNotification } = require('../lib/notifications');
 const { isBlockedEitherWay } = require('../lib/block');
+const { isPremiumActive } = require('../lib/premium');
 
 const router = express.Router();
 
@@ -18,6 +19,11 @@ router.post('/like/:userId', requireAuth, async (req, res) => {
     }
     if (await isBlockedEitherWay(fromUserId, toUserId)) {
       return res.status(403).json({ error: 'Bu kullanıcıyla etkileşime giremezsin.' });
+    }
+    // Kart Modu kapalıysa (beğenen ya da beğenilen) beğeni gönderilemez
+    const pair = await prisma.user.findMany({ where: { id: { in: [fromUserId, toUserId] } }, select: { id: true, swipeEnabled: true } });
+    if (pair.length < 2 || pair.some((u) => !u.swipeEnabled)) {
+      return res.status(403).json({ error: "Bu kullanıcı Kart Modu'nu kullanmıyor." });
     }
 
     // Beğeniyi kaydet (zaten varsa hata vermesin)
@@ -54,6 +60,69 @@ router.post('/like/:userId', requireAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Beğeni işlenemedi.' });
+  }
+});
+
+// "Seni Beğenenler": seni beğenen ama henüz senin karşılık vermediğin kişiler.
+// Premium özelliğidir - premium olmayan kullanıcıya yalnızca sayı döner, kimlik
+// bilgileri sunucudan hiç çıkmaz (istemci tarafında gizlemek yeterli olmazdı).
+router.get('/likes-received', requireAuth, async (req, res) => {
+  try {
+    const myId = req.userId;
+    const me = await prisma.user.findUnique({
+      where: { id: myId },
+      select: { isPremium: true, premiumUntil: true },
+    });
+
+    const [likesToMe, myLikes, blockedByMe, blockingMe] = await Promise.all([
+      prisma.like.findMany({
+        where: { toUserId: myId, fromUser: { isFrozen: false, isBanned: false } },
+        select: { fromUserId: true, createdAt: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.like.findMany({ where: { fromUserId: myId }, select: { toUserId: true } }),
+      prisma.block.findMany({ where: { blockerId: myId }, select: { blockedId: true } }),
+      prisma.block.findMany({ where: { blockedId: myId }, select: { blockerId: true } }),
+    ]);
+
+    const hidden = new Set([
+      ...myLikes.map((l) => l.toUserId),
+      ...blockedByMe.map((b) => b.blockedId),
+      ...blockingMe.map((b) => b.blockerId),
+    ]);
+    const pending = likesToMe.filter((l) => !hidden.has(l.fromUserId));
+
+    if (!isPremiumActive(me)) {
+      return res.json({ isPremium: false, count: pending.length, users: [] });
+    }
+
+    const users = await prisma.user.findMany({
+      where: { id: { in: pending.map((l) => l.fromUserId) } },
+      select: {
+        id: true,
+        fullName: true,
+        photoUrl: true,
+        age: true,
+        department: true,
+        classYear: true,
+        verificationStatus: true,
+        studentDocStatus: true,
+        university: { select: { name: true } },
+      },
+    });
+    const likedAtById = Object.fromEntries(pending.map((l) => [l.fromUserId, l.createdAt]));
+    const byId = Object.fromEntries(users.map((u) => [u.id, u]));
+
+    res.json({
+      isPremium: true,
+      count: pending.length,
+      users: pending
+        .filter((l) => byId[l.fromUserId])
+        .map((l) => ({ ...byId[l.fromUserId], likedAt: likedAtById[l.fromUserId] })),
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Beğenenler alınamadı.' });
   }
 });
 

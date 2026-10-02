@@ -1,11 +1,13 @@
 import React, { createContext, useContext, useCallback, useState } from 'react';
 import { CheckCircle2, XCircle, Info, X } from 'lucide-react';
+import { useI18n } from '../i18n';
 
 const ToastContext = createContext(null);
 
 let idCounter = 0;
 
 export function ToastProvider({ children }) {
+  const { t: translate } = useI18n();
   const [toasts, setToasts] = useState([]);
 
   const removeToast = useCallback((id) => {
@@ -43,8 +45,8 @@ export function ToastProvider({ children }) {
         {toasts.map((t) => (
           <div key={t.id} className={`toast toast-${t.type}`}>
             <span className="toast-icon">{ICONS[t.type]}</span>
-            <span className="toast-message">{t.message}</span>
-            <button className="toast-close" onClick={() => removeToast(t.id)} aria-label="Kapat">
+            <span className="toast-message">{typeof t.message === 'string' ? translate(t.message) : t.message}</span>
+            <button className="toast-close" onClick={() => removeToast(t.id)} aria-label={translate('Kapat')}>
               <X size={14} />
             </button>
           </div>

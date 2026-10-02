@@ -1,0 +1,19 @@
+# kampüs· — arama motoru kuralları
+# Herkese açık sayfalar taranır; oturum gerektiren uygulama ve yönetim
+# ekranları taranmaz. Alan adı değişirse Sitemap satırını güncelle.
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /discover
+Disallow: /feed
+Disallow: /clubs
+Disallow: /matches
+Disallow: /chat
+Disallow: /profile
+Disallow: /settings
+Disallow: /notifications
+Disallow: /users
+Disallow: /welcome
+Disallow: /reset-password
+
+Sitemap: https://kampusplus.app/sitemap.xml

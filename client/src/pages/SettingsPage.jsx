@@ -7,6 +7,8 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import PaywallModal from '../components/PaywallModal';
 import PageHeader from '../components/PageHeader';
+import { useConfirm } from '../context/ConfirmContext';
+import { useI18n } from '../i18n';
 
 const VISIBILITY_OPTIONS = [
   { value: 'everyone', label: 'Herkese Açık' },
@@ -15,9 +17,11 @@ const VISIBILITY_OPTIONS = [
 ];
 
 export default function SettingsPage() {
+  const { t, lang, setLang } = useI18n();
   const navigate = useNavigate();
   const { user, setUser, logout } = useAuth();
   const toast = useToast();
+  const confirm = useConfirm();
 
   const [notifyMatches, setNotifyMatches] = useState(true);
   const [notifyMessages, setNotifyMessages] = useState(true);
@@ -25,6 +29,7 @@ export default function SettingsPage() {
   const [weeklySummaryEnabled, setWeeklySummaryEnabled] = useState(true);
   const [profileVisibility, setProfileVisibility] = useState('everyone');
   const [showActivityStatus, setShowActivityStatus] = useState(true);
+  const [swipeEnabled, setSwipeEnabled] = useState(true);
   const [theme, setTheme] = useState('dark');
   const [language, setLanguage] = useState('tr');
   const [saving, setSaving] = useState(false);
@@ -42,7 +47,7 @@ export default function SettingsPage() {
   const [cancelling, setCancelling] = useState(false);
 
   async function handleCancelPremium() {
-    if (!window.confirm('Premium üyeliği iptal etmek istediğine emin misin? Süre dolana kadar erişimin devam eder.')) return;
+    if (!(await confirm({ title: 'Otomatik yenileme kapatılsın mı?', message: 'Premium üyeliğin mevcut süre dolana kadar devam eder, sonra yenilenmez.', confirmLabel: 'Yenilemeyi kapat' }))) return;
     setCancelling(true);
     try {
       await api.post('/premium/cancel');
@@ -63,6 +68,7 @@ export default function SettingsPage() {
       setWeeklySummaryEnabled(user.weeklySummaryEnabled ?? true);
       setProfileVisibility(user.profileVisibility || 'everyone');
       setShowActivityStatus(user.showActivityStatus ?? true);
+      setSwipeEnabled(user.swipeEnabled ?? true);
       setTheme(user.theme || 'dark');
       setLanguage(user.language || 'tr');
     }
@@ -72,7 +78,7 @@ export default function SettingsPage() {
     setSaving(true);
     try {
       const res = await api.put('/profile/me/notifications', { [key]: value });
-      setUser(res.data.user);
+      setUser((prev) => ({ ...prev, ...res.data.user }));
     } catch (err) {
       toast.error('Tercih kaydedilemedi.');
     } finally {
@@ -84,7 +90,7 @@ export default function SettingsPage() {
     setSaving(true);
     try {
       const res = await api.put('/profile/me/privacy', next);
-      setUser(res.data.user);
+      setUser((prev) => ({ ...prev, ...res.data.user }));
     } catch (err) {
       toast.error('Gizlilik tercihi kaydedilemedi.');
     } finally {
@@ -96,7 +102,7 @@ export default function SettingsPage() {
     setSaving(true);
     try {
       const res = await api.put('/profile/me/appearance', next);
-      setUser(res.data.user);
+      setUser((prev) => ({ ...prev, ...res.data.user }));
     } catch (err) {
       toast.error('Görünüm tercihi kaydedilemedi.');
     } finally {
@@ -131,13 +137,12 @@ export default function SettingsPage() {
   }
 
   async function handleFreeze() {
-    if (
-      !window.confirm(
-        'Hesabını dondurmak istediğine emin misin? Profilin diğer kullanıcılardan gizlenir. Tekrar giriş yaptığında otomatik olarak aktifleşir.'
-      )
-    ) {
-      return;
-    }
+    const ok = await confirm({
+      title: 'Hesabın dondurulsun mu?',
+      message: 'Profilin, gönderilerin ve Kart Modu kartın diğer öğrencilerden gizlenir; oturumun kapanır. Tekrar giriş yaptığında hesabın otomatik olarak aktifleşir.',
+      confirmLabel: 'Hesabı dondur',
+    });
+    if (!ok) return;
     try {
       await api.post('/profile/me/freeze');
       toast.success('Hesabın donduruldu.');
@@ -149,13 +154,12 @@ export default function SettingsPage() {
   }
 
   async function handleLogoutAllDevices() {
-    if (
-      !window.confirm(
-        'Bu işlem, bu cihaz dahil giriş yapılmış tüm cihazlardaki oturumları kapatır. Devam etmek istiyor musun?'
-      )
-    ) {
-      return;
-    }
+    const ok = await confirm({
+      title: 'Tüm cihazlardan çıkış yapılsın mı?',
+      message: 'Bu cihaz dahil, hesabına giriş yapılmış tüm telefon ve bilgisayarlardaki oturumlar kapanır. Tekrar girmek için şifren gerekir.',
+      confirmLabel: 'Tümünden çıkış yap',
+    });
+    if (!ok) return;
     try {
       await api.post('/profile/logout-all');
       toast.success('Tüm cihazlardan çıkış yapıldı.');
@@ -190,8 +194,8 @@ export default function SettingsPage() {
         compact
         tone="violet"
         icon={SettingsIcon}
-        eyebrow="Tercihler & gizlilik"
-        title="Ayarlar"
+        eyebrow={t("Tercihler & gizlilik")}
+        title={t("Ayarlar")}
         onBack={() => navigate('/profile')}
       />
 
@@ -199,25 +203,25 @@ export default function SettingsPage() {
       <div className={`settings-premium-card ${user.isPremium ? 'is-active' : ''}`}>
         <div className="settings-premium-card-top">
           <Crown size={20} color={user.isPremium ? 'var(--amber)' : 'var(--text-muted)'} />
-          <h4>{user.isPremium ? 'Premium Üyesin' : 'KampüsPlus Premium'}</h4>
-          {user.isPremium && <span className="premium-badge">AKTİF</span>}
+          <h4>{user.isPremium ? t("Premium Üyesin") : t("KampüsPlus Premium")}</h4>
+          {user.isPremium && <span className="premium-badge">{t("AKTİF")}</span>}
         </div>
         {user.isPremium ? (
           <>
             <p>
               {user.premiumUntil
-                ? `Üyeliğin ${new Date(user.premiumUntil).toLocaleDateString('tr-TR')} tarihine kadar aktif. Tüm üniversitelerdeki kişileri görebilirsin.`
-                : 'Tüm üniversitelerdeki kişileri görebilirsin.'}
+                ? t('Üyeliğin {date} tarihine kadar aktif. Tüm üniversitelerdeki kişileri görebilirsin.', { date: new Date(user.premiumUntil).toLocaleDateString(lang === 'en' ? 'en-GB' : 'tr-TR') })
+                : t("Tüm üniversitelerdeki kişileri görebilirsin.")}
             </p>
             <button className="btn-secondary" onClick={handleCancelPremium} disabled={cancelling}>
-              {cancelling ? 'İşleniyor...' : 'Otomatik Yenilemeyi Kapat'}
+              {cancelling ? t("İşleniyor...") : t("Otomatik Yenilemeyi Kapat")}
             </button>
           </>
         ) : (
           <>
-            <p>Şu an sadece {user.university?.name} içindeki kişileri görebiliyorsun. Premium ile tüm üniversitelerden kişilerle tanış, aramada sınır olmadan sonuç gör.</p>
+            <p>{t('Şu an sadece {uni} içindeki kişileri görebiliyorsun. Premium ile tüm üniversitelerden kişilerle tanış, aramada sınır olmadan sonuç gör.', { uni: user.university?.name || '' })}</p>
             <button className="btn-premium-cta" onClick={() => setShowPaywall(true)}>
-              👑 Premium'a Geç
+              <Crown size={16} /> {t("Premium'a Geç")}
             </button>
           </>
         )}
@@ -227,15 +231,15 @@ export default function SettingsPage() {
 
       {/* ---------- Bildirimler ---------- */}
       <div className="card">
-        <h3 style={{ marginBottom: 4 }}>Bildirimler</h3>
+        <h3 style={{ marginBottom: 4 }}>{t("Bildirimler")}</h3>
         <p className="muted" style={{ marginBottom: 4 }}>
-          Hangi durumlarda bildirim almak istediğini seç.
+          {t("Hangi durumlarda bildirim almak istediğini seç.")}
         </p>
 
         <div className="settings-row">
           <div>
-            <div className="settings-row-label">Yeni Eşleşme Bildirimleri</div>
-            <div className="settings-row-desc">Biriyle eşleştiğinde haberdar ol.</div>
+            <div className="settings-row-label">{t("Yeni Eşleşme Bildirimleri")}</div>
+            <div className="settings-row-desc">{t("Biriyle eşleştiğinde haberdar ol.")}</div>
           </div>
           <label className="switch">
             <input
@@ -253,8 +257,8 @@ export default function SettingsPage() {
 
         <div className="settings-row">
           <div>
-            <div className="settings-row-label">Yeni Mesaj Bildirimleri</div>
-            <div className="settings-row-desc">Sana mesaj geldiğinde haberdar ol.</div>
+            <div className="settings-row-label">{t("Yeni Mesaj Bildirimleri")}</div>
+            <div className="settings-row-desc">{t("Sana mesaj geldiğinde haberdar ol.")}</div>
           </div>
           <label className="switch">
             <input
@@ -272,8 +276,8 @@ export default function SettingsPage() {
 
         <div className="settings-row">
           <div>
-            <div className="settings-row-label">Beğeni ve Yorum Bildirimleri</div>
-            <div className="settings-row-desc">Gönderin beğenildiğinde veya yorum yapıldığında haberdar ol.</div>
+            <div className="settings-row-label">{t("Beğeni ve Yorum Bildirimleri")}</div>
+            <div className="settings-row-desc">{t("Gönderin beğenildiğinde veya yorum yapıldığında haberdar ol.")}</div>
           </div>
           <label className="switch">
             <input
@@ -291,8 +295,8 @@ export default function SettingsPage() {
 
         <div className="settings-row">
           <div>
-            <div className="settings-row-label">Haftalık Özet</div>
-            <div className="settings-row-desc">Her Pazartesi haftanın özetini (takipçi, beğeni, eşleşme, mesaj) al.</div>
+            <div className="settings-row-label">{t("Haftalık Özet")}</div>
+            <div className="settings-row-desc">{t("Her Pazartesi haftanın özetini (takipçi, beğeni, eşleşme, mesaj) al.")}</div>
           </div>
           <label className="switch">
             <input
@@ -311,12 +315,12 @@ export default function SettingsPage() {
 
       {/* ---------- Gizlilik ---------- */}
       <div className="card" style={{ marginTop: 16 }}>
-        <h3 style={{ marginBottom: 4 }}>Gizlilik</h3>
+        <h3 style={{ marginBottom: 4 }}>{t("Gizlilik")}</h3>
         <p className="muted" style={{ marginBottom: 12 }}>
-          Profilini kimlerin görebileceğini kontrol et.
+          {t("Profilini kimlerin görebileceğini kontrol et.")}
         </p>
 
-        <label>Profil Görünürlüğü</label>
+        <label>{t("Profil Görünürlüğü")}</label>
         <select
           value={profileVisibility}
           disabled={saving}
@@ -328,15 +332,15 @@ export default function SettingsPage() {
         >
           {VISIBILITY_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>
-              {opt.label}
+              {t(opt.label)}
             </option>
           ))}
         </select>
 
         <div className="settings-row">
           <div>
-            <div className="settings-row-label">Çevrimiçi Durumunu Göster</div>
-            <div className="settings-row-desc">Kapatırsan son görülme bilgin gizlenir.</div>
+            <div className="settings-row-label">{t("Çevrimiçi Durumunu Göster")}</div>
+            <div className="settings-row-desc">{t("Kapatırsan son görülme bilgin gizlenir.")}</div>
           </div>
           <label className="switch">
             <input
@@ -352,6 +356,28 @@ export default function SettingsPage() {
           </label>
         </div>
 
+        {/* Kart Modu: kapatan kişi yalnızca akış ve kulüpleri kullanır, kimsenin destesinde görünmez */}
+        <div className="settings-row">
+          <div>
+            <div className="settings-row-label">{t("Kart Modu")}</div>
+            <div className="settings-row-desc">
+              {t("Kapatırsan Kart Modu menüden kalkar ve sen de kimsenin kartında görünmezsin. Akış ve kulüpler aynen çalışır.")}
+            </div>
+          </div>
+          <label className="switch">
+            <input
+              type="checkbox"
+              checked={swipeEnabled}
+              disabled={saving}
+              onChange={(e) => {
+                setSwipeEnabled(e.target.checked);
+                updatePrivacy({ swipeEnabled: e.target.checked });
+              }}
+            />
+            <span className="switch-track" />
+          </label>
+        </div>
+
         <button
           className="settings-link-row"
           style={{ borderBottom: 'none', paddingTop: 16 }}
@@ -361,18 +387,18 @@ export default function SettingsPage() {
             <ShieldOff size={16} />
           </div>
           <div className="settings-link-row-text">
-            <div className="settings-row-label">Engellenen Kullanıcılar</div>
+            <div className="settings-row-label">{t("Engellenen Kullanıcılar")}</div>
             <div className="settings-row-desc">
-              {blockedLoaded ? `${blockedUsers.length} kullanıcı` : 'Listeyi görüntüle'}
+              {blockedLoaded ? t('{n} kullanıcı', { n: blockedUsers.length }) : t("Listeyi görüntüle")}
             </div>
           </div>
         </button>
 
         {showBlocked && (
           <div style={{ marginTop: 4 }}>
-            {!blockedLoaded && <p className="muted">Yükleniyor...</p>}
+            {!blockedLoaded && <p className="muted">{t("Yükleniyor...")}</p>}
             {blockedLoaded && blockedUsers.length === 0 && (
-              <p className="muted">Engellediğin kimse yok.</p>
+              <p className="muted">{t("Engellediğin kimse yok.")}</p>
             )}
             {blockedLoaded &&
               blockedUsers.map((b) => (
@@ -384,7 +410,7 @@ export default function SettingsPage() {
                   />
                   <div className="blocked-user-name">{b.user.fullName}</div>
                   <button className="unblock-btn" onClick={() => handleUnblock(b.user.id)}>
-                    Engeli Kaldır
+                    {t("Engeli Kaldır")}
                   </button>
                 </div>
               ))}
@@ -394,12 +420,12 @@ export default function SettingsPage() {
 
       {/* ---------- Görünüm ve Dil ---------- */}
       <div className="card" style={{ marginTop: 16 }}>
-        <h3 style={{ marginBottom: 4 }}>Görünüm ve Dil</h3>
+        <h3 style={{ marginBottom: 4 }}>{t("Görünüm ve Dil")}</h3>
         <p className="muted" style={{ marginBottom: 12 }}>
-          Uygulamanın nasıl görüneceğini seç.
+          {t("Uygulamanın nasıl görüneceğini seç.")}
         </p>
 
-        <label>Tema</label>
+        <label>{t("Tema")}</label>
         <div className="theme-toggle-group" style={{ marginBottom: 16 }}>
           <button
             type="button"
@@ -410,7 +436,7 @@ export default function SettingsPage() {
             }}
           >
             <Moon size={18} />
-            Koyu
+            {t("Koyu")}
           </button>
           <button
             type="button"
@@ -421,29 +447,29 @@ export default function SettingsPage() {
             }}
           >
             <Sun size={18} />
-            Açık
+            {t("Açık")}
           </button>
         </div>
 
-        <label>Dil</label>
+        <label>{t("Dil")}</label>
         <select
           value={language}
           disabled={saving}
           onChange={(e) => {
             setLanguage(e.target.value);
-            updateAppearance({ language: e.target.value });
+            setLang(e.target.value);
           }}
         >
-          <option value="tr">Türkçe</option>
-          <option value="en">English</option>
+          <option value="tr">{t("Türkçe")}</option>
+          <option value="en">{t("English")}</option>
         </select>
       </div>
 
       {/* ---------- Hesap: Tehlike Bölgesi ---------- */}
       <div className="card danger-zone-card" style={{ marginTop: 16 }}>
-        <h3 style={{ marginBottom: 4 }}>Hesap</h3>
+        <h3 style={{ marginBottom: 4 }}>{t("Hesap")}</h3>
         <p className="muted" style={{ marginBottom: 4 }}>
-          Bu işlemler hesabını etkiler, dikkatli ol.
+          {t("Bu işlemler hesabını etkiler, dikkatli ol.")}
         </p>
 
         <button className="danger-row-btn" onClick={handleLogoutAllDevices}>
@@ -451,8 +477,8 @@ export default function SettingsPage() {
             <LogOut size={16} />
           </div>
           <div className="settings-link-row-text">
-            <div className="settings-row-label">Tüm Cihazlardan Çıkış Yap</div>
-            <div className="settings-row-desc">Bu cihaz dahil tüm oturumları kapatır, tekrar giriş yapman gerekir.</div>
+            <div className="settings-row-label">{t("Tüm Cihazlardan Çıkış Yap")}</div>
+            <div className="settings-row-desc">{t("Bu cihaz dahil tüm oturumları kapatır, tekrar giriş yapman gerekir.")}</div>
           </div>
         </button>
 
@@ -461,8 +487,8 @@ export default function SettingsPage() {
             <Snowflake size={16} />
           </div>
           <div className="settings-link-row-text">
-            <div className="settings-row-label">Hesabı Dondur</div>
-            <div className="settings-row-desc">Profilin gizlenir, tekrar girişte otomatik açılır.</div>
+            <div className="settings-row-label">{t("Hesabı Dondur")}</div>
+            <div className="settings-row-desc">{t("Profilin gizlenir, tekrar girişte otomatik açılır.")}</div>
           </div>
         </button>
 
@@ -471,8 +497,8 @@ export default function SettingsPage() {
             <Trash2 size={16} />
           </div>
           <div className="settings-link-row-text">
-            <div className="settings-row-label">Hesabı Sil</div>
-            <div className="settings-row-desc">Bu işlem geri alınamaz, tüm verilerin silinir.</div>
+            <div className="settings-row-label">{t("Hesabı Sil")}</div>
+            <div className="settings-row-desc">{t("Bu işlem geri alınamaz, tüm verilerin silinir.")}</div>
           </div>
         </button>
       </div>
@@ -481,18 +507,17 @@ export default function SettingsPage() {
         <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
           <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Hesabı Sil</h3>
+              <h3>{t("Hesabı Sil")}</h3>
               <button className="modal-close" onClick={() => setShowDeleteModal(false)}>
                 <X size={16} />
               </button>
             </div>
             <form onSubmit={handleDeleteAccount}>
               <p className="muted" style={{ marginBottom: 14 }}>
-                Bu işlem <strong>geri alınamaz</strong>. Profilin, eşleşmelerin, mesajların ve tüm verilerin kalıcı
-                olarak silinir. Devam etmek için şifreni gir.
+                {t('Bu işlem geri alınamaz. Profilin, eşleşmelerin, mesajların ve tüm verilerin kalıcı olarak silinir. Devam etmek için şifreni gir.')}
               </p>
               {deleteError && <p className="error-text">{deleteError}</p>}
-              <label>Şifre</label>
+              <label>{t("Şifre")}</label>
               <input
                 type="password"
                 value={deletePassword}
@@ -506,7 +531,7 @@ export default function SettingsPage() {
                 disabled={deleting}
                 style={{ background: 'var(--coral)', color: '#fff' }}
               >
-                {deleting ? 'Siliniyor...' : 'Hesabımı Kalıcı Olarak Sil'}
+                {deleting ? t("Siliniyor...") : t("Hesabımı Kalıcı Olarak Sil")}
               </button>
             </form>
           </div>

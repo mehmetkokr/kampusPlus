@@ -1,12 +1,13 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import CubeLoader from './CubeLoader';
 
 export default function ProtectedRoute({ children }) {
   const { token, loading } = useAuth();
 
   if (loading) {
-    return <p className="muted center-text" style={{ marginTop: 40 }}>Yükleniyor...</p>;
+    return <CubeLoader mode="fullscreen" />;
   }
 
   if (!token) {

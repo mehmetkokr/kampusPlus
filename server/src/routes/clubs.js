@@ -7,7 +7,6 @@ const chatUpload = require('../middleware/chatUpload');
 const { verifyFileSignature } = require('../lib/fileValidation');
 const { getBlockedUserIds } = require('../lib/block');
 const { createNotification } = require('../lib/notifications');
-const { isHighlightActive } = require('../lib/monetization');
 
 const router = express.Router();
 
@@ -59,10 +58,8 @@ router.get('/', requireAuth, async (req, res) => {
         iconEmoji: c.iconEmoji,
         memberCount: c._count.memberships,
         myMembership: c.memberships[0] || null,
-        isHighlighted: isHighlightActive(c),
       }))
-      // Öne çıkan kulüpler (Grup C) en üstte, geri kalanı oluşturulma tarihine göre.
-      .sort((a, b) => Number(b.isHighlighted) - Number(a.isHighlighted));
+      // Öne çıkan kulüpler (Grup C) en üstte, geri kalanı oluşturulma tarihine göre.;
 
     res.json(result);
   } catch (err) {
@@ -80,6 +77,12 @@ router.post('/', requireAuth, async (req, res) => {
 
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Kulüp adı gerekli.' });
+    }
+    if (name.trim().length > 40) {
+      return res.status(400).json({ error: 'Kulüp adı en fazla 40 karakter olabilir.' });
+    }
+    if (description && description.trim().length > 280) {
+      return res.status(400).json({ error: 'Açıklama en fazla 280 karakter olabilir.' });
     }
 
     const me = await prisma.user.findUnique({ where: { id: req.userId } });
@@ -146,7 +149,6 @@ router.get('/:id', requireAuth, async (req, res) => {
       iconEmoji: club.iconEmoji,
       members: club.memberships,
       myMembership,
-      isHighlighted: isHighlightActive(club),
     });
   } catch (err) {
     console.error(err);
@@ -261,6 +263,8 @@ router.post('/:id/members/:userId/kick', requireAuth, async (req, res) => {
     }
 
     await prisma.clubMembership.delete({ where: { id: targetMembership.id } });
+    // Açık oturumu varsa kulüp sohbetini canlı almaya devam etmesin
+    req.app.get('io')?.in(`user_${targetUserId}`).socketsLeave(`club_${clubId}`);
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -295,6 +299,7 @@ router.post('/:id/members/:userId/ban', requireAuth, async (req, res) => {
       data: { status: 'banned', role: 'member' },
     });
 
+    req.app.get('io')?.in(`user_${targetUserId}`).socketsLeave(`club_${clubId}`);
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -417,7 +422,10 @@ router.get('/:id/events', requireAuth, async (req, res) => {
       orderBy: { startsAt: 'asc' },
       include: {
         creator: { select: { id: true, fullName: true } },
-        rsvps: { select: { userId: true } },
+        rsvps: {
+          orderBy: { id: 'asc' },
+          select: { userId: true, user: { select: { id: true, fullName: true, photoUrl: true } } },
+        },
       },
     });
 
@@ -432,10 +440,9 @@ router.get('/:id/events', requireAuth, async (req, res) => {
           creator: e.creator,
           goingCount: e.rsvps.length,
           imGoing: e.rsvps.some((r) => r.userId === req.userId),
-          isHighlighted: isHighlightActive(e),
+          // Katılanlar (yalnızca kulüp üyeleri bu uç noktayı görebilir)
+          attendees: e.rsvps.map((r) => r.user),
         }))
-        // Öne çıkan etkinlikler (Grup C) en üstte, sonra tarihe göre.
-        .sort((a, b) => Number(b.isHighlighted) - Number(a.isHighlighted) || new Date(a.startsAt) - new Date(b.startsAt))
     );
   } catch (err) {
     console.error(err);
@@ -444,14 +451,14 @@ router.get('/:id/events', requireAuth, async (req, res) => {
 });
 
 // ---------------------------------------------------------
-// POST /api/clubs/:id/events — yeni etkinlik oluştur (herhangi bir aktif üye)
+// POST /api/clubs/:id/events — yeni etkinlik oluştur (yalnızca kurucu/başkan ve yöneticiler)
 // ---------------------------------------------------------
 router.post('/:id/events', requireAuth, async (req, res) => {
   try {
     const clubId = Number(req.params.id);
     const membership = await getMembership(clubId, req.userId);
-    if (!membership || membership.status !== 'active') {
-      return res.status(403).json({ error: 'Etkinlik oluşturmak için kulübe üye olmalısın.' });
+    if (!membership || membership.status !== 'active' || !canManage(membership.role)) {
+      return res.status(403).json({ error: 'Etkinlikleri yalnızca kulüp başkanı ve yöneticiler oluşturabilir.' });
     }
 
     const { title, description, location, startsAt } = req.body;
@@ -469,6 +476,29 @@ router.post('/:id/events', requireAuth, async (req, res) => {
         rsvps: { create: { userId: req.userId } }, // oluşturan otomatik katılımcı olur
       },
     });
+
+    // Kulübün diğer aktif üyelerine bildirim: "{kulüp}: yeni etkinlik — {başlık}"
+    const [club, members] = await Promise.all([
+      prisma.club.findUnique({ where: { id: clubId }, select: { name: true } }),
+      prisma.clubMembership.findMany({
+        where: { clubId, status: 'active', userId: { not: req.userId } },
+        select: { userId: true },
+      }),
+    ]);
+    const io = req.app.get('io');
+    const message = JSON.stringify({ club: club?.name || '', title: event.title, startsAt: event.startsAt });
+    await Promise.all(
+      members.map((m) =>
+        createNotification(io, {
+          userId: m.userId,
+          type: 'club_event',
+          actorId: req.userId,
+          targetType: 'club',
+          targetId: clubId,
+          message,
+        })
+      )
+    );
 
     res.status(201).json(event);
   } catch (err) {

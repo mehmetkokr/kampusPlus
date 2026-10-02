@@ -1,15 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import ClubIcon from '../components/ClubIcon';
 import { io } from 'socket.io-client';
 import api, { buildFileUrl } from '../api';
 import { API_BASE_URL } from '../config';
-import { ArrowLeft as ArrowLeftIcon, Send as SendIcon, Image as ImageIcon, Users as UsersIcon, Crown as CrownIcon, Shield as ShieldIcon, UserX as UserXIcon, MoreVertical as MoreIcon, X as CloseIcon, Plus as PlusIcon, Calendar as CalendarIcon, MapPin as MapPinIcon, Clock as ClockIcon, Sparkles as SparklesIcon } from 'lucide-react';
+import { ArrowLeft as ArrowLeftIcon, Send as SendIcon, Image as ImageIcon, Users as UsersIcon, Crown as CrownIcon, Shield as ShieldIcon, UserX as UserXIcon, MoreVertical as MoreIcon, X as CloseIcon, Plus as PlusIcon, Calendar as CalendarIcon, MapPin as MapPinIcon, Clock as ClockIcon } from 'lucide-react';
+import { useConfirm } from '../context/ConfirmContext';
+import { useI18n } from '../i18n';
+import { useToast } from '../context/ToastContext';
+import { compressImage } from '../utils/image';
 
 const TABS = { CHAT: 'chat', EVENTS: 'events', MEMBERS: 'members' };
 
 export default function ClubDetailPage() {
+  const { t } = useI18n();
+  const confirm = useConfirm();
   const { clubId } = useParams();
   const navigate = useNavigate();
+  const toast = useToast();
 
   const [club, setClub] = useState(null);
   const [error, setError] = useState('');
@@ -22,32 +30,7 @@ export default function ClubDetailPage() {
   const [menuFor, setMenuFor] = useState(null); // hangi üye için işlem menüsü açık
   const [events, setEvents] = useState([]);
   const [showCreateEvent, setShowCreateEvent] = useState(false);
-  const [highlighting, setHighlighting] = useState(false);
-  const [highlightingEventId, setHighlightingEventId] = useState(null);
-
-  async function handleHighlightClub() {
-    setHighlighting(true);
-    try {
-      await api.post(`/monetization/clubs/${clubId}/highlight`, { planKey: 'club_highlight_7d' });
-      loadClub();
-    } catch (err) {
-      alert(err.response?.data?.error || 'Kulüp öne çıkarılamadı.');
-    } finally {
-      setHighlighting(false);
-    }
-  }
-
-  async function handleHighlightEvent(eventId) {
-    setHighlightingEventId(eventId);
-    try {
-      await api.post(`/monetization/events/${eventId}/highlight`, { planKey: 'event_highlight_3d' });
-      loadEvents();
-    } catch (err) {
-      alert(err.response?.data?.error || 'Etkinlik öne çıkarılamadı.');
-    } finally {
-      setHighlightingEventId(null);
-    }
-  }
+  const [attendeesOpenFor, setAttendeesOpenFor] = useState(null);
 
   const socketRef = useRef(null);
   const bottomRef = useRef(null);
@@ -74,7 +57,7 @@ export default function ClubDetailPage() {
       await api.post(`/clubs/${clubId}/events/${eventId}/rsvp`);
       loadEvents();
     } catch (err) {
-      alert(err.response?.data?.error || 'İşlem başarısız.');
+      toast.error(err.response?.data?.error || 'İşlem başarısız.');
     }
   }
 
@@ -149,13 +132,13 @@ export default function ClubDetailPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     const formData = new FormData();
-    formData.append('photo', file);
+    formData.append('photo', await compressImage(file));
     try {
       await api.post(`/clubs/${clubId}/messages/photo`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
     } catch (err) {
-      alert(err.response?.data?.error || 'Fotoğraf gönderilemedi.');
+      toast.error(err.response?.data?.error || 'Fotoğraf gönderilemedi.');
     } finally {
       e.target.value = '';
     }
@@ -166,49 +149,55 @@ export default function ClubDetailPage() {
       await api.post(`/clubs/${clubId}/join`);
       loadClub();
     } catch (err) {
-      alert(err.response?.data?.error || 'Katılınamadı.');
+      toast.error(err.response?.data?.error || 'Katılınamadı.');
     }
   }
 
   async function handleLeave() {
-    if (!window.confirm('Bu kulüpten ayrılmak istediğine emin misin?')) return;
+    if (!await confirm('Bu kulüpten ayrılmak istediğine emin misin?')) return;
     try {
       await api.post(`/clubs/${clubId}/leave`);
       navigate('/clubs');
     } catch (err) {
-      alert(err.response?.data?.error || 'Ayrılınamadı.');
+      toast.error(err.response?.data?.error || 'Ayrılınamadı.');
     }
   }
 
   async function handleKick(userId) {
-    if (!window.confirm('Bu üyeyi kulüpten çıkarmak istediğine emin misin?')) return;
+    if (!await confirm('Bu üyeyi kulüpten çıkarmak istediğine emin misin?')) return;
     try {
       await api.post(`/clubs/${clubId}/members/${userId}/kick`);
       setMenuFor(null);
       loadClub();
+      toast.success('Üye kulüpten çıkarıldı.');
     } catch (err) {
-      alert(err.response?.data?.error || 'İşlem başarısız.');
+      toast.error(err.response?.data?.error || 'İşlem başarısız.');
     }
   }
 
   async function handleBan(userId) {
-    if (!window.confirm('Bu üyeyi engellemek istediğine emin misin? Tekrar katılamayacak.')) return;
+    if (!await confirm('Bu üyeyi engellemek istediğine emin misin? Tekrar katılamayacak.')) return;
     try {
       await api.post(`/clubs/${clubId}/members/${userId}/ban`);
       setMenuFor(null);
       loadClub();
     } catch (err) {
-      alert(err.response?.data?.error || 'İşlem başarısız.');
+      toast.error(err.response?.data?.error || 'İşlem başarısız.');
     }
   }
 
   async function handlePromote(userId) {
     try {
-      await api.post(`/clubs/${clubId}/members/${userId}/promote`);
+      const res = await api.post(`/clubs/${clubId}/members/${userId}/promote`);
       setMenuFor(null);
       loadClub();
+      toast.success(
+        res.data.role === 'admin'
+          ? 'Üye artık yönetici; etkinlik oluşturabilir ve üyeleri yönetebilir.'
+          : 'Yöneticilik yetkisi kaldırıldı.'
+      );
     } catch (err) {
-      alert(err.response?.data?.error || 'İşlem başarısız.');
+      toast.error(err.response?.data?.error || 'İşlem başarısız.');
     }
   }
 
@@ -243,18 +232,12 @@ export default function ClubDetailPage() {
         <div className="chat-back" onClick={() => navigate('/clubs')}>
           <ArrowLeftIcon />
         </div>
-        <div className="club-header-icon">{club.iconEmoji}</div>
+        <ClubIcon value={club.iconEmoji} category={club.category} size={48} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="chat-header-name">
             {club.name}
-            {club.isHighlighted && (
-              <span className="badge" style={{ marginLeft: 8, fontSize: 11 }} title="Öne çıkan kulüp">
-                <SparklesIcon width={11} height={11} style={{ marginRight: 3, verticalAlign: -1 }} />
-                Öne Çıkan
-              </span>
-            )}
           </div>
-          <div className="chat-header-status">{club.members.length} üye</div>
+          <div className="chat-header-status">{club.members.length} {t("üye")}</div>
         </div>
         <button className="club-tab-toggle" onClick={() => setTab(TABS.EVENTS)} style={{ marginRight: 4 }}>
           <CalendarIcon width={18} height={18} />
@@ -266,16 +249,16 @@ export default function ClubDetailPage() {
 
       {!isMember && !isBanned && (
         <div className="club-join-banner">
-          <p>Bu kulübün henüz üyesi değilsin.</p>
+          <p>{t("Bu kulübün henüz üyesi değilsin.")}</p>
           <button className="btn btn-like" onClick={handleJoin}>
-            Kulübe Katıl
+            {t("Kulübe Katıl")}
           </button>
         </div>
       )}
 
       {isBanned && (
         <div className="club-join-banner banned">
-          <p>Bu kulüpten engellendin, sohbeti göremezsin.</p>
+          <p>{t("Bu kulüpten engellendin, sohbeti göremezsin.")}</p>
         </div>
       )}
 
@@ -291,12 +274,12 @@ export default function ClubDetailPage() {
                   disabled={loadingOlder}
                   style={{ fontSize: 13, padding: '6px 14px' }}
                 >
-                  {loadingOlder ? 'Yükleniyor...' : 'Daha eski mesajları yükle'}
+                  {loadingOlder ? t("Yükleniyor...") : t("Daha eski mesajları yükle")}
                 </button>
               </div>
             )}
             {messages.length === 0 && (
-              <p className="chat-empty">Henüz mesaj yok. Kulübe ilk mesajı sen at 👋</p>
+              <p className="chat-empty">{t("Henüz mesaj yok. Kulübe ilk mesajı sen at.")}</p>
             )}
             {messages.map((m) => {
               const mine = m.senderId === myUserId;
@@ -307,7 +290,7 @@ export default function ClubDetailPage() {
                     <img
                       className={`message-photo ${mine ? 'message-mine' : 'message-theirs'}`}
                       src={buildFileUrl(m.photoUrl)}
-                      alt="gönderilen fotoğraf"
+                      alt={t("gönderilen fotoğraf")}
                     />
                   ) : (
                     <div className={`message-bubble ${mine ? 'message-mine' : 'message-theirs'}`}>
@@ -327,7 +310,7 @@ export default function ClubDetailPage() {
                 type="button"
                 className="chat-attach-btn"
                 onClick={() => fileInputRef.current?.click()}
-                aria-label="Fotoğraf gönder"
+                aria-label={t("Fotoğraf gönder")}
               >
                 <ImageIcon width={19} height={19} />
               </button>
@@ -338,7 +321,7 @@ export default function ClubDetailPage() {
                 style={{ display: 'none' }}
                 onChange={handlePhotoSelect}
               />
-              <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Kulübe mesaj yaz..." />
+              <input value={text} onChange={(e) => setText(e.target.value)} placeholder={t("Kulübe mesaj yaz...")} />
               <button className={`chat-send-btn ${text.trim() ? 'has-text' : ''}`} type="submit">
                 <SendIcon />
               </button>
@@ -350,22 +333,23 @@ export default function ClubDetailPage() {
       {tab === TABS.EVENTS && (
         <div className="container" style={{ paddingTop: 0 }}>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-            {isMember && (
+            {/* Etkinlikleri yalnızca başkan (kurucu) ve yöneticiler oluşturur */}
+            {canManage ? (
               <button className="btn btn-like" onClick={() => setShowCreateEvent(true)}>
-                <PlusIcon width={14} height={14} style={{ marginRight: 6 }} /> Etkinlik Oluştur
+                <PlusIcon width={14} height={14} style={{ marginRight: 6 }} /> {t("Etkinlik Oluştur")}
               </button>
-            )}
-            {canManage && !club.isHighlighted && (
-              <button className="btn btn-secondary" disabled={highlighting} onClick={handleHighlightClub}>
-                <SparklesIcon width={14} height={14} style={{ marginRight: 6 }} />
-                {highlighting ? 'Başlatılıyor...' : "Kulübü Öne Çıkar (7 gün · ₺79,90)"}
-              </button>
+            ) : (
+              isMember && (
+                <p className="event-role-note">
+                  <ShieldIcon width={14} height={14} /> {t("Etkinlikleri kulüp başkanı ve yöneticiler oluşturur.")}
+                </p>
+              )
             )}
           </div>
 
           {events.length === 0 && (
             <p className="muted center-text" style={{ marginTop: 20 }}>
-              Henüz planlanan bir etkinlik yok.
+              {t("Henüz planlanan bir etkinlik yok.")}
             </p>
           )}
 
@@ -374,7 +358,6 @@ export default function ClubDetailPage() {
             const day = date.toLocaleDateString('tr-TR', { day: '2-digit' });
             const mon = date.toLocaleDateString('tr-TR', { month: 'short' });
             const time = date.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-            const canHighlightEvent = canManage || ev.creator?.id === myUserId;
             return (
               <div key={ev.id} className="event-row">
                 <div className="event-date">
@@ -383,13 +366,7 @@ export default function ClubDetailPage() {
                 </div>
                 <div className="event-info" style={{ flex: 1 }}>
                   <h4>
-                    {ev.title}
-                    {ev.isHighlighted && (
-                      <span className="badge" style={{ marginLeft: 6, fontSize: 11 }} title="Öne çıkan etkinlik">
-                        <SparklesIcon width={11} height={11} style={{ marginRight: 3, verticalAlign: -1 }} />
-                        Öne Çıkan
-                      </span>
-                    )}
+                    {t(ev.title)}
                   </h4>
                   {ev.description && <p className="muted" style={{ fontSize: 12.5, margin: '2px 0 4px' }}>{ev.description}</p>}
                   <div className="event-detail-row">
@@ -400,30 +377,57 @@ export default function ClubDetailPage() {
                       <MapPinIcon /> {ev.location}
                     </div>
                   )}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8, flexWrap: 'wrap' }}>
-                    <span className="event-club-tag">{ev.goingCount} katılımcı</span>
-                    {isMember && (
-                      <button
-                        className={`club-join-btn ${ev.imGoing ? 'joined' : ''}`}
-                        style={{ width: 'auto', padding: '5px 12px' }}
-                        onClick={() => handleRsvp(ev.id)}
-                      >
-                        {ev.imGoing ? 'Katılıyorsun' : 'Katıl'}
-                      </button>
-                    )}
-                    {canHighlightEvent && !ev.isHighlighted && (
-                      <button
-                        className="club-join-btn"
-                        style={{ width: 'auto', padding: '5px 12px' }}
-                        disabled={highlightingEventId === ev.id}
-                        onClick={() => handleHighlightEvent(ev.id)}
-                      >
-                        <SparklesIcon width={12} height={12} style={{ marginRight: 4 }} />
-                        {highlightingEventId === ev.id ? '...' : 'Öne Çıkar (₺39,90)'}
-                      </button>
-                    )}
-                  </div>
                 </div>
+                {/* Kartın tam genişliğinde: katılımcı sayısı ve Katıl yan yana, aynı boyutta;
+                    avatarlara dokununca katılanlar açılır */}
+                <div className="event-actions">
+                  <button
+                    type="button"
+                    className="event-pill event-attendees"
+                    onClick={() => setAttendeesOpenFor(attendeesOpenFor === ev.id ? null : ev.id)}
+                    aria-expanded={attendeesOpenFor === ev.id}
+                    disabled={ev.goingCount === 0}
+                  >
+                    {ev.attendees?.length > 0 && (
+                      <span className="event-avatars" aria-hidden="true">
+                        {ev.attendees.slice(0, 3).map((a) =>
+                          a.photoUrl ? (
+                            <img key={a.id} src={`${API_BASE_URL}${a.photoUrl}`} alt="" />
+                          ) : (
+                            <span key={a.id} className="event-avatar-fallback">
+                              {a.fullName[0]}
+                            </span>
+                          )
+                        )}
+                      </span>
+                    )}
+                    {t('{n} katılımcı', { n: ev.goingCount })}
+                  </button>
+                  {isMember && (
+                    <button
+                      type="button"
+                      className={`event-pill event-join ${ev.imGoing ? 'is-going' : ''}`}
+                      onClick={() => handleRsvp(ev.id)}
+                    >
+                      {ev.imGoing ? t("Katılıyorsun") : t("Katıl")}
+                    </button>
+                  )}
+                </div>
+                {attendeesOpenFor === ev.id && ev.attendees?.length > 0 && (
+                  <ul className="event-attendee-list">
+                    {ev.attendees.map((a) => (
+                      <li key={a.id}>
+                        <button type="button" onClick={() => navigate(`/users/${a.id}`)}>
+                          <span className="event-attendee-avatar">
+                            {a.photoUrl ? <img src={`${API_BASE_URL}${a.photoUrl}`} alt="" /> : a.fullName[0]}
+                          </span>
+                          <span>{a.fullName}</span>
+                          {a.id === ev.creator?.id && <span className="event-attendee-role">{t('Düzenleyen')}</span>}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             );
           })}
@@ -442,10 +446,18 @@ export default function ClubDetailPage() {
               <div className="member-info">
                 <div className="member-name">
                   {m.user.fullName}
-                  {m.role === 'owner' && <CrownIcon className="role-icon owner" width={14} height={14} />}
-                  {m.role === 'admin' && <ShieldIcon className="role-icon admin" width={14} height={14} />}
+                  {m.role === 'owner' && (
+                    <span className="role-tag owner">
+                      <CrownIcon width={12} height={12} /> {t('Başkan')}
+                    </span>
+                  )}
+                  {m.role === 'admin' && (
+                    <span className="role-tag admin">
+                      <ShieldIcon width={12} height={12} /> {t('Yönetici')}
+                    </span>
+                  )}
                 </div>
-                <div className="member-dept">{m.user.department || 'Bölüm belirtilmemiş'}</div>
+                <div className="member-dept">{m.user.department || t("Bölüm belirtilmemiş")}</div>
               </div>
 
               {canManage && m.user.id !== myUserId && m.role !== 'owner' && (
@@ -458,14 +470,14 @@ export default function ClubDetailPage() {
                       {myRole === 'owner' && (
                         <button onClick={() => handlePromote(m.user.id)}>
                           <ShieldIcon width={14} height={14} />
-                          {m.role === 'admin' ? 'Yöneticilikten Al' : 'Yönetici Yap'}
+                          {m.role === 'admin' ? t("Yöneticilikten Al") : t("Yönetici Yap")}
                         </button>
                       )}
                       <button onClick={() => handleKick(m.user.id)}>
-                        <UserXIcon width={14} height={14} /> Kulüpten Çıkar
+                        <UserXIcon width={14} height={14} /> {t("Kulüpten Çıkar")}
                       </button>
                       <button className="danger" onClick={() => handleBan(m.user.id)}>
-                        <CloseIcon width={14} height={14} /> Engelle
+                        <CloseIcon width={14} height={14} /> {t("Engelle")}
                       </button>
                     </div>
                   )}
@@ -476,7 +488,7 @@ export default function ClubDetailPage() {
 
           {isMember && myRole !== 'owner' && (
             <button className="btn btn-pass" style={{ marginTop: 20 }} onClick={handleLeave}>
-              Kulüpten Ayrıl
+              {t("Kulüpten Ayrıl")}
             </button>
           )}
         </div>
@@ -497,6 +509,7 @@ export default function ClubDetailPage() {
 }
 
 function CreateEventModal({ clubId, onClose, onCreated }) {
+  const { t } = useI18n();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [location, setLocation] = useState('');
@@ -524,29 +537,29 @@ function CreateEventModal({ clubId, onClose, onCreated }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3>Yeni Etkinlik</h3>
+          <h3>{t("Yeni Etkinlik")}</h3>
           <button className="modal-close" onClick={onClose}>
             <CloseIcon width={18} height={18} />
           </button>
         </div>
 
         <form onSubmit={handleSubmit}>
-          <label>Başlık</label>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="örn. Haftalık Buluşma" required />
+          <label>{t("Başlık")}</label>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("örn. Haftalık Buluşma")} required />
 
-          <label>Tarih & Saat</label>
+          <label>{t("Tarih & Saat")}</label>
           <input type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} required />
 
-          <label>Konum (opsiyonel)</label>
-          <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="örn. Mühendislik Fakültesi, B Blok" />
+          <label>{t("Konum (opsiyonel)")}</label>
+          <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder={t("örn. Mühendislik Fakültesi, B Blok")} />
 
-          <label>Açıklama (opsiyonel)</label>
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} placeholder="Etkinlik hakkında kısa bilgi" />
+          <label>{t("Açıklama (opsiyonel)")}</label>
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} placeholder={t("Etkinlik hakkında kısa bilgi")} />
 
           {error && <p className="error-text">{error}</p>}
 
           <button className="btn btn-like" type="submit" disabled={saving} style={{ marginTop: 10 }}>
-            {saving ? 'Oluşturuluyor...' : 'Etkinliği Oluştur'}
+            {saving ? t("Oluşturuluyor...") : t("Etkinliği Oluştur")}
           </button>
         </form>
       </div>

@@ -1,21 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Heart, MessageCircle, UserPlus, Users, Eye, Bell, Trash2 } from 'lucide-react';
+import { Heart, MessageCircle, UserPlus, Users, Eye, Bell, Trash2, BadgeCheck, FileX, CalendarPlus } from 'lucide-react';
 import api from '../api';
 import { API_BASE_URL } from '../config';
 import { useToast } from '../context/ToastContext';
 import { formatNotification } from '../constants/notifications';
 import PageHeader from '../components/PageHeader';
+import { useI18n } from '../i18n';
 
 const TYPE_ICON = {
   follow: UserPlus,
   message: MessageCircle,
   match: Heart,
   club_join: Users,
-  profile_view: Eye,
   like: Heart,
   comment: MessageCircle,
   comment_like: Heart,
+  badge_approved: BadgeCheck,
+  badge_rejected: FileX,
+  club_event: CalendarPlus,
 };
 
 function timeAgo(dateStr) {
@@ -31,6 +34,7 @@ function timeAgo(dateStr) {
 }
 
 export default function NotificationsPage() {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const toast = useToast();
   const [notifications, setNotifications] = useState([]);
@@ -81,23 +85,23 @@ export default function NotificationsPage() {
         compact
         tone="amber"
         icon={Bell}
-        eyebrow="Son hareketler"
-        title="Bildirimler"
+        eyebrow={t("Son hareketler")}
+        title={t("Bildirimler")}
         onBack={() => navigate(-1)}
       />
 
-      {loading && <p className="muted center-text">Yükleniyor...</p>}
+      {loading && <p className="muted center-text">{t("Yükleniyor...")}</p>}
 
       {!loading && notifications.length === 0 && (
         <div className="card center-text">
-          <p className="muted">Henüz hiç bildirimin yok.</p>
+          <p className="muted">{t("Henüz hiç bildirimin yok.")}</p>
         </div>
       )}
 
       {!loading && notifications.length > 0 && (
         <div className="notification-list">
           {notifications.map((n) => {
-            const { text } = formatNotification(n);
+            const { text } = formatNotification(n, t);
             const Icon = TYPE_ICON[n.type] || Bell;
             return (
               <div
@@ -120,12 +124,12 @@ export default function NotificationsPage() {
                 </div>
                 <div className="notification-body">
                   <div className="notification-text">{text}</div>
-                  <div className="notification-time">{timeAgo(n.createdAt)}</div>
+                  <div className="notification-time">{t(timeAgo(n.createdAt))}</div>
                 </div>
                 {!n.isRead && <span className="notification-dot" />}
                 <button
                   className="notification-delete-btn"
-                  aria-label="Bildirimi sil"
+                  aria-label={t("Bildirimi sil")}
                   onClick={(e) => handleDelete(e, n.id)}
                 >
                   <Trash2 size={15} />

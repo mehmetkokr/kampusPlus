@@ -1,148 +1,194 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { ArrowRight, GraduationCap, ShieldCheck, Sparkles, Users } from 'lucide-react';
-import CampusBackdrop from './CampusBackdrop';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { ArrowRight, BadgeCheck, CheckCircle2, Heart, LogIn, ShieldCheck, Smartphone, Sparkles, UserPlus } from 'lucide-react';
+import api from '../../api';
+import CampusSky from '../CampusSky';
 import PhoneMockup from './PhoneMockup';
-import GlassCard from './GlassCard';
 import UniversityMarquee from './UniversityMarquee';
-import ScrollDownIndicator from './ScrollDownIndicator';
+import { useI18n } from '../../i18n';
+
+// Ortalanmış, sade hero: büyük serif başlık, kısa açıklama, gerçek bir güven
+// satırı (sistemin tanıdığı üniversite sayısı) ve iki büyük düğme. Mağaza
+// uygulamaları henüz olmadığı için sahte mağaza düğmesi yok; aynı biçimde
+// "Ücretsiz katıl" / "Giriş yap" var ve altında dürüst bir "yakında" notu.
+const ROTATING = ['ders arkadaşını', 'kulübünü', 'yeni arkadaşlarını', 'kahve arkadaşını'];
+const EASE = [0.16, 1, 0.3, 1];
+
+function RotatingWord() {
+  const { t } = useI18n();
+  const [index, setIndex] = useState(0);
+  const reduceMotion = useReducedMotion();
+
+  useEffect(() => {
+    if (reduceMotion) return undefined;
+    const id = setInterval(() => setIndex((i) => (i + 1) % ROTATING.length), 2600);
+    return () => clearInterval(id);
+  }, [reduceMotion]);
+
+  return (
+    <span className="relative inline-grid align-bottom" aria-live="polite">
+      {/* Genişlik en uzun kelimeye göre sabit: satır zıplamasın */}
+      {ROTATING.map((w) => (
+        <span key={w} className="invisible col-start-1 row-start-1 whitespace-nowrap" aria-hidden="true">
+          {t(w)}
+        </span>
+      ))}
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.span
+          key={ROTATING[index]}
+          className="landing-gradient-text col-start-1 row-start-1 whitespace-nowrap"
+          initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: '0.35em' }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: '-0.35em' }}
+          transition={{ duration: 0.45, ease: EASE }}
+        >
+          {t(ROTATING[index])}
+        </motion.span>
+      </AnimatePresence>
+    </span>
+  );
+}
+
+function FloatingChip({ className, delay, icon: Icon, tone, title, subtitle }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9, y: 12 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{ duration: 0.7, delay, ease: EASE }}
+      className={`absolute z-20 hidden sm:block ${className}`}
+    >
+      <div className="landing-float landing-chip flex items-center gap-2.5 rounded-2xl px-3.5 py-2.5" style={{ animationDelay: `${delay}s` }}>
+        <span className={`flex h-8 w-8 items-center justify-center rounded-xl ${tone}`}>
+          <Icon size={15} strokeWidth={2.2} />
+        </span>
+        <div className="leading-tight">
+          <p className="text-[0.75rem] font-semibold text-paper">{title}</p>
+          {subtitle && <p className="text-[0.6875rem] text-paper-muted">{subtitle}</p>}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
 
 export default function Hero() {
+  const { t } = useI18n();
+  const [uniCount, setUniCount] = useState(null);
+
+  // Gerçek sayı: e-posta alan adını tanıdığımız üniversiteler
+  useEffect(() => {
+    api
+      .get('/universities')
+      .then((res) => setUniCount(Array.isArray(res.data) ? res.data.length : null))
+      .catch(() => {});
+  }, []);
+
+  const fade = (delay) => ({
+    initial: { opacity: 0, y: 16 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0.7, delay, ease: EASE },
+  });
+
   return (
-    <section className="relative overflow-hidden pb-20 pt-32 sm:pb-28 sm:pt-40">
-      <CampusBackdrop />
+    <section className="landing-hero-bg relative isolate overflow-hidden pb-12 pt-28 sm:pb-20 sm:pt-36">
+      <CampusSky variant="landing" />
+      <div className="mx-auto flex max-w-3xl flex-col items-center px-5 text-center">
+        <motion.div
+          {...fade(0)}
+          className="landing-chip inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[0.8125rem] font-semibold text-paper"
+        >
+          <span className="relative flex h-2 w-2">
+            <span className="landing-ping absolute inline-flex h-full w-full rounded-full bg-teal" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-teal" />
+          </span>
+          {t('Yalnızca doğrulanmış üniversite öğrencileri')}
+        </motion.div>
 
-      <div className="relative z-10 mx-auto grid max-w-6xl items-center gap-16 px-4 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8">
-        {/* metin */}
-        <div className="text-center lg:text-left">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="inline-flex items-center gap-2 rounded-full border border-line-soft bg-surface/60 px-3.5 py-1.5 text-[12.5px] font-semibold text-amber-soft backdrop-blur"
-          >
-            <ShieldCheck size={14} />
-            Yalnızca üniversite e-postanla doğrulanır
-          </motion.div>
+        <motion.h1 {...fade(0.06)} className="landing-h1 mt-7">
+          {t('Kampüsünde')}
+          <br />
+          <RotatingWord />
+          <br />
+          {t('bul.')}
+        </motion.h1>
 
-          <motion.h1
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.08 }}
-            className="mt-5 font-display text-[2.5rem] font-bold leading-[1.08] tracking-tight text-paper sm:text-6xl lg:text-[3.4rem]"
-          >
-            Kampüsünün dışına
-            <br className="hidden sm:block" /> çık<span className="text-amber">madan</span>, gerçek
-            insanlarla tanış.
-          </motion.h1>
+        <motion.p {...fade(0.14)} className="mt-6 max-w-[32rem] text-[1.125rem] leading-relaxed text-paper-muted">
+          {t('Okul e-postanla doğrulanan, seni kendi kampüsündeki öğrencilerle buluşturan kapalı bir topluluk. Sahte hesap yok, reklam yok — sadece gerçek öğrenciler.')}
+        </motion.p>
 
-          <motion.p
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.16 }}
-            className="mx-auto mt-5 max-w-lg text-[15.5px] leading-relaxed text-paper-muted lg:mx-0"
-          >
-            Ders ortağı bul, bir kulübe katıl, yeni arkadaşlar edin — istersen aşkı da. kampüs·,
-            yalnızca okul e-postanla doğruladığın, kendi üniversitendeki öğrencilerle seni
-            buluşturan kapalı bir topluluktur.
-          </motion.p>
+        <motion.p {...fade(0.2)} className="mt-6 text-[0.9375rem] font-semibold text-paper">
+          <CheckCircle2 size={19} className="mr-1.5 inline-block align-[-4px] text-teal" strokeWidth={2.4} />
+          {uniCount
+            ? t('{n} üniversitenin öğrenci e-postasıyla çalışır', { n: uniCount })
+            : t('Türkiye üniversitelerinin öğrenci e-postalarıyla çalışır')}
+        </motion.p>
 
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.24 }}
-            className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center lg:justify-start"
-          >
-            <Link
-              to="/register"
-              className="group inline-flex w-full items-center justify-center gap-2 rounded-full bg-amber px-6 py-3.5 text-[14.5px] font-bold text-ink transition-transform hover:scale-[1.02] hover:bg-amber-soft active:scale-[0.98] sm:w-auto"
-            >
-              Üniversite E-postanla Başla
-              <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5" />
-            </Link>
-            <a
-              href="#nasil-calisir"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-line px-6 py-3.5 text-[14.5px] font-semibold text-paper transition-colors hover:bg-white/5 sm:w-auto"
-            >
-              Nasıl çalışır?
-            </a>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.7, delay: 0.35 }}
-            className="mt-8 flex items-center justify-center gap-5 text-[12.5px] text-paper-faint lg:justify-start"
-          >
-            <span className="flex items-center gap-1.5">
-              <Users size={14} className="text-teal" /> 12.000+ doğrulanmış öğrenci
+        <motion.div {...fade(0.26)} className="mt-8 grid w-full max-w-[24rem] gap-3">
+          <Link to="/register" className="landing-btn-primary landing-btn-store group">
+            <UserPlus size={24} strokeWidth={2} />
+            <span className="label">
+              <small>{t('Ücretsiz')}</small>
+              <strong>{t('Hemen katıl')}</strong>
             </span>
-            <span className="flex items-center gap-1.5">
-              <GraduationCap size={14} className="text-teal" /> 40+ kampüs
+            <ArrowRight size={18} className="end transition-transform duration-300 group-hover:translate-x-1" />
+          </Link>
+          <Link to="/login" className="landing-btn-secondary landing-btn-store">
+            <LogIn size={22} strokeWidth={2} />
+            <span className="label">
+              <small>{t('Hesabın var mı?')}</small>
+              <strong>{t('Giriş yap')}</strong>
             </span>
-          </motion.div>
-        </div>
+          </Link>
+        </motion.div>
 
-        {/* görsel: telefon mockup + yüzen cam kartlar */}
-        <div className="relative mx-auto h-[460px] w-full max-w-sm sm:h-[560px]">
-          <PhoneMockup className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" />
-
-          <motion.div
-            initial={{ opacity: 0, x: -16, y: 10 }}
-            animate={{ opacity: 1, x: 0, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.5 }}
-            className="absolute left-0 top-6 z-20 sm:left-2"
-          >
-            <GlassCard className="flex items-center gap-2 px-3.5 py-2.5">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-amber/20 text-amber-soft">
-                <ShieldCheck size={14} />
-              </span>
-              <div className="leading-tight">
-                <p className="text-[11.5px] font-bold text-paper">Doğrulanmış</p>
-                <p className="text-[10px] text-paper-faint">İTÜ · .edu.tr</p>
-              </div>
-            </GlassCard>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, x: 16, y: -10 }}
-            animate={{ opacity: 1, x: 0, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.65 }}
-            className="absolute right-0 top-16 z-20 sm:right-1"
-          >
-            <GlassCard className="flex items-center gap-2 px-3.5 py-2.5">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-teal/20 text-teal">
-                <Sparkles size={14} />
-              </span>
-              <p className="text-[11.5px] font-bold text-paper">Yeni eşleşme!</p>
-            </GlassCard>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.8 }}
-            className="absolute bottom-2 left-2 z-20 sm:bottom-6 sm:left-0"
-          >
-            <GlassCard className="flex items-center gap-2 px-3.5 py-2.5">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-coral/20 text-coral">
-                <GraduationCap size={14} />
-              </span>
-              <div className="leading-tight">
-                <p className="text-[11.5px] font-bold text-paper">Ders Ortağı Bul</p>
-                <p className="text-[10px] text-paper-faint">Bölümüne göre eşleş</p>
-              </div>
-            </GlassCard>
-          </motion.div>
-        </div>
+        <motion.p {...fade(0.32)} className="mt-4 max-w-[22rem] text-[0.8125rem] leading-relaxed text-paper-faint">
+          <Smartphone size={14} className="mr-1 inline-block align-[-2px]" />
+          {t('iOS ve Android uygulamaları yakında · şimdilik tarayıcından kullan')}
+        </motion.p>
       </div>
 
-      {/* üniversite logo şeridi */}
-      <div className="relative z-10 mx-auto max-w-6xl px-4">
+      {/* Uygulama görüntüsü: koyu telefon + yüzen bildirimler */}
+      <div className="relative mx-auto mt-14 h-[600px] w-full max-w-[26rem]">
+        <div className="landing-halo absolute left-1/2 top-1/2 h-[30rem] w-[30rem] -translate-x-1/2 -translate-y-1/2 rounded-full" />
+        <PhoneMockup className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" />
+
+        <FloatingChip
+          className="left-0 top-10 sm:-left-16"
+          delay={0.6}
+          icon={ShieldCheck}
+          tone="bg-amber-dim text-amber"
+          title={t('Doğrulandı')}
+          subtitle="elif@itu.edu.tr"
+        />
+        <FloatingChip
+          className="right-0 top-28 sm:-right-16"
+          delay={0.8}
+          icon={Sparkles}
+          tone="bg-teal-dim text-teal"
+          title={t('Yeni eşleşme!')}
+          subtitle={t('Sohbet başlat')}
+        />
+        <FloatingChip
+          className="bottom-16 left-0 sm:-left-20"
+          delay={1}
+          icon={Heart}
+          tone="bg-[#c0533f]/12 text-[#c0533f]"
+          title={t('Ortak: Kahve +1')}
+          subtitle={t('Kart Modu')}
+        />
+        <FloatingChip
+          className="bottom-4 right-2 sm:-right-12"
+          delay={1.2}
+          icon={BadgeCheck}
+          tone="bg-[#5f7fa6]/12 text-[#5f7fa6]"
+          title={t('Satranç Kulübü')}
+          subtitle={t('Perşembe 18:00')}
+        />
+      </div>
+
+      <div className="relative mx-auto mt-6 max-w-6xl px-4 sm:px-6">
         <UniversityMarquee />
       </div>
-
-      <ScrollDownIndicator />
     </section>
   );
 }

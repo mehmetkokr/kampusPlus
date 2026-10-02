@@ -4,8 +4,11 @@ import { ArrowLeft, MailCheck } from 'lucide-react';
 import api from '../api';
 import { useToast } from '../context/ToastContext';
 import AuthBackdrop from '../components/AuthBackdrop';
+import { useI18n } from '../i18n';
+import ThemeToggle from '../components/ThemeToggle';
 
 export default function ForgotPasswordPage() {
+  const { t } = useI18n();
   const toast = useToast();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -28,43 +31,44 @@ export default function ForgotPasswordPage() {
     <div className="auth-screen">
       <AuthBackdrop />
 
+      <ThemeToggle className="auth-theme-toggle" />
+
       <Link to="/login" className="auth-back">
-        <ArrowLeft size={15} /> Girişe Dön
+        <ArrowLeft size={15} /> {t("Girişe Dön")}
       </Link>
 
       <div className="auth-content">
         <div className="auth-wordmark">
-          kampüs<span className="dot">·</span>
+          {t("kampüs")}<span className="dot">·</span>
         </div>
-        <p className="auth-tagline">şifreni sıfırlayalım</p>
+        <p className="auth-tagline">{t("şifreni sıfırlayalım")}</p>
 
         <div className="auth-card">
           {sent ? (
             <div className="empty-state">
               <div className="empty-icon"><MailCheck size={28} /></div>
-              <h3>E-postanı Kontrol Et</h3>
+              <h3>{t("E-postanı Kontrol Et")}</h3>
               <p className="muted">
-                Eğer <strong>{email}</strong> ile bir hesap varsa, şifre sıfırlama bağlantısı
-                gönderildi.
+                {t('{email} ile bir hesap varsa, şifre sıfırlama bağlantısı gönderildi.', { email })}
               </p>
             </div>
           ) : (
             <>
-              <h2>Şifremi Unuttum</h2>
-              <p className="muted">Kayıtlı e-posta adresini gir, sana bir sıfırlama bağlantısı gönderelim.</p>
+              <h2>{t("Şifremi Unuttum")}</h2>
+              <p className="muted">{t("Kayıtlı e-posta adresini gir, sana bir sıfırlama bağlantısı gönderelim.")}</p>
 
               <form onSubmit={handleSubmit}>
-                <label>E-posta</label>
+                <label>{t("E-posta")}</label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="ornek@ogrenci.universite.edu.tr"
+                  placeholder={t("ornek@ogrenci.universite.edu.tr")}
                   required
                 />
 
                 <button className="btn" type="submit" disabled={loading}>
-                  {loading ? 'Gönderiliyor...' : 'Sıfırlama Bağlantısı Gönder'}
+                  {loading ? t("Gönderiliyor...") : t("Sıfırlama Bağlantısı Gönder")}
                 </button>
               </form>
             </>
@@ -72,7 +76,7 @@ export default function ForgotPasswordPage() {
         </div>
 
         <p className="auth-foot">
-          Hesabın yok mu? <Link to="/register">Kayıt Ol</Link>
+          {t("Hesabın yok mu?")} <Link to="/register">{t("Kayıt Ol")}</Link>
         </p>
       </div>
     </div>

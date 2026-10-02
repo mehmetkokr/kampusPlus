@@ -1,47 +1,48 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
-import LandingPage from './pages/LandingPage';
-import LoginPage from './pages/LoginPage';
-import ForgotPasswordPage from './pages/ForgotPasswordPage';
-import ResetPasswordPage from './pages/ResetPasswordPage';
-import RegisterPage from './pages/RegisterPage';
-import DiscoverPage from './pages/DiscoverPage';
-import SwipeDiscoverPage from './pages/SwipeDiscoverPage';
-import FeedPage from './pages/FeedPage';
-import ClubsPage from './pages/ClubsPage';
-import ClubDetailPage from './pages/ClubDetailPage';
-import MatchesPage from './pages/MatchesPage';
-import GroupChatPage from './pages/GroupChatPage';
-import ClassmatesPage from './pages/ClassmatesPage';
-import ClassmateGroupChatPage from './pages/ClassmateGroupChatPage';
-import ConfessionsPage from './pages/ConfessionsPage';
-import ChatPage from './pages/ChatPage';
-import ProfilePage from './pages/ProfilePage';
-import SettingsPage from './pages/SettingsPage';
-import NotificationsPage from './pages/NotificationsPage';
-import UserProfileViewPage from './pages/UserProfileViewPage';
-import UniversityStudentsPage from './pages/UniversityStudentsPage';
-import NotFoundPage from './pages/NotFoundPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import PublicRoute from './components/PublicRoute';
 import NavBar, { NAV_ITEMS } from './components/NavBar';
 import AppBackdrop from './components/AppBackdrop';
 import { useAuth } from './context/AuthContext';
-import AdminLayout from './admin/AdminLayout';
 import AdminProtectedRoute from './admin/AdminProtectedRoute';
-import AdminDashboard from './admin/pages/AdminDashboard';
-import AdminUsers from './admin/pages/AdminUsers';
-import AdminVerificationQueue from './admin/pages/AdminVerificationQueue';
-import AdminUniversities from './admin/pages/AdminUniversities';
-import AdminDepartments from './admin/pages/AdminDepartments';
-import AdminPosts from './admin/pages/AdminPosts';
-import AdminReports from './admin/pages/AdminReports';
-import AdminConfessions from './admin/pages/AdminConfessions';
-import AdminSettings from './admin/pages/AdminSettings';
+import CubeLoader from './components/CubeLoader';
+import PageMeta from './components/PageMeta';
+
+// Sayfalar ayrı parçalar halinde, ihtiyaç olunca yüklenir (ilk açılış hızlanır;
+// tanıtım sayfasına gelen ziyaretçi uygulama ve yönetim ekranlarını indirmez).
+const LandingPage = lazy(() => import('./pages/LandingPage'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'));
+const RegisterPage = lazy(() => import('./pages/RegisterPage'));
+const DiscoverPage = lazy(() => import('./pages/DiscoverPage'));
+const SwipeDiscoverPage = lazy(() => import('./pages/SwipeDiscoverPage'));
+const FeedPage = lazy(() => import('./pages/FeedPage'));
+const ClubsPage = lazy(() => import('./pages/ClubsPage'));
+const ClubDetailPage = lazy(() => import('./pages/ClubDetailPage'));
+const MatchesPage = lazy(() => import('./pages/MatchesPage'));
+const ChatPage = lazy(() => import('./pages/ChatPage'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
+const UserProfileViewPage = lazy(() => import('./pages/UserProfileViewPage'));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+const WelcomePage = lazy(() => import('./pages/WelcomePage'));
+const AdminLayout = lazy(() => import('./admin/AdminLayout'));
+const AdminDashboard = lazy(() => import('./admin/pages/AdminDashboard'));
+const AdminUsers = lazy(() => import('./admin/pages/AdminUsers'));
+const AdminVerificationQueue = lazy(() => import('./admin/pages/AdminVerificationQueue'));
+const AdminUniversities = lazy(() => import('./admin/pages/AdminUniversities'));
+const AdminDepartments = lazy(() => import('./admin/pages/AdminDepartments'));
+const AdminPosts = lazy(() => import('./admin/pages/AdminPosts'));
+const AdminReports = lazy(() => import('./admin/pages/AdminReports'));
+const AdminSettings = lazy(() => import('./admin/pages/AdminSettings'));
+const LegalPage = lazy(() => import('./pages/LegalPage'));
 
 // Kalıcı gezinme çubuğunun görüneceği sayfalar (sohbet ekranları tam ekran kalır)
 const NAV_PATHS = [...NAV_ITEMS.map((i) => i.to), '/notifications', '/settings'];
-const NAV_PREFIXES = ['/discover/', '/users/', '/universities/'];
+const NAV_PREFIXES = ['/discover/', '/users/'];
 
 export default function App() {
   const { token } = useAuth();
@@ -54,6 +55,8 @@ export default function App() {
   return (
     <>
     {isAppRoute && <AppBackdrop />}
+    <PageMeta />
+    <Suspense fallback={<CubeLoader mode="fullscreen" />}>
     <Routes>
       <Route
         path="/"
@@ -93,6 +96,15 @@ export default function App() {
         element={
           <ProtectedRoute>
             <SettingsPage />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/welcome"
+        element={
+          <ProtectedRoute>
+            <WelcomePage />
           </ProtectedRoute>
         }
       />
@@ -146,38 +158,6 @@ export default function App() {
         }
       />
       <Route
-        path="/group/:groupId"
-        element={
-          <ProtectedRoute>
-            <GroupChatPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/classmates"
-        element={
-          <ProtectedRoute>
-            <ClassmatesPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/classmates/:groupId"
-        element={
-          <ProtectedRoute>
-            <ClassmateGroupChatPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/confessions"
-        element={
-          <ProtectedRoute>
-            <ConfessionsPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
         path="/chat/:matchId"
         element={
           <ProtectedRoute>
@@ -209,14 +189,6 @@ export default function App() {
           </ProtectedRoute>
         }
       />
-      <Route
-        path="/universities/:universityId"
-        element={
-          <ProtectedRoute>
-            <UniversityStudentsPage />
-          </ProtectedRoute>
-        }
-      />
 
       <Route
         path="/admin"
@@ -233,12 +205,16 @@ export default function App() {
         <Route path="departments" element={<AdminDepartments />} />
         <Route path="posts" element={<AdminPosts />} />
         <Route path="reports" element={<AdminReports />} />
-        <Route path="confessions" element={<AdminConfessions />} />
         <Route path="settings" element={<AdminSettings />} />
       </Route>
 
+      <Route path="/gizlilik" element={<LegalPage doc="gizlilik" />} />
+      <Route path="/kullanim-sartlari" element={<LegalPage doc="kullanim-sartlari" />} />
+      <Route path="/topluluk-kurallari" element={<LegalPage doc="topluluk-kurallari" />} />
+
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
+    </Suspense>
     {showNav && <NavBar />}
     </>
   );

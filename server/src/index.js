@@ -19,16 +19,12 @@ const matchRoutes = require('./routes/matches');
 const messageRoutes = require('./routes/messages');
 const clubRoutes = require('./routes/clubs');
 const socialRoutes = require('./routes/social');
-const groupRoutes = require('./routes/groups');
 const adminRoutes = require('./routes/admin');
 const reportRoutes = require('./routes/reports');
 const notificationRoutes = require('./routes/notifications');
 const discoverRoutes = require('./routes/discover');
 const filesRoutes = require('./routes/files');
 const premiumRoutes = require('./routes/premium');
-const monetizationRoutes = require('./routes/monetization');
-const confessionRoutes = require('./routes/confessions');
-const classmatesRoutes = require('./routes/classmates');
 const { setupSocket } = require('./socket');
 const { startCronJobs } = require('./lib/cron');
 
@@ -110,7 +106,6 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/matches', matchRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/clubs', clubRoutes);
-app.use('/api/groups', groupRoutes);
 app.use('/api', socialRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/reports', reportRoutes);
@@ -118,15 +113,15 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/discover', discoverRoutes);
 app.use('/api/files', filesRoutes);
 app.use('/api/premium', premiumRoutes);
-app.use('/api/monetization', monetizationRoutes);
-app.use('/api/confessions', confessionRoutes);
-app.use('/api/classmates', classmatesRoutes);
 
 app.set('io', io);
+const { checkMailer } = require('./lib/mailer');
+
 setupSocket(io);
 startCronJobs(io);
 
 const PORT = process.env.PORT || 4000;
 server.listen(PORT, () => {
   console.log(`Sunucu http://localhost:${PORT} adresinde çalışıyor`);
+  checkMailer();
 });

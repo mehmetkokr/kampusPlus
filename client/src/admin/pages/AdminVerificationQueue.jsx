@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { FileCheck2, X as CloseIcon, ExternalLink, Sparkles, ShieldQuestion } from 'lucide-react';
+import { FileCheck2, X as CloseIcon, ExternalLink, ShieldQuestion } from 'lucide-react';
 import adminApi from '../adminApi';
 import { buildFileUrl } from '../../api';
 
@@ -103,7 +103,6 @@ export default function AdminVerificationQueue() {
               <table className="admin-table">
                 <thead>
                   <tr>
-                    <th></th>
                     <th>Ad Soyad</th>
                     <th>Üniversite</th>
                     <th>Bölüm</th>
@@ -117,7 +116,6 @@ export default function AdminVerificationQueue() {
                       onClick={() => openDetail(u.id)}
                       style={{ cursor: 'pointer', background: selected?.id === u.id ? 'rgba(232,163,61,0.08)' : undefined }}
                     >
-                      <td>{u.verificationPriority && <Sparkles size={14} color="var(--amber-soft)" />}</td>
                       <td>{u.fullName}</td>
                       <td>{u.university?.name}</td>
                       <td>{u.department || '—'}</td>

@@ -1,20 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../api';
 import NotificationBell from '../components/NotificationBell';
-import { Plus as PlusIcon, X as CloseIcon, ChevronRight as ChevronRightIcon, Users as UsersIcon } from 'lucide-react';
+import { Plus as PlusIcon, ChevronRight as ChevronRightIcon, Users as UsersIcon } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
+import CreateClubSheet from '../components/CreateClubSheet';
+import ClubIcon from '../components/ClubIcon';
+import { useI18n } from '../i18n';
+import { Landmark } from 'lucide-react';
 
 const CATEGORIES = ['Tümü', 'Teknoloji', 'Spor', 'Sanat', 'Akademik', 'Sosyal', 'Diğer'];
-const EMOJI_OPTIONS = ['👥', '🤖', '🎨', '⚽', '📚', '🎸', '📷', '♟️', '💡', '🎤', '🥾', '🏀'];
 
 export default function ClubsPage() {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [clubs, setClubs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeCategory, setActiveCategory] = useState('Tümü');
-  const [showCreate, setShowCreate] = useState(false);
+  // /clubs?new=1 (ör. Keşfet'teki "ilk kulübü sen kur" kartı) oluşturma sayfasını açar
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [showCreate, setShowCreate] = useState(() => searchParams.get('new') === '1');
+
+  useEffect(() => {
+    if (searchParams.get('new') === '1') setSearchParams({}, { replace: true });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function loadClubs() {
     setLoading(true);
@@ -50,13 +60,13 @@ export default function ClubsPage() {
       <PageHeader
         tone="violet"
         icon={UsersIcon}
-        eyebrow="Topluluklar & etkinlikler"
-        title="Kulüpler"
-        subtitle="İlgi alanına göre kulüplere katıl, etkinlikleri kaçırma ya da kendi kulübünü kur."
+        eyebrow={t("Topluluklar & etkinlikler")}
+        title={t("Kulüpler")}
+        subtitle={t("İlgi alanına göre kulüplere katıl, etkinlikleri kaçırma ya da kendi kulübünü kur.")}
         actions={
           <>
             <NotificationBell />
-            <button className="icon-btn-amber is-primary" onClick={() => setShowCreate(true)} aria-label="Kulüp oluştur">
+            <button className="icon-btn-amber is-primary" onClick={() => setShowCreate(true)} aria-label={t("Kulüp oluştur")}>
               <PlusIcon width={18} height={18} />
             </button>
           </>
@@ -70,12 +80,12 @@ export default function ClubsPage() {
             className={`category-pill ${activeCategory === cat ? 'active' : ''}`}
             onClick={() => setActiveCategory(cat)}
           >
-            {cat}
+            {t(cat)}
           </button>
         ))}
       </div>
 
-      {loading && <p className="muted center-text">Yükleniyor...</p>}
+      {loading && <p className="muted center-text">{t("Yükleniyor...")}</p>}
       {error && <p className="error-text center-text">{error}</p>}
 
       {!loading && !error && (
@@ -83,7 +93,7 @@ export default function ClubsPage() {
           {myClubs.length > 0 && (
             <>
               <div className="section-heading">
-                <h3>Kulüplerim</h3>
+                <h3>{t("Kulüplerim")}</h3>
                 <span className="count">{myClubs.length}</span>
               </div>
               <div className="club-grid">
@@ -95,16 +105,16 @@ export default function ClubsPage() {
           )}
 
           <div className="section-heading">
-            <h3>Kulüpleri Keşfet</h3>
+            <h3>{t("Kulüpleri Keşfet")}</h3>
             <span className="count">{discoverClubs.length}</span>
           </div>
 
           {discoverClubs.length === 0 && myClubs.length === 0 && (
             <div className="card empty-state">
-              <div className="empty-icon">🏛️</div>
-              <p className="muted">Üniversitende henüz kulüp yok. İlk kulübü sen aç!</p>
+              <div className="empty-icon is-glyph"><Landmark size={26} strokeWidth={1.8} /></div>
+              <p className="muted">{t("Üniversitende henüz kulüp yok. İlk kulübü sen aç!")}</p>
               <button className="btn" style={{ width: 'auto', marginTop: 6 }} onClick={() => setShowCreate(true)}>
-                <PlusIcon width={16} height={16} /> Kulüp Oluştur
+                <PlusIcon width={16} height={16} /> {t("Kulüp Oluştur")}
               </button>
             </div>
           )}
@@ -123,7 +133,7 @@ export default function ClubsPage() {
       )}
 
       {showCreate && (
-        <CreateClubModal
+        <CreateClubSheet
           onClose={() => setShowCreate(false)}
           onCreated={(club) => {
             setShowCreate(false);
@@ -136,115 +146,28 @@ export default function ClubsPage() {
 }
 
 function ClubCard({ club, onClick, onJoin }) {
+  const { t } = useI18n();
   const isBanned = club.myMembership?.status === 'banned';
   const isMember = club.myMembership?.status === 'active';
 
   return (
     <div className="club-card" onClick={onClick} role="button" tabIndex={0}>
-      {club.isHighlighted && (
-        <span
-          className="badge"
-          style={{ position: 'absolute', top: 8, right: 8, fontSize: 10, padding: '2px 6px' }}
-          title="Öne çıkan kulüp"
-        >
-          ✨ Öne Çıkan
-        </span>
-      )}
-      <div className="club-icon">{club.iconEmoji}</div>
+      <ClubIcon value={club.iconEmoji} category={club.category} size={44} className="club-icon-new" />
       <h4>{club.name}</h4>
-      <p className="club-meta">{club.memberCount} üye</p>
+      <p className="club-meta">{club.memberCount} {t("üye")}</p>
       {isBanned ? (
         <button className="club-join-btn" disabled style={{ opacity: 0.5 }}>
-          Engellendin
+          {t("Engellendin")}
         </button>
       ) : isMember ? (
         <button className="club-join-btn joined" onClick={(e) => e.stopPropagation() || onClick()}>
-          <ChevronRightIcon width={13} height={13} /> Aç
+          <ChevronRightIcon width={13} height={13} /> {t("Aç")}
         </button>
       ) : (
         <button className="club-join-btn" onClick={onJoin}>
-          <PlusIcon width={13} height={13} /> Katıl
+          <PlusIcon width={13} height={13} /> {t("Katıl")}
         </button>
       )}
-    </div>
-  );
-}
-
-function CreateClubModal({ onClose, onCreated }) {
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('Sosyal');
-  const [iconEmoji, setIconEmoji] = useState('👥');
-  const [error, setError] = useState('');
-  const [saving, setSaving] = useState(false);
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setError('');
-    if (!name.trim()) return setError('Kulüp adı gerekli.');
-    setSaving(true);
-    try {
-      const res = await api.post('/clubs', { name, description, category, iconEmoji });
-      onCreated(res.data);
-    } catch (err) {
-      setError(err.response?.data?.error || 'Kulüp oluşturulamadı.');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>Yeni Kulüp Oluştur</h3>
-          <button className="modal-close" onClick={onClose}>
-            <CloseIcon width={18} height={18} />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit}>
-          <label>Simge</label>
-          <div className="emoji-picker">
-            {EMOJI_OPTIONS.map((em) => (
-              <button
-                type="button"
-                key={em}
-                className={`emoji-option ${iconEmoji === em ? 'active' : ''}`}
-                onClick={() => setIconEmoji(em)}
-              >
-                {em}
-              </button>
-            ))}
-          </div>
-
-          <label>Kulüp Adı</label>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="örn. Kayak Kulübü" required />
-
-          <label>Kategori</label>
-          <select value={category} onChange={(e) => setCategory(e.target.value)}>
-            {CATEGORIES.filter((c) => c !== 'Tümü').map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-
-          <label>Açıklama (opsiyonel)</label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Bu kulüp ne yapar, kimler katılmalı?"
-            rows={3}
-          />
-
-          {error && <p className="error-text">{error}</p>}
-
-          <button className="btn btn-like" type="submit" disabled={saving} style={{ marginTop: 10 }}>
-            {saving ? 'Oluşturuluyor...' : 'Kulübü Oluştur'}
-          </button>
-        </form>
-      </div>
     </div>
   );
 }

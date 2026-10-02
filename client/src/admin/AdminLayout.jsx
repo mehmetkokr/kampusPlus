@@ -8,7 +8,6 @@ import {
   BookOpen,
   FileText,
   Flag,
-  EyeOff,
   Settings,
   ArrowLeft,
 } from 'lucide-react';
@@ -58,9 +57,6 @@ export default function AdminLayout() {
           <NavLink to="/admin/reports" className={({ isActive }) => (isActive ? 'active' : '')}>
             <Flag /> Şikayetler
             {pendingReports > 0 && <span className="admin-nav-badge">{pendingReports}</span>}
-          </NavLink>
-          <NavLink to="/admin/confessions" className={({ isActive }) => (isActive ? 'active' : '')}>
-            <EyeOff /> İtiraf Kutusu
           </NavLink>
           <NavLink to="/admin/settings" className={({ isActive }) => (isActive ? 'active' : '')}>
             <Settings /> Ayarlar

@@ -3,13 +3,10 @@
 const express = require('express');
 const prisma = require('../lib/prisma');
 const { requireAuth } = require('../middleware/auth');
-const { registerConfessionReport } = require('../lib/moderation');
 
 const router = express.Router();
 
-// 'confession' Grup D (anonim itiraf kutusu) için eklendi - hassas bir içerik
-// türü olduğundan aşağıda ayrıca otomatik gizleme tetiklenir.
-const VALID_TYPES = ['user', 'post', 'comment', 'message', 'club', 'club_message', 'group_message', 'confession'];
+const VALID_TYPES = ['user', 'post', 'comment', 'message', 'club', 'club_message', 'story'];
 const VALID_REASONS = ['spam', 'harassment', 'inappropriate_content', 'fake_profile', 'other'];
 
 router.post('/', requireAuth, async (req, res) => {
@@ -48,10 +45,6 @@ router.post('/', requireAuth, async (req, res) => {
         description: description?.trim() || null,
       },
     });
-
-    if (targetType === 'confession') {
-      await registerConfessionReport(targetIdNum);
-    }
 
     res.status(201).json({ message: 'Şikayetiniz alındı, incelenecek.', report });
   } catch (err) {

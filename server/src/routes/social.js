@@ -1,6 +1,9 @@
 // Instagram tarzı sosyal akış: gönderi, beğeni, yorum, hikaye, takip sistemi.
 // Güvenlik için takip yalnızca aynı üniversiteden kişilerle kurulabilir.
 const express = require('express');
+const { visibleIntentFor } = require('../lib/intents');
+const fsp = require('fs/promises');
+const path = require('path');
 const prisma = require('../lib/prisma');
 const { requireAuth } = require('../middleware/auth');
 const upload = require('../middleware/upload');
@@ -8,6 +11,8 @@ const { verifyFileSignature } = require('../lib/fileValidation');
 const { createNotification } = require('../lib/notifications');
 const { isBlockedEitherWay } = require('../lib/block');
 const { isPremiumActive } = require('../lib/premium');
+const { withLiveAge } = require('../lib/age');
+const { discoverableUserWhere } = require('../lib/privacy');
 
 const router = express.Router();
 
@@ -16,11 +21,13 @@ const AUTHOR_SELECT = {
   fullName: true,
   photoUrl: true,
   verificationStatus: true,
+  studentDocStatus: true,
   university: { select: { id: true, name: true } },
 };
 
+// Yeşil tik yalnızca öğrenci belgesi admin tarafından onaylanan hesaplara verilir
 function isVerified(u) {
-  return u?.verificationStatus === 'verified' || u?.verificationStatus === 'auto_verified';
+  return u?.studentDocStatus === 'approved';
 }
 
 function serializeAuthor(author) {
@@ -50,72 +57,127 @@ async function getBlockExclusionIds(userId) {
 }
 
 // ---------------------------------------------------------
+// GÖRÜNÜRLÜK KURALLARI (tek merkez)
+//  - campus    : gönderi sahibiyle aynı üniversitedeki herkes görür
+//  - followers : yalnızca gönderi sahibini takip edenler görür
+//  - mutual    : yalnızca karşılıklı takipleşilenler görür
+//  Görebilen herkes beğenebilir; yalnızca karşılıklı takipleşenler (ve
+//  gönderi sahibi) yorum yapabilir. Hikayeleri yalnızca karşılıklı
+//  takipleşenler görür. Engellenen/engelleyen kullanıcılar hiçbir şeyi görmez.
+// ---------------------------------------------------------
+const VISIBILITIES = ['campus', 'followers', 'mutual'];
+const CAPTION_MAX = 280;
+
+async function getViewerContext(userId) {
+  const [me, followingRows, followerRows, excludeIds] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, select: { universityId: true } }),
+    prisma.follow.findMany({ where: { followerId: userId }, select: { followingId: true } }),
+    prisma.follow.findMany({ where: { followingId: userId }, select: { followerId: true } }),
+    getBlockExclusionIds(userId),
+  ]);
+  const followingIds = new Set(followingRows.map((r) => r.followingId));
+  const followerIds = new Set(followerRows.map((r) => r.followerId));
+  const mutualIds = new Set([...followingIds].filter((id) => followerIds.has(id)));
+  return { userId, universityId: me?.universityId, followingIds, mutualIds, excludeIds: new Set(excludeIds) };
+}
+
+// Prisma "where" koşulu: izleyicinin görebileceği gönderiler
+function visiblePostsWhere(ctx) {
+  return {
+    AND: [
+      { authorId: { notIn: [...ctx.excludeIds] } },
+      { OR: [{ authorId: ctx.userId }, { author: { isFrozen: false, isBanned: false } }] },
+      {
+        OR: [
+          { authorId: ctx.userId },
+          { visibility: 'campus', author: { universityId: ctx.universityId } },
+          { visibility: 'followers', authorId: { in: [...ctx.followingIds] } },
+          { visibility: 'mutual', authorId: { in: [...ctx.mutualIds] } },
+        ],
+      },
+    ],
+  };
+}
+
+function canViewPost(post, ctx) {
+  if (!post || ctx.excludeIds.has(post.authorId)) return false;
+  if (post.authorId === ctx.userId) return true;
+  if (post.visibility === 'followers') return ctx.followingIds.has(post.authorId);
+  if (post.visibility === 'mutual') return ctx.mutualIds.has(post.authorId);
+  return post.author?.universityId === ctx.universityId;
+}
+
+function canCommentOn(post, ctx) {
+  return post.authorId === ctx.userId || ctx.mutualIds.has(post.authorId);
+}
+
+// Gönderiyi yalnızca izleyici görebiliyorsa döndürür (yoksa null → 404)
+async function loadVisiblePost(postId, ctx) {
+  if (!Number.isInteger(postId)) return null;
+  const post = await prisma.post.findUnique({
+    where: { id: postId },
+    include: { author: { select: { universityId: true } } },
+  });
+  return canViewPost(post, ctx) ? post : null;
+}
+
+const POST_INCLUDE = (userId) => ({
+  author: { select: AUTHOR_SELECT },
+  likes: { select: { userId: true } },
+  savedBy: { where: { userId }, select: { id: true } },
+  _count: { select: { comments: true } },
+});
+
+function serializePost(p, ctx) {
+  return {
+    id: p.id,
+    imageUrl: p.imageUrl,
+    caption: p.caption,
+    visibility: p.visibility,
+    createdAt: p.createdAt,
+    author: serializeAuthor(p.author),
+    isOwn: p.authorId === ctx.userId,
+    isMutual: ctx.mutualIds.has(p.authorId),
+    canComment: canCommentOn(p, ctx),
+    likeCount: p.likes.length,
+    commentCount: p._count.comments,
+    likedByMe: p.likes.some((l) => l.userId === ctx.userId),
+    savedByMe: p.savedBy.length > 0,
+  };
+}
+
+// ---------------------------------------------------------
 // GÖNDERİLER
 // ---------------------------------------------------------
 
 // GET /api/posts/feed
-// Query: filter (all|following|university|popular), skip, take
+// Query: filter (campus|following|mine), skip, take
+//  campus    : kampüsteki herkesin görünür gönderileri (varsayılan)
+//  following : yalnızca takip ettiklerim
+//  mine      : yalnızca benim gönderilerim
 router.get('/posts/feed', requireAuth, async (req, res) => {
   try {
-    const filter = ['all', 'following', 'university', 'popular'].includes(req.query.filter)
-      ? req.query.filter
-      : 'all';
+    const filter = ['following', 'mine'].includes(req.query.filter) ? req.query.filter : 'campus';
     const skip = Math.max(0, parseInt(req.query.skip, 10) || 0);
     const take = Math.min(30, Math.max(1, parseInt(req.query.take, 10) || 10));
 
-    const me = await prisma.user.findUnique({ where: { id: req.userId }, select: { universityId: true } });
-    if (!me) return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
+    const ctx = await getViewerContext(req.userId);
+    if (!ctx.universityId) return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
 
-    const [followingIds, excludeIds] = await Promise.all([
-      getFollowingIds(req.userId),
-      getBlockExclusionIds(req.userId),
-    ]);
-    const followAndMeIds = [...followingIds, req.userId];
-
-    let where = { authorId: { notIn: excludeIds } };
-    let orderBy = { createdAt: 'desc' };
-
-    if (filter === 'following') {
-      where.authorId = { in: followAndMeIds.filter((id) => !excludeIds.includes(id)) };
-    } else if (filter === 'university') {
-      where.author = { universityId: me.universityId };
-    } else if (filter === 'popular') {
-      // "Popüler" tüm zamanların değil, son 14 günün öne çıkanlarını göstersin.
-      const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
-      where.createdAt = { gte: fourteenDaysAgo };
-      orderBy = [{ likes: { _count: 'desc' } }, { createdAt: 'desc' }];
-    }
+    const where = visiblePostsWhere(ctx);
+    if (filter === 'mine') where.AND.push({ authorId: req.userId });
+    if (filter === 'following') where.AND.push({ authorId: { in: [...ctx.followingIds] } });
 
     const posts = await prisma.post.findMany({
       where,
-      orderBy,
+      orderBy: { createdAt: 'desc' },
       skip,
       take: take + 1, // bir fazlasını isteyip "daha fazla var mı" bilgisini anlıyoruz
-      include: {
-        author: { select: AUTHOR_SELECT },
-        likes: { select: { userId: true } },
-        savedBy: { where: { userId: req.userId }, select: { id: true } },
-        _count: { select: { comments: true } },
-      },
+      include: POST_INCLUDE(req.userId),
     });
 
     const hasMore = posts.length > take;
-    const page = posts.slice(0, take);
-
-    const result = page.map((p) => ({
-      id: p.id,
-      imageUrl: p.imageUrl,
-      caption: p.caption,
-      createdAt: p.createdAt,
-      author: serializeAuthor(p.author),
-      isOwn: p.authorId === req.userId,
-      likeCount: p.likes.length,
-      commentCount: p._count.comments,
-      likedByMe: p.likes.some((l) => l.userId === req.userId),
-      savedByMe: p.savedBy.length > 0,
-    }));
-
-    res.json({ posts: result, hasMore });
+    res.json({ posts: posts.slice(0, take).map((p) => serializePost(p, ctx)), hasMore });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Akış yüklenemedi.' });
@@ -145,6 +207,7 @@ router.get('/feed/sidebar', requireAuth, async (req, res) => {
       }),
       prisma.user.findMany({
         where: {
+          ...discoverableUserWhere(me.universityId),
           universityId: me.universityId,
           id: { notIn: [...excludeIds, req.userId] },
           showActivityStatus: true,
@@ -155,7 +218,7 @@ router.get('/feed/sidebar', requireAuth, async (req, res) => {
         select: { id: true, fullName: true, photoUrl: true },
       }),
       prisma.user.findMany({
-        where: { universityId: me.universityId, id: { notIn: suggestExcludeIds } },
+        where: { ...discoverableUserWhere(me.universityId), universityId: me.universityId, id: { notIn: suggestExcludeIds } },
         orderBy: { createdAt: 'desc' },
         take: 5,
         select: { id: true, fullName: true, photoUrl: true },
@@ -172,8 +235,11 @@ router.get('/feed/sidebar', requireAuth, async (req, res) => {
 // GET /api/posts/user/:userId — bir kullanıcının gönderileri (profil ızgarası için)
 router.get('/posts/user/:userId', requireAuth, async (req, res) => {
   try {
+    const ctx = await getViewerContext(req.userId);
+    const where = visiblePostsWhere(ctx);
+    where.AND.push({ authorId: Number(req.params.userId) });
     const posts = await prisma.post.findMany({
-      where: { authorId: Number(req.params.userId) },
+      where,
       orderBy: { createdAt: 'desc' },
       include: { _count: { select: { likes: true, comments: true } } },
     });
@@ -200,25 +266,23 @@ router.post('/posts', requireAuth, upload.single('photo'), verifyFileSignature, 
     if (!req.file && !caption) {
       return res.status(400).json({ error: 'Bir fotoğraf ekle ya da bir şeyler yaz.' });
     }
+    if (caption && caption.length > CAPTION_MAX) {
+      return res.status(400).json({ error: `Gönderi en fazla ${CAPTION_MAX} karakter olabilir.` });
+    }
+    const visibility = VISIBILITIES.includes(req.body.visibility) ? req.body.visibility : 'campus';
 
     const post = await prisma.post.create({
       data: {
         authorId: req.userId,
         imageUrl: req.file ? `/uploads/${req.file.filename}` : null,
         caption,
+        visibility,
       },
-      include: { author: { select: AUTHOR_SELECT } },
+      include: POST_INCLUDE(req.userId),
     });
 
-    res.status(201).json({
-      ...post,
-      author: serializeAuthor(post.author),
-      isOwn: true,
-      likeCount: 0,
-      commentCount: 0,
-      likedByMe: false,
-      savedByMe: false,
-    });
+    const ctx = await getViewerContext(req.userId);
+    res.status(201).json(serializePost(post, ctx));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Gönderi paylaşılamadı.' });
@@ -235,6 +299,7 @@ router.delete('/posts/:id', requireAuth, async (req, res) => {
     await prisma.comment.deleteMany({ where: { postId: post.id } });
     await prisma.postLike.deleteMany({ where: { postId: post.id } });
     await prisma.post.delete({ where: { id: post.id } });
+    await removeUploadedFile(post.imageUrl);
 
     res.json({ success: true });
   } catch (err) {
@@ -243,10 +308,21 @@ router.delete('/posts/:id', requireAuth, async (req, res) => {
   }
 });
 
+// Silinen gönderi/hikayenin fotoğrafını diskten de kaldır: aksi halde dosya
+// /uploads altında bağlantıyı bilen herkese açık kalmaya devam ederdi.
+async function removeUploadedFile(url) {
+  if (!url || !url.startsWith('/uploads/')) return;
+  const filePath = path.join(__dirname, '..', '..', 'uploads', path.basename(url));
+  await fsp.unlink(filePath).catch(() => {});
+}
+
 // POST /api/posts/:id/like — beğen / beğeniyi geri al (toggle)
 router.post('/posts/:id/like', requireAuth, async (req, res) => {
   try {
     const postId = Number(req.params.id);
+    const ctx = await getViewerContext(req.userId);
+    if (!(await loadVisiblePost(postId, ctx))) return res.status(404).json({ error: 'Gönderi bulunamadı.' });
+
     const existing = await prisma.postLike.findUnique({
       where: { postId_userId: { postId, userId: req.userId } },
     });
@@ -289,8 +365,8 @@ router.post('/posts/:id/save', requireAuth, async (req, res) => {
       return res.json({ saved: false });
     }
 
-    const post = await prisma.post.findUnique({ where: { id: postId } });
-    if (!post) return res.status(404).json({ error: 'Gönderi bulunamadı.' });
+    const ctx = await getViewerContext(req.userId);
+    if (!(await loadVisiblePost(postId, ctx))) return res.status(404).json({ error: 'Gönderi bulunamadı.' });
 
     await prisma.savedPost.create({ data: { postId, userId: req.userId } });
     res.json({ saved: true });
@@ -303,8 +379,9 @@ router.post('/posts/:id/save', requireAuth, async (req, res) => {
 // GET /api/posts/saved — kaydettiğim gönderiler
 router.get('/posts/saved', requireAuth, async (req, res) => {
   try {
+    const ctx = await getViewerContext(req.userId);
     const saved = await prisma.savedPost.findMany({
-      where: { userId: req.userId },
+      where: { userId: req.userId, post: visiblePostsWhere(ctx) },
       orderBy: { createdAt: 'desc' },
       include: {
         post: {
@@ -349,34 +426,11 @@ router.get('/posts/:id', requireAuth, async (req, res) => {
     const postId = Number(req.params.id);
     if (!Number.isInteger(postId)) return res.status(404).json({ error: 'Gönderi bulunamadı.' });
 
-    const excludeIds = await getBlockExclusionIds(req.userId);
+    const ctx = await getViewerContext(req.userId);
+    if (!(await loadVisiblePost(postId, ctx))) return res.status(404).json({ error: 'Gönderi bulunamadı.' });
 
-    const p = await prisma.post.findUnique({
-      where: { id: postId },
-      include: {
-        author: { select: AUTHOR_SELECT },
-        likes: { select: { userId: true } },
-        savedBy: { where: { userId: req.userId }, select: { id: true } },
-        _count: { select: { comments: true } },
-      },
-    });
-
-    if (!p || excludeIds.includes(p.authorId)) {
-      return res.status(404).json({ error: 'Gönderi bulunamadı.' });
-    }
-
-    res.json({
-      id: p.id,
-      imageUrl: p.imageUrl,
-      caption: p.caption,
-      createdAt: p.createdAt,
-      author: serializeAuthor(p.author),
-      isOwn: p.authorId === req.userId,
-      likeCount: p.likes.length,
-      commentCount: p._count.comments,
-      likedByMe: p.likes.some((l) => l.userId === req.userId),
-      savedByMe: p.savedBy.length > 0,
-    });
+    const p = await prisma.post.findUnique({ where: { id: postId }, include: POST_INCLUDE(req.userId) });
+    res.json(serializePost(p, ctx));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Gönderi alınamadı.' });
@@ -386,8 +440,12 @@ router.get('/posts/:id', requireAuth, async (req, res) => {
 // GET /api/posts/:id/comments — üst yorumlar + her birinin yanıtları (tek seviye)
 router.get('/posts/:id/comments', requireAuth, async (req, res) => {
   try {
+    const ctx = await getViewerContext(req.userId);
+    const post = await loadVisiblePost(Number(req.params.id), ctx);
+    if (!post) return res.status(404).json({ error: 'Gönderi bulunamadı.' });
+
     const comments = await prisma.comment.findMany({
-      where: { postId: Number(req.params.id), parentId: null },
+      where: { postId: post.id, parentId: null, authorId: { notIn: [...ctx.excludeIds] } },
       orderBy: { createdAt: 'asc' },
       include: {
         author: { select: AUTHOR_SELECT },
@@ -411,12 +469,13 @@ router.get('/posts/:id/comments', requireAuth, async (req, res) => {
       likedByMe: c.likes.some((l) => l.userId === req.userId),
     });
 
-    res.json(
-      comments.map((c) => ({
+    res.json({
+      canComment: canCommentOn(post, ctx),
+      comments: comments.map((c) => ({
         ...formatComment(c),
-        replies: c.replies.map((r) => formatComment(r)),
-      }))
-    );
+        replies: c.replies.filter((r) => !ctx.excludeIds.has(r.authorId)).map((r) => formatComment(r)),
+      })),
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Yorumlar alınamadı.' });
@@ -428,6 +487,16 @@ router.post('/posts/:id/comments', requireAuth, async (req, res) => {
   try {
     const { content, parentId } = req.body;
     if (!content || !content.trim()) return res.status(400).json({ error: 'Yorum boş olamaz.' });
+    if (content.trim().length > CAPTION_MAX) {
+      return res.status(400).json({ error: `Yorum en fazla ${CAPTION_MAX} karakter olabilir.` });
+    }
+
+    const ctx = await getViewerContext(req.userId);
+    const target = await loadVisiblePost(Number(req.params.id), ctx);
+    if (!target) return res.status(404).json({ error: 'Gönderi bulunamadı.' });
+    if (!canCommentOn(target, ctx)) {
+      return res.status(403).json({ error: 'Yorum yapabilmek için karşılıklı takipleşmeniz gerekiyor.' });
+    }
 
     let resolvedParentId = null;
     if (parentId) {
@@ -510,6 +579,8 @@ router.post('/comments/:id/like', requireAuth, async (req, res) => {
     } else {
       comment = await prisma.comment.findUnique({ where: { id: commentId } });
       if (!comment) return res.status(404).json({ error: 'Yorum bulunamadı.' });
+      const ctx = await getViewerContext(req.userId);
+      if (!(await loadVisiblePost(comment.postId, ctx))) return res.status(404).json({ error: 'Yorum bulunamadı.' });
       await prisma.commentLike.create({ data: { commentId, userId: req.userId } });
 
       await createNotification(req.app.get('io'), {
@@ -533,11 +604,13 @@ router.post('/comments/:id/like', requireAuth, async (req, res) => {
 // HİKAYELER (24 saat)
 // ---------------------------------------------------------
 
-// GET /api/stories — takip ettiklerim + kendim, süresi dolmamış, yazara göre gruplu
+const STORY_LIFETIME_MS = 12 * 60 * 60 * 1000;
+
+// GET /api/stories — karşılıklı takipleştiklerim + kendim, süresi dolmamış, yazara göre gruplu
 router.get('/stories', requireAuth, async (req, res) => {
   try {
-    const followingIds = await getFollowingIds(req.userId);
-    const authorIds = [...followingIds, req.userId];
+    const ctx = await getViewerContext(req.userId);
+    const authorIds = [...ctx.mutualIds].filter((id) => !ctx.excludeIds.has(id)).concat(req.userId);
 
     const stories = await prisma.story.findMany({
       where: { authorId: { in: authorIds }, expiresAt: { gt: new Date() } },
@@ -558,6 +631,7 @@ router.get('/stories', requireAuth, async (req, res) => {
         imageUrl: s.imageUrl,
         createdAt: s.createdAt,
         viewedByMe: s.views.length > 0,
+        expiresAt: s.expiresAt,
       });
     }
 
@@ -568,12 +642,12 @@ router.get('/stories', requireAuth, async (req, res) => {
   }
 });
 
-// POST /api/stories — yeni hikaye paylaş (24 saat sonra otomatik süresi dolar)
+// POST /api/stories — yeni hikaye paylaş (12 saat sonra otomatik süresi dolar)
 router.post('/stories', requireAuth, upload.single('photo'), verifyFileSignature, async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'Fotoğraf gerekli.' });
 
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    const expiresAt = new Date(Date.now() + STORY_LIFETIME_MS);
     const story = await prisma.story.create({
       data: { authorId: req.userId, imageUrl: `/uploads/${req.file.filename}`, expiresAt },
     });
@@ -585,10 +659,54 @@ router.post('/stories', requireAuth, upload.single('photo'), verifyFileSignature
   }
 });
 
+// DELETE /api/stories/:id — kendi hikayeni sil (görüntülenmeler cascade silinir)
+router.delete('/stories/:id', requireAuth, async (req, res) => {
+  try {
+    const story = await prisma.story.findUnique({ where: { id: Number(req.params.id) } });
+    if (!story) return res.status(404).json({ error: 'Hikaye bulunamadı.' });
+    if (story.authorId !== req.userId) return res.status(403).json({ error: 'Bu hikayeyi silemezsin.' });
+
+    await prisma.story.delete({ where: { id: story.id } });
+    await removeUploadedFile(story.imageUrl);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Hikaye silinemedi.' });
+  }
+});
+
+// GET /api/stories/:id/viewers — hikayeni kimler gördü (yalnızca hikayenin sahibi)
+router.get('/stories/:id/viewers', requireAuth, async (req, res) => {
+  try {
+    const story = await prisma.story.findUnique({ where: { id: Number(req.params.id) } });
+    if (!story) return res.status(404).json({ error: 'Hikaye bulunamadı.' });
+    if (story.authorId !== req.userId) return res.status(403).json({ error: 'Bu bilgiyi yalnızca hikayenin sahibi görebilir.' });
+
+    const views = await prisma.storyView.findMany({
+      where: { storyId: story.id, viewerId: { not: req.userId } },
+      orderBy: { viewedAt: 'desc' },
+      include: { viewer: { select: { id: true, fullName: true, photoUrl: true } } },
+    });
+    res.json(views.map((v) => ({ ...v.viewer, viewedAt: v.viewedAt })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Görüntüleyenler alınamadı.' });
+  }
+});
+
 // POST /api/stories/:id/view — görüntülendi olarak işaretle
 router.post('/stories/:id/view', requireAuth, async (req, res) => {
   try {
     const storyId = Number(req.params.id);
+    const story = await prisma.story.findUnique({ where: { id: storyId }, select: { authorId: true, expiresAt: true } });
+    if (!story || story.expiresAt < new Date()) return res.status(404).json({ error: 'Hikaye bulunamadı.' });
+    if (story.authorId !== req.userId) {
+      const ctx = await getViewerContext(req.userId);
+      if (!ctx.mutualIds.has(story.authorId) || ctx.excludeIds.has(story.authorId)) {
+        return res.status(403).json({ error: 'Hikayeleri yalnızca karşılıklı takipleşenler görebilir.' });
+      }
+    }
     await prisma.storyView.upsert({
       where: { storyId_viewerId: { storyId, viewerId: req.userId } },
       update: {},
@@ -750,7 +868,11 @@ const PUBLIC_PROFILE_SELECT = {
   intent: true,
   instagramUrl: true,
   twitterUrl: true,
-  linkedinUrl: true,
+  birthDate: true,
+  studentDocStatus: true,
+  isFrozen: true,
+  isBanned: true,
+  photos: { orderBy: { position: 'asc' }, select: { id: true, url: true, position: true } },
   profileVisibility: true,
   universityId: true,
   university: { select: { id: true, name: true } },
@@ -773,6 +895,10 @@ router.get('/users/:id', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'Bu profili görüntüleyemezsin.' });
     }
 
+    if (targetId !== req.userId && (target.isFrozen || target.isBanned)) {
+      return res.status(404).json({ error: 'Bu hesap şu anda kullanılmıyor.' });
+    }
+
     if (targetId !== req.userId) {
       if (target.profileVisibility === 'nobody') {
         return res.status(403).json({ error: 'Bu kullanıcı profilini gizli tutuyor.' });
@@ -790,29 +916,11 @@ router.get('/users/:id', requireAuth, async (req, res) => {
       }),
     ]);
 
-    // Kendi profilini görüntülemek veya profili tekrar tekrar açmak bildirim
-    // kirliliği yaratmasın diye son 12 saatte aynı kişiden bildirim varsa atla.
-    if (targetId !== req.userId) {
-      const recent = await prisma.notification.findFirst({
-        where: {
-          userId: targetId,
-          type: 'profile_view',
-          actorId: req.userId,
-          createdAt: { gt: new Date(Date.now() - 12 * 60 * 60 * 1000) },
-        },
-      });
-      if (!recent) {
-        await createNotification(req.app.get('io'), {
-          userId: targetId,
-          type: 'profile_view',
-          actorId: req.userId,
-          targetType: 'user',
-          targetId: req.userId,
-        });
-      }
-    }
-
-    const { profileVisibility, universityId, ...publicFields } = target;
+    // Doğum tarihinin kendisi başkalarına gösterilmez; yalnızca güncel yaş döner.
+    const { profileVisibility, universityId, birthDate: _birth, isFrozen: _f, isBanned: _b, studentDocStatus, ...publicFields } = withLiveAge(target);
+    publicFields.isStudentVerified = studentDocStatus === 'approved';
+    // Flört tercihleri yalnızca flört modundaki öğrencilere görünür
+    if (targetId !== req.userId) publicFields.intent = visibleIntentFor(publicFields.intent, me.intent);
     res.json({ ...publicFields, followerCount, followingCount, isFollowing: !!isFollowing });
   } catch (err) {
     console.error(err);

@@ -57,7 +57,7 @@ const chatUpload = multer({
 });
 
 // Gerçek kullanım: tüm sohbet ekleri buraya taşındı (bkz. routes/messages.js,
-// routes/groups.js, routes/clubs.js) — özel klasöre yazar.
+// routes/clubs.js) — özel klasöre yazar.
 chatUpload.private = multer({
   storage: makeStorage(privateDir),
   limits: { fileSize: 20 * 1024 * 1024 },

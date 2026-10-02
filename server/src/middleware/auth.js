@@ -11,7 +11,6 @@
 
 const jwt = require('jsonwebtoken');
 const prisma = require('../lib/prisma');
-const { touchStreak } = require('../lib/streak');
 
 async function requireAuth(req, res, next) {
   const authHeader = req.headers.authorization;
@@ -45,9 +44,6 @@ async function requireAuth(req, res, next) {
     }
 
     req.userId = user.id;
-    // Günlük giriş serisini (streak) arka planda güncelle - isteği bekletmez,
-    // hata verse bile isteğin akışını etkilemez (bkz. lib/streak.js).
-    touchStreak(req.app.get('io'), user.id);
     next();
   } catch (err) {
     return res.status(401).json({ error: 'Oturum geçersiz veya süresi dolmuş.' });

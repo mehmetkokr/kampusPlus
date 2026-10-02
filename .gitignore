@@ -30,3 +30,9 @@ Thumbs.db
 .vscode/
 .idea/
 .claude/
+
+# Yerel deneme hesapları (şifre içerir)
+test-accounts.local.txt
+
+# OCR dil verileri (tesseract.js çalışırken kendisi indirir)
+*.traineddata

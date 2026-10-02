@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, Trash2, Pencil, X, Check } from 'lucide-react';
 import adminApi from '../adminApi';
+import { useConfirm } from '../../context/ConfirmContext';
 
 export default function AdminUniversities() {
+  const confirm = useConfirm();
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -59,7 +61,7 @@ export default function AdminUniversities() {
   }
 
   async function handleDelete(u) {
-    if (!window.confirm(`"${u.name}" silinsin mi?`)) return;
+    if (!await confirm(`"${u.name}" silinsin mi?`)) return;
     try {
       await adminApi.deleteUniversity(u.id);
       load();

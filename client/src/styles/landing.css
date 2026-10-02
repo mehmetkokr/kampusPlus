@@ -1,0 +1,358 @@
+/* ==========================================================================
+   Landing sayfası — sade, ortalanmış düzen
+   Apple HIG ilkeleri: sistem fontları (başlıklarda Apple'da New York, diğer
+   cihazlarda Source Serif; metinde SF Pro / Inter), rem tabanlı boyutlar,
+   en az 44px dokunma alanı, cam yalnızca navigasyon ve yüzen öğelerde,
+   reduced-motion desteği.
+
+   Renkler uygulamanın tema değişkenlerinden gelir: sayfa ve uygulama
+   görselleri (telefon ekranı, özellik kartları) seçilen açık/koyu moda uyar.
+   Yalnızca telefonun fiziksel çerçevesi her iki modda koyudur.
+   ========================================================================== */
+
+.landing-root {
+  /* Tek palet: renkler uygulamanın tema değişkenlerinden gelir (index.css).
+     Açık/koyu mod değişince tanıtım sayfası da aynı tonlarla değişir. */
+  --color-ink: var(--bg);
+  --color-ink-2: var(--surface-2);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line: var(--border);
+  --color-line-soft: var(--border-soft);
+  --color-paper: var(--text);
+  --color-paper-muted: var(--text-muted);
+  --color-paper-faint: var(--text-faint);
+  --color-amber: var(--amber);
+  --color-amber-soft: var(--amber-soft);
+  --color-amber-dim: var(--amber-dim);
+  --color-teal: var(--teal);
+  --color-teal-dim: var(--teal-dim);
+  --color-coral: var(--coral);
+
+  --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI Variable Display', system-ui, sans-serif;
+  --font-body: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', 'Segoe UI Variable Text', system-ui, sans-serif;
+  /* Başlıklar: Apple'da New York, diğer cihazlarda Source Serif */
+  --font-serif: ui-serif, 'New York', 'Source Serif 4', Georgia, serif;
+
+  font-family: var(--font-body);
+  background: var(--color-ink);
+  color: var(--color-paper);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: clip;
+}
+
+
+.landing-root :focus-visible {
+  outline: 2px solid #c75b30;
+  outline-offset: 3px;
+  border-radius: 12px;
+}
+
+/* ---------- Tipografi ---------- */
+
+.landing-serif {
+  font-family: var(--font-serif);
+  font-optical-sizing: auto;
+}
+
+.landing-h1 {
+  font-family: var(--font-serif);
+  font-size: clamp(2.75rem, 1.6rem + 5.2vw, 5.25rem);
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -0.025em;
+  color: var(--color-paper);
+  text-wrap: balance;
+}
+
+.landing-eyebrow {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-amber);
+}
+
+.landing-h2 {
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 1.3rem + 2.6vw, 3.25rem);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  color: var(--color-paper);
+  text-wrap: balance;
+}
+
+/* Vurgulu kelime: düz kiremit (açık zeminde hareketli degrade yerine sade) */
+.landing-gradient-text {
+  color: var(--color-amber);
+  padding-bottom: 0.08em; /* "ğ, ş" gibi alt uzantılar kırpılmasın */
+}
+
+/* ---------- Butonlar ---------- */
+
+.landing-btn-primary,
+.landing-btn-secondary,
+.landing-btn-store {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 3.25rem;
+  padding: 0 1.75rem;
+  border-radius: 999px;
+  font-size: 1rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s, background 0.25s;
+}
+
+/* Birincil: koyu (açık zeminde en güçlü kontrast) */
+.landing-btn-primary {
+  color: #fffaf5;
+  background: #16120e;
+  box-shadow: 0 14px 30px -16px rgba(22, 18, 14, 0.7);
+}
+.landing-btn-primary:hover { transform: translateY(-2px); background: #2a221b; }
+
+/* Kapanış kutusundaki birincil düğme: kiremit (uygulamadaki ana düğme rengi) */
+.landing-dark .landing-btn-primary {
+  background: linear-gradient(135deg, #e0835a 0%, #c75b30 55%, #b04d24 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 14px 34px -14px rgba(199, 91, 48, 0.9);
+}
+
+.landing-btn-secondary {
+  color: var(--color-paper);
+  background: var(--color-surface);
+  box-shadow: inset 0 0 0 1.5px var(--color-line);
+}
+.landing-btn-secondary:hover { transform: translateY(-2px); box-shadow: inset 0 0 0 1.5px var(--color-paper-faint); }
+
+/* Hero'daki büyük, iki satırlı düğmeler (mağaza düğmesi biçiminde) */
+.landing-btn-store {
+  width: 100%;
+  min-height: 4rem;
+  justify-content: flex-start;
+  gap: 0.875rem;
+  padding: 0 1.5rem;
+  border-radius: 1.125rem;
+  text-align: left;
+}
+.landing-btn-store .label {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+.landing-btn-store small {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.72;
+}
+.landing-btn-store strong { font-size: 1.125rem; font-weight: 700; }
+.landing-btn-store .end { margin-left: auto; }
+
+.landing-btn-primary:active,
+.landing-btn-secondary:active,
+.landing-btn-store:active {
+  transform: scale(0.98);
+}
+
+.landing-btn-sm {
+  min-height: 2.75rem;
+  padding: 0 1.25rem;
+  font-size: 0.875rem;
+}
+
+/* ---------- Yüzen çipler ---------- */
+
+.landing-chip {
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow:
+    inset 0 0 0 1px rgba(40, 28, 15, 0.08),
+    0 18px 40px -18px rgba(40, 28, 15, 0.35);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+.landing-float { animation: landing-float 6s ease-in-out infinite; }
+.landing-float-slow { animation: landing-float 9s ease-in-out infinite; }
+@keyframes landing-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.landing-ping {
+  animation: landing-ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+  opacity: 0.7;
+}
+@keyframes landing-ping {
+  75%, 100% { transform: scale(2.4); opacity: 0; }
+}
+
+/* ---------- Hero arka planı: sıcak, sade ---------- */
+
+.landing-hero-bg {
+  background:
+    radial-gradient(60% 50% at 50% 0%, rgba(199, 91, 48, 0.1), transparent 70%),
+    radial-gradient(40% 40% at 85% 60%, rgba(79, 125, 93, 0.08), transparent 70%),
+    var(--color-ink);
+}
+
+.landing-halo {
+  background: radial-gradient(closest-side, rgba(199, 91, 48, 0.22), rgba(199, 91, 48, 0) 70%);
+  filter: blur(20px);
+}
+
+/* ---------- Nasıl çalışır ---------- */
+
+.landing-progress { background: linear-gradient(180deg, #c75b30, #d9876a); }
+@media (min-width: 640px) {
+  .landing-progress { background: linear-gradient(90deg, #c75b30, #d9876a); }
+}
+
+.landing-step-icon {
+  color: var(--color-amber);
+  background: var(--color-surface);
+  box-shadow: inset 0 0 0 1px var(--color-line), 0 16px 32px -20px rgba(199, 91, 48, 0.55);
+}
+
+/* ---------- Bento kartları: uygulama ekranı gibi koyu ---------- */
+
+.landing-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 1.75rem;
+  background: var(--color-surface);
+  box-shadow: inset 0 0 0 1px var(--color-line-soft), 0 30px 60px -36px rgba(40, 28, 15, 0.35);
+  transition: box-shadow 0.4s, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.landing-tile::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(90% 70% at 100% 0%, color-mix(in srgb, var(--tile-tone) 18%, transparent), transparent 65%);
+  pointer-events: none;
+}
+.landing-tile:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 36px 70px -34px rgba(22, 18, 14, 0.65);
+}
+.landing-tile.tone-amber { --tile-tone: #e0835a; }
+.landing-tile.tone-sky { --tile-tone: #8aa6c8; }
+.landing-tile.tone-rose { --tile-tone: #d9876a; }
+.landing-tile.tone-teal { --tile-tone: #8fb89a; }
+.landing-tile.tone-violet { --tile-tone: #a79cb8; }
+.landing-tile-eyebrow { font-size: 0.8125rem; font-weight: 600; color: var(--tile-tone); }
+.landing-tile h3 { font-family: var(--font-serif); letter-spacing: -0.015em; }
+
+.landing-caret {
+  display: inline-block;
+  width: 1.5px;
+  height: 1em;
+  margin-left: 1px;
+  vertical-align: -0.15em;
+  background: #e0835a;
+  animation: landing-blink 1s steps(1) infinite;
+}
+@keyframes landing-blink { 50% { opacity: 0; } }
+
+.landing-typing-dot { animation: landing-typing 1.2s ease-in-out infinite; }
+@keyframes landing-typing {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+
+/* ---------- Açık kartlar (SSS, farklar, kulüp bölümü) ---------- */
+
+.landing-card {
+  border-radius: 1.5rem;
+  background: var(--color-surface);
+  box-shadow: inset 0 0 0 1px var(--color-line-soft), 0 20px 40px -32px rgba(40, 28, 15, 0.4);
+}
+
+/* ---------- Hareket azaltma ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-float,
+  .landing-float-slow,
+  .landing-ping,
+  .landing-caret,
+  .landing-typing-dot,
+  .animate-marquee {
+    animation: none !important;
+  }
+  .landing-tile:hover,
+  .landing-btn-primary:hover,
+  .landing-btn-secondary:hover,
+  .landing-btn-store:hover {
+    transform: none;
+  }
+}
+
+/* ---------- Telefonda sabit alt çağrı ---------- */
+.landing-sticky-cta {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 60;
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+  transform: translateY(110%);
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+.landing-sticky-cta.is-visible { transform: translateY(0); pointer-events: auto; }
+.landing-sticky-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 10px 10px 16px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: inset 0 0 0 1px rgba(40, 28, 15, 0.08), 0 18px 40px -16px rgba(40, 28, 15, 0.45);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+.landing-sticky-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.landing-sticky-text strong { font-size: 0.875rem; color: var(--color-paper); }
+.landing-sticky-text span { font-size: 0.75rem; color: var(--color-paper-muted); }
+.landing-sticky-cta .landing-btn-primary { flex-shrink: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .landing-sticky-cta { transition: none; }
+}
+
+
+/* ==========================================================================
+   Koyu mod: tanıtım sayfası uygulamanın koyu tonlarına geçer
+   ========================================================================== */
+html:not([data-theme='light']) .landing-root .landing-btn-primary {
+  color: #16120e;
+  background: #f3ece1;
+  box-shadow: 0 14px 30px -16px rgba(0, 0, 0, 0.8);
+}
+html:not([data-theme='light']) .landing-root .landing-btn-primary:hover { background: #ffffff; }
+html:not([data-theme='light']) .landing-root .landing-dark .landing-btn-primary {
+  color: #fffaf5;
+  background: linear-gradient(135deg, #e0835a 0%, #c75b30 55%, #b04d24 100%);
+}
+html:not([data-theme='light']) .landing-chip,
+html:not([data-theme='light']) .landing-sticky-inner {
+  background: rgba(25, 23, 20, 0.86);
+  box-shadow: inset 0 0 0 1px rgba(255, 244, 228, 0.08), 0 18px 40px -16px rgba(0, 0, 0, 0.8);
+}
+html:not([data-theme='light']) .landing-card {
+  box-shadow: inset 0 0 0 1px var(--color-line-soft), 0 20px 40px -32px rgba(0, 0, 0, 0.8);
+}
+html:not([data-theme='light']) .landing-hero-bg {
+  background:
+    radial-gradient(60% 50% at 50% 0%, rgba(199, 91, 48, 0.16), transparent 70%),
+    radial-gradient(40% 40% at 85% 60%, rgba(143, 184, 154, 0.08), transparent 70%),
+    var(--color-ink);
+}

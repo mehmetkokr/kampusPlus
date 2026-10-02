@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Alan adı değişirse adresleri güncelle (bkz. src/constants/site.js) -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://kampusplus.app/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://kampusplus.app/register</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://kampusplus.app/login</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://kampusplus.app/gizlilik</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://kampusplus.app/kullanim-sartlari</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://kampusplus.app/topluluk-kurallari</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+</urlset>

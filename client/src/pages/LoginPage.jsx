@@ -5,8 +5,13 @@ import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import AuthBackdrop from '../components/AuthBackdrop';
+import CubeLoader from '../components/CubeLoader';
+import { minDuration } from '../utils/wait';
+import { useI18n } from '../i18n';
+import ThemeToggle from '../components/ThemeToggle';
 
 export default function LoginPage() {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const { login } = useAuth();
   const toast = useToast();
@@ -20,15 +25,20 @@ export default function LoginPage() {
   async function handleSubmit(e) {
     e.preventDefault();
     setLoading(true);
+    const waitSuccess = minDuration(1200);
+    const waitError = minDuration(600);
 
     try {
       const res = await api.post('/auth/login', { email, password });
+      // Giriş animasyonu görünsün; login() sayfayı hemen yönlendirdiği için önce beklenir
+      await waitSuccess();
       login(res.data.token, res.data.user, rememberMe);
       if (res.data.reactivated) {
         toast.success('Hesabın yeniden aktifleştirildi. Tekrar hoş geldin!');
       }
       navigate('/discover');
     } catch (err) {
+      await waitError();
       toast.error(err.response?.data?.error || 'Giriş sırasında bir hata oluştu.');
     } finally {
       setLoading(false);
@@ -38,32 +48,35 @@ export default function LoginPage() {
   return (
     <div className="auth-screen">
       <AuthBackdrop />
+      {loading && <CubeLoader mode="overlay" label={t("Giriş yapılıyor")} />}
+
+      <ThemeToggle className="auth-theme-toggle" />
 
       <Link to="/" className="auth-back">
-        <ArrowLeft size={15} /> Anasayfa
+        <ArrowLeft size={15} /> {t("Anasayfa")}
       </Link>
 
       <div className="auth-content">
         <div className="auth-wordmark">
-          kampüs<span className="dot">·</span>
+          {t("kampüs")}<span className="dot">·</span>
         </div>
-        <p className="auth-tagline">sadece kendi üniversitenden insanlarla tanış</p>
+        <p className="auth-tagline">{t("sadece kendi üniversitenden insanlarla tanış")}</p>
 
         <div className="auth-card">
-          <h2>Tekrar hoş geldin</h2>
-          <p className="muted">Hesabına giriş yap</p>
+          <h2>{t("Tekrar hoş geldin")}</h2>
+          <p className="muted">{t("Hesabına giriş yap")}</p>
 
           <form onSubmit={handleSubmit}>
-            <label>E-posta</label>
+            <label>{t("E-posta")}</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="ornek@ogrenci.universite.edu.tr"
+              placeholder={t("ornek@ogrenci.universite.edu.tr")}
               required
             />
 
-            <label>Şifre</label>
+            <label>{t("Şifre")}</label>
             <div className="password-field-wrap">
               <input
                 type={showPassword ? 'text' : 'password'}
@@ -76,7 +89,7 @@ export default function LoginPage() {
                 type="button"
                 className="password-toggle-btn"
                 onClick={() => setShowPassword((v) => !v)}
-                aria-label={showPassword ? 'Şifreyi gizle' : 'Şifreyi göster'}
+                aria-label={showPassword ? t("Şifreyi gizle") : t("Şifreyi göster")}
               >
                 {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
               </button>
@@ -89,25 +102,25 @@ export default function LoginPage() {
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
                 />
-                Beni Hatırla
+                {t("Beni Hatırla")}
               </label>
               <Link to="/forgot-password" className="forgot-password-link">
-                Şifremi Unuttum
+                {t("Şifremi Unuttum")}
               </Link>
             </div>
 
             <button className="btn" type="submit" disabled={loading}>
-              {loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
+              {loading ? t("Giriş yapılıyor...") : t("Giriş Yap")}
             </button>
           </form>
 
           <div className="auth-trust">
-            <ShieldCheck size={13} /> Yalnızca doğrulanmış üniversite öğrencileri
+            <ShieldCheck size={13} /> {t("Yalnızca doğrulanmış üniversite öğrencileri")}
           </div>
         </div>
 
         <p className="auth-foot">
-          Hesabın yok mu? <Link to="/register">Kayıt Ol</Link>
+          {t("Hesabın yok mu?")} <Link to="/register">{t("Kayıt Ol")}</Link>
         </p>
       </div>
     </div>

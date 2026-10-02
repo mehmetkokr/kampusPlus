@@ -3,6 +3,7 @@ import { X, Crown, Globe2, Eye, Search as SearchIcon, Loader2 } from 'lucide-rea
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { useI18n } from '../i18n';
 
 const PLAN_LABELS = {
   monthly: { label: 'Aylık', badge: null },
@@ -13,6 +14,7 @@ const PLAN_LABELS = {
 // her yerden aynı şekilde açılabilecek ortak paywall modalı.
 // contextText: kullanıcıyı buraya getiren aksiyona özel kısa açıklama.
 export default function PaywallModal({ onClose, onUpgraded, contextText }) {
+  const { t } = useI18n();
   const { setUser, user } = useAuth();
   const toast = useToast();
   const [plan, setPlan] = useState('monthly');
@@ -56,21 +58,21 @@ export default function PaywallModal({ onClose, onUpgraded, contextText }) {
         <div className="paywall-icon">
           <Crown size={26} />
         </div>
-        <h3>KampüsPlus Premium</h3>
+        <h3>{t("KampüsPlus Premium")}</h3>
         <p className="paywall-modal-sub">
-          {contextText || 'Bu içerik sadece Premium üyelere açık.'} Şu an sadece{' '}
-          <b>{user?.university?.name}</b> içindeki kişileri görebiliyorsun.
+          {t(contextText || 'Bu içerik sadece Premium üyelere açık.')}{' '}
+          {t('Şu an sadece {uni} içindeki kişileri görebiliyorsun.', { uni: user?.university?.name || '' })}
         </p>
 
         <ul className="paywall-feature-list">
           <li>
-            <Globe2 size={16} /> Türkiye'deki tüm üniversitelerden kişileri keşfet
+            <Globe2 size={16} /> {t("Türkiye'deki tüm üniversitelerden kişileri keşfet")}
           </li>
           <li>
-            <SearchIcon size={16} /> Aramada üniversite sınırı olmadan sonuç gör
+            <SearchIcon size={16} /> {t("Aramada üniversite sınırı olmadan sonuç gör")}
           </li>
           <li>
-            <Eye size={16} /> Profilini kimlerin görüntülediğini gör
+            <Eye size={16} /> {t("Profilini kimlerin görüntülediğini gör")}
           </li>
         </ul>
 
@@ -81,7 +83,7 @@ export default function PaywallModal({ onClose, onUpgraded, contextText }) {
               className={`paywall-plan-card ${plan === key ? 'active' : ''}`}
               onClick={() => setPlan(key)}
             >
-              <div className="plan-label">{PLAN_LABELS[key].label}</div>
+              <div className="plan-label">{t(PLAN_LABELS[key].label)}</div>
               <div className="plan-price">
                 {priceByPlan[key] ? `₺${priceByPlan[key].amount.toFixed(2)}` : '...'}
               </div>
@@ -92,7 +94,7 @@ export default function PaywallModal({ onClose, onUpgraded, contextText }) {
 
         <button className="btn-premium-cta" style={{ width: '100%', justifyContent: 'center' }} onClick={handleUpgrade} disabled={saving}>
           {saving ? <Loader2 size={16} className="spin" /> : <Crown size={16} />}
-          {saving ? 'İşleniyor...' : 'Premium\'a Geç'}
+          {saving ? t("İşleniyor...") : t("Premium'a Geç")}
         </button>
       </div>
     </div>

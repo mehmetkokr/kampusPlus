@@ -80,20 +80,7 @@ router.get('/:filename', authenticateFileRequest, async (req, res) => {
       return denied();
     }
 
-    // 3) Genel grup sohbeti eki mi? Yalnızca grup üyeleri görebilir.
-    const groupMessage = await prisma.groupMessage.findFirst({
-      where: { OR: [{ photoUrl: url }, { audioUrl: url }, { fileUrl: url }] },
-      select: { groupId: true },
-    });
-    if (groupMessage) {
-      const membership = await prisma.groupChatMember.findUnique({
-        where: { groupId_userId: { groupId: groupMessage.groupId, userId: req.userId } },
-      });
-      if (membership) return res.sendFile(filePath);
-      return denied();
-    }
-
-    // 4) Kulüp sohbeti eki mi? Yalnızca aktif üyeler görebilir.
+    // 3) Kulüp sohbeti eki mi? Yalnızca aktif üyeler görebilir.
     const clubMessage = await prisma.clubMessage.findFirst({
       where: { OR: [{ photoUrl: url }, { audioUrl: url }, { fileUrl: url }] },
       select: { clubId: true },

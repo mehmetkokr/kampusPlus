@@ -1,3 +1,4 @@
+import { useI18n } from '../../i18n';
 // Gerçek logolar yerine (telif riski + varlık yükü olmadan), her üniversite
 // için kısa rumuz + tam ad içeren cam rozetler. Liste iki kez art arda
 // eklenerek %50 kaydırmada kusursuz, sonsuz bir döngü elde edilir.
@@ -21,15 +22,16 @@ const UNIVERSITIES = [
 function Badge({ abbr, name }) {
   return (
     <div className="flex shrink-0 items-center gap-2.5 rounded-full border border-line-soft bg-surface/50 px-4 py-2 backdrop-blur">
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/8 font-display text-[10px] font-bold text-paper-muted">
+      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-2 font-display text-[0.625rem] font-bold text-paper-muted">
         {abbr}
       </span>
-      <span className="whitespace-nowrap text-[12.5px] font-semibold text-paper-muted">{name}</span>
+      <span className="whitespace-nowrap text-[0.7813rem] font-semibold text-paper-muted">{name}</span>
     </div>
   );
 }
 
 export default function UniversityMarquee() {
+  const { t } = useI18n();
   const items = [...UNIVERSITIES, ...UNIVERSITIES];
 
   return (
@@ -38,8 +40,8 @@ export default function UniversityMarquee() {
       <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-14 bg-gradient-to-r from-ink to-transparent sm:w-28" />
       <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-14 bg-gradient-to-l from-ink to-transparent sm:w-28" />
 
-      <p className="mb-4 text-center text-[11px] font-semibold uppercase tracking-wider text-paper-faint">
-        Türkiye&apos;nin dört bir yanından öğrenciler kampüs&apos;te
+      <p className="mb-4 text-center text-[0.6875rem] font-semibold uppercase tracking-wider text-paper-faint">
+        {t('Türkiye üniversitelerinin öğrenci e-postalarıyla çalışır')}
       </p>
 
       <div className="group overflow-hidden">

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Search, ShieldCheck, ShieldX, Trash2, CheckCircle2, XCircle } from 'lucide-react';
 import adminApi from '../adminApi';
+import { useConfirm } from '../../context/ConfirmContext';
 
 const STATUS_LABELS = {
   pending: { label: 'Bekliyor', cls: 'admin-badge-muted' },
@@ -11,6 +12,7 @@ const STATUS_LABELS = {
 };
 
 export default function AdminUsers() {
+  const confirm = useConfirm();
   const [users, setUsers] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -71,7 +73,7 @@ export default function AdminUsers() {
   }
 
   async function handleDelete(id, name) {
-    if (!window.confirm(`"${name}" adlı kullanıcıyı kalıcı olarak silmek istediğine emin misin?`)) return;
+    if (!await confirm(`"${name}" adlı kullanıcıyı kalıcı olarak silmek istediğine emin misin?`)) return;
     try {
       await adminApi.deleteUser(id);
       load();
@@ -139,11 +141,6 @@ export default function AdminUsers() {
                       <span className={`admin-badge ${STATUS_LABELS[u.verificationStatus]?.cls || 'admin-badge-muted'}`}>
                         {STATUS_LABELS[u.verificationStatus]?.label || u.verificationStatus}
                       </span>
-                      {u.verificationStatus === 'manual_review' && u.verificationPriority && (
-                        <span className="admin-badge admin-badge-amber" style={{ marginLeft: 6 }} title="Öncelikli doğrulama satın aldı">
-                          ⚡ Öncelikli
-                        </span>
-                      )}
                       {u.verificationStatus === 'manual_review' && u.ocrAutoCheckPassed !== null && u.ocrAutoCheckPassed !== undefined && (
                         <span
                           className={`admin-badge ${u.ocrAutoCheckPassed ? 'admin-badge-teal' : 'admin-badge-coral'}`}

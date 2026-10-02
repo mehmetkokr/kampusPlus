@@ -5,12 +5,14 @@ import { Bell } from 'lucide-react';
 import api from '../api';
 import { API_BASE_URL } from '../config';
 import { useAuth } from '../context/AuthContext';
+import { useI18n } from '../i18n';
 
 // Ayarlar ikonunun yanında/pencerenin üstünde tekrar kullanılan küçük bildirim
 // zili: okunmamış sayısını rozet olarak gösterir, tıklanınca Bildirim Merkezi'ne
 // götürür. Gerçek zamanlı güncelleme için kendi soket bağlantısını açar, ayrıca
 // yedek olarak periyodik yoklama yapar.
 export default function NotificationBell() {
+  const { t } = useI18n();
   const { token } = useAuth();
   const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = useState(0);
@@ -46,7 +48,7 @@ export default function NotificationBell() {
   return (
     <button
       className="icon-btn-amber notification-bell-btn"
-      aria-label="Bildirimler"
+      aria-label={t("Bildirimler")}
       onClick={() => navigate('/notifications')}
     >
       <Bell size={18} />

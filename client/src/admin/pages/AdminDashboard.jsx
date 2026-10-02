@@ -109,7 +109,6 @@ export default function AdminDashboard() {
                       <th>Üniversite</th>
                       <th>Kullanıcı</th>
                       <th>Eşleşme</th>
-                      <th>İtiraf</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -119,7 +118,6 @@ export default function AdminDashboard() {
                         <td>{c.name}</td>
                         <td>{c.userCount}</td>
                         <td>{c.matchCount}</td>
-                        <td>{c.confessionCount}</td>
                       </tr>
                     ))}
                   </tbody>

@@ -1,30 +1,36 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import api from '../api';
 import { API_BASE_URL } from '../config';
-import { useToast } from '../context/ToastContext';
 import NotificationBell from '../components/NotificationBell';
-import { ChevronRight as ChevronRightIcon, Plus as PlusIcon, X as CloseIcon, Users as UsersIcon, MessageCircle as ChatIcon } from 'lucide-react';
+import { ChevronRight as ChevronRightIcon, MessageCircle as ChatIcon } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
+import LikesReceived from '../components/LikesReceived';
+import SegmentedControl from '../components/SegmentedControl';
+import { useI18n } from '../i18n';
+import { useAuth } from '../context/AuthContext';
 
-const TABS = { MATCHES: 'matches', GROUPS: 'groups' };
+const TABS = { MATCHES: 'matches', LIKES: 'likes' };
 
 export default function MatchesPage() {
-  const navigate = useNavigate();
-  const [tab, setTab] = useState(TABS.MATCHES);
+  const { t } = useI18n();
+  const { user } = useAuth();
+  const swipeOn = user?.swipeEnabled !== false;
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = Object.values(TABS).includes(searchParams.get('tab')) ? searchParams.get('tab') : TABS.MATCHES;
+  const setTab = (next) => setSearchParams(next === TABS.MATCHES ? {} : { tab: next }, { replace: true });
   const [matches, setMatches] = useState([]);
-  const [groups, setGroups] = useState([]);
+  const [likes, setLikes] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [showCreateGroup, setShowCreateGroup] = useState(false);
 
   function loadAll() {
     setLoading(true);
-    Promise.all([api.get('/matches'), api.get('/groups')])
-      .then(([m, g]) => {
+    Promise.all([api.get('/matches'), api.get('/matches/likes-received').catch(() => ({ data: null }))])
+      .then(([m, l]) => {
         setMatches(m.data);
-        setGroups(g.data);
+        setLikes(l.data);
       })
-      .catch((err) => console.error('Eşleşmeler/gruplar alınamadı:', err))
+      .catch((err) => console.error('Eşleşmeler alınamadı:', err))
       .finally(() => setLoading(false));
   }
 
@@ -37,44 +43,39 @@ export default function MatchesPage() {
       <PageHeader
         tone="teal"
         icon={ChatIcon}
-        eyebrow="Mesajlar"
-        title="Sohbet"
-        subtitle={loading ? 'Sohbetlerin yükleniyor...' : `${matches.length} eşleşme · ${groups.length} grup sohbeti`}
-        actions={
-          <>
-            <NotificationBell />
-            {tab === TABS.GROUPS && (
-              <button className="icon-btn-amber is-primary" onClick={() => setShowCreateGroup(true)} aria-label="Yeni grup">
-                <PlusIcon width={18} height={18} />
-              </button>
-            )}
-          </>
-        }
+        eyebrow={t("Mesajlar")}
+        title={t("Sohbet")}
+        subtitle={loading ? t("Sohbetlerin yükleniyor...") : `${matches.length} eşleşme`}
+        actions={<NotificationBell />}
       />
 
-      <div className="category-scroll">
-        <button
-          className={`category-pill ${tab === TABS.MATCHES ? 'active' : ''}`}
-          onClick={() => setTab(TABS.MATCHES)}
-        >
-          Eşleşmeler
-        </button>
-        <button
-          className={`category-pill ${tab === TABS.GROUPS ? 'active' : ''}`}
-          onClick={() => setTab(TABS.GROUPS)}
-        >
-          Gruplar
-        </button>
-      </div>
+      <SegmentedControl
+        ariaLabel="Sohbet sekmeleri"
+        value={tab}
+        onChange={setTab}
+        options={[
+          { value: TABS.MATCHES, label: 'Eşleşmeler' },
+          { value: TABS.LIKES, label: 'Beğenenler', badge: likes?.count > 0 ? (likes.count > 99 ? '99+' : likes.count) : null },
+        ]}
+      />
 
-      {loading && <p className="muted center-text">Yükleniyor...</p>}
+      {loading && <p className="muted center-text">{t("Yükleniyor...")}</p>}
 
       {!loading && tab === TABS.MATCHES && (
         <>
           {matches.length === 0 && (
             <div className="card empty-state">
-              <div className="empty-icon">💬</div>
-              <p className="muted">Henüz bir eşleşmen yok. Keşfet sekmesinden başla!</p>
+              <div className="empty-icon is-glyph"><ChatIcon size={26} strokeWidth={1.8} /></div>
+              {swipeOn ? (
+                <>
+                  <p className="muted">{t("Henüz bir eşleşmen yok. Kart Modu'nda beğendiğin biri seni de beğenirse sohbet burada açılır.")}</p>
+                  <Link to="/discover/swipe" className="btn" style={{ width: 'auto', marginTop: 6 }}>
+                    {t("Kart Moduna Git")}
+                  </Link>
+                </>
+              ) : (
+                <p className="muted">{t("Özel sohbetler Kart Modu eşleşmeleriyle açılır. Kart Modu şu an kapalı; kulüp sohbetlerini kullanabilirsin.")}</p>
+              )}
             </div>
           )}
 
@@ -97,113 +98,7 @@ export default function MatchesPage() {
         </>
       )}
 
-      {!loading && tab === TABS.GROUPS && (
-        <>
-          {groups.length === 0 && (
-            <div className="card empty-state">
-              <div className="empty-icon">👥</div>
-              <p className="muted">Henüz bir grup sohbetin yok. Eşleşmelerinden bir grup kur!</p>
-            </div>
-          )}
-
-          {groups.map((g) => (
-            <div key={g.id} className="match-row" onClick={() => navigate(`/group/${g.id}`)} role="button" tabIndex={0}>
-              <div className="group-avatar-stack">
-                <UsersIcon width={20} height={20} />
-              </div>
-              <div>
-                <div className="match-name">{g.name}</div>
-                <div className="match-sub">{g.memberCount} üye</div>
-              </div>
-              <ChevronRightIcon className="match-chevron" />
-            </div>
-          ))}
-        </>
-      )}
-
-      {showCreateGroup && (
-        <CreateGroupModal
-          matches={matches}
-          onClose={() => setShowCreateGroup(false)}
-          onCreated={(group) => {
-            setShowCreateGroup(false);
-            navigate(`/group/${group.id}`);
-          }}
-        />
-      )}
-    </div>
-  );
-}
-
-function CreateGroupModal({ matches, onClose, onCreated }) {
-  const toast = useToast();
-  const [name, setName] = useState('');
-  const [selected, setSelected] = useState(new Set());
-  const [saving, setSaving] = useState(false);
-
-  function toggle(userId) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      next.has(userId) ? next.delete(userId) : next.add(userId);
-      return next;
-    });
-  }
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (!name.trim()) return toast.error('Grup adı gerekli.');
-    if (selected.size === 0) return toast.error('En az bir eşleşme seç.');
-    setSaving(true);
-    try {
-      const res = await api.post('/groups', { name, memberIds: [...selected] });
-      onCreated(res.data);
-    } catch (err) {
-      toast.error(err.response?.data?.error || 'Grup oluşturulamadı.');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <h3>Yeni Grup Sohbeti</h3>
-          <button className="modal-close" onClick={onClose}>
-            <CloseIcon width={18} height={18} />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit}>
-          <label>Grup Adı</label>
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="örn. Final Haftası Ekibi" required />
-
-          <label>Kimleri eklemek istersin?</label>
-          {matches.length === 0 && <p className="muted">Henüz eşleşmen yok.</p>}
-          <div className="member-picker-list">
-            {matches.map((m) => (
-              <label key={m.matchId} className="member-picker-row">
-                <input
-                  type="checkbox"
-                  checked={selected.has(m.otherUser.id)}
-                  onChange={() => toggle(m.otherUser.id)}
-                />
-                <img
-                  className="member-avatar"
-                  style={{ width: 34, height: 34 }}
-                  src={m.otherUser.photoUrl ? `${API_BASE_URL}${m.otherUser.photoUrl}` : undefined}
-                  alt={m.otherUser.fullName}
-                />
-                <span>{m.otherUser.fullName}</span>
-              </label>
-            ))}
-          </div>
-
-          <button className="btn btn-like" type="submit" disabled={saving} style={{ marginTop: 10 }}>
-            {saving ? 'Oluşturuluyor...' : 'Grubu Oluştur'}
-          </button>
-        </form>
-      </div>
+      {!loading && tab === TABS.LIKES && <LikesReceived data={likes} onChanged={loadAll} />}
     </div>
   );
 }

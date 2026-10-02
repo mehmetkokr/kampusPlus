@@ -2,6 +2,7 @@
 // Tüm route'lar requireAdmin ile korunur (isAdmin=true olmayan hiç giremez).
 const express = require('express');
 const prisma = require('../lib/prisma');
+const { createNotification } = require('../lib/notifications');
 const { requireAdmin } = require('../middleware/adminAuth');
 const { sendMail } = require('../lib/mailer');
 const { getOnlineUserIds } = require('../socket');
@@ -14,23 +15,22 @@ router.use(requireAdmin);
 // ============================================================
 router.get('/stats', async (req, res) => {
   try {
-    const [totalUsers, totalPosts, totalDirectMessages, totalClubMessages, totalGroupMessages, totalUniversities, pendingReports, pendingVerifications] =
+    const [totalUsers, totalPosts, totalDirectMessages, totalClubMessages, totalUniversities, pendingReports, pendingVerifications] =
       await Promise.all([
         prisma.user.count(),
         prisma.post.count(),
         prisma.message.count(),
         prisma.clubMessage.count(),
-        prisma.groupMessage.count(),
         prisma.university.count(),
         prisma.report.count({ where: { status: 'pending' } }),
-        prisma.user.count({ where: { verificationStatus: 'manual_review' } }),
+        prisma.user.count({ where: { OR: [{ verificationStatus: 'manual_review' }, { studentDocStatus: 'pending' }] } }),
       ]);
 
     res.json({
       totalUsers,
       totalPosts,
-      // "Toplam mesaj" - eşleşme, kulüp ve grup sohbetlerindeki tüm mesajların toplamı
-      totalMessages: totalDirectMessages + totalClubMessages + totalGroupMessages,
+      // "Toplam mesaj" - eşleşme ve kulüp sohbetlerindeki tüm mesajların toplamı
+      totalMessages: totalDirectMessages + totalClubMessages,
       totalUniversities,
       pendingReports,
       pendingVerifications,
@@ -119,21 +119,19 @@ router.get('/stats/engagement', async (req, res) => {
   }
 });
 
-// En aktif kampüsler: üye sayısı + eşleşme sayısı + itiraf sayısına göre.
+// En aktif kampüsler: eşleşme sayısına (eşitlikte üye sayısına) göre.
 // SQLite'ta ilişki üzerinden groupBy pratik olmadığından (Match.userA
 // üzerinden university'e gruplama), eşleşmeler JS tarafında toplanıyor;
 // veri boyutu (kampüs bazlı okul projesi) bunun için yeterince küçük.
 router.get('/stats/campuses', async (req, res) => {
   try {
-    const [universities, usersByUniversity, confessionCounts, matches] = await Promise.all([
+    const [universities, usersByUniversity, matches] = await Promise.all([
       prisma.university.findMany({ select: { id: true, name: true } }),
       prisma.user.groupBy({ by: ['universityId'], _count: { _all: true } }),
-      prisma.confession.groupBy({ by: ['universityId'], _count: { _all: true }, where: { status: 'visible' } }),
       prisma.match.findMany({ select: { userA: { select: { universityId: true } } } }),
     ]);
 
     const userCountMap = Object.fromEntries(usersByUniversity.map((r) => [r.universityId, r._count._all]));
-    const confessionCountMap = Object.fromEntries(confessionCounts.map((r) => [r.universityId, r._count._all]));
     const matchCountMap = {};
     for (const m of matches) {
       const uid = m.userA.universityId;
@@ -144,15 +142,13 @@ router.get('/stats/campuses', async (req, res) => {
       .map((u) => {
         const userCount = userCountMap[u.id] || 0;
         const matchCount = matchCountMap[u.id] || 0;
-        const confessionCount = confessionCountMap[u.id] || 0;
         return {
           id: u.id,
           name: u.name,
           userCount,
           matchCount,
-          confessionCount,
-          // Basit bir "etkinlik skoru" - eşleşme daha ağır (asıl ürün metriği), itiraf hafif ağırlıklı.
-          activityScore: matchCount * 2 + confessionCount,
+          // Basit bir "etkinlik skoru" - eşleşme asıl ürün metriği, üye sayısı eşitliği bozar.
+          activityScore: matchCount * 2 + userCount * 0.01,
         };
       })
       .sort((a, b) => b.activityScore - a.activityScore);
@@ -184,7 +180,12 @@ router.get('/users', async (req, res) => {
             }
           : {},
         university ? { universityId: Number(university) } : {},
-        status ? { verificationStatus: status } : {},
+        // "manual_review" kuyruğu: erişim bekleyen hesaplar + rozet (belge) başvuruları
+        status === 'manual_review'
+          ? { OR: [{ verificationStatus: 'manual_review' }, { studentDocStatus: 'pending' }] }
+          : status
+            ? { verificationStatus: status }
+            : {},
       ],
     };
 
@@ -198,20 +199,15 @@ router.get('/users', async (req, res) => {
           department: true,
           classYear: true,
           verificationStatus: true,
-          verificationPriority: true,
-          verificationPriorityAt: true,
+          studentDocStatus: true,
           ocrAutoCheckPassed: true,
           isAdmin: true,
           isBanned: true,
           createdAt: true,
           university: { select: { id: true, name: true } },
         },
-        // Grup C: öncelikli doğrulama satın alanlar (verificationPriority) en
-        // üstte, ardından en eski talep en önce olacak şekilde sıralanır -
-        // manuel inceleme kuyruğunda gerçek bir öncelik sağlar.
-        orderBy: status === 'manual_review'
-          ? [{ verificationPriority: 'desc' }, { verificationPriorityAt: 'asc' }, { createdAt: 'asc' }]
-          : { createdAt: 'desc' },
+        // Manuel inceleme kuyruğunda en eski talep en önce
+        orderBy: status === 'manual_review' ? { createdAt: 'asc' } : { createdAt: 'desc' },
         take,
         skip,
       }),
@@ -241,8 +237,6 @@ router.get('/users/:id', async (req, res) => {
         intent: true,
         verificationStatus: true,
         rejectionReason: true,
-        verificationPriority: true,
-        verificationPriorityAt: true,
         studentDocUrl: true,
         // Grup D: OCR ön kontrolü - hesabı doğrulamaz, sadece admin'e ipucu verir.
         ocrExtractedText: true,
@@ -285,14 +279,23 @@ router.patch('/users/:id', async (req, res) => {
       // Onay/Red kuyruğundan çıktığında öncelikli doğrulama işareti de temizlenir
       // (satın alma amacına ulaştı: kuyruktan bir insan tarafından çıkarıldı).
       if (verificationStatus === 'verified' || verificationStatus === 'rejected') {
-        data.verificationPriority = false;
       }
       data.rejectionReason = verificationStatus === 'rejected' ? rejectionReason.trim() : null;
     }
     if (isAdmin !== undefined) data.isAdmin = !!isAdmin;
     if (isBanned !== undefined) data.isBanned = !!isBanned;
 
-    const previous = await prisma.user.findUnique({ where: { id }, select: { verificationStatus: true, email: true, fullName: true } });
+    const previous = await prisma.user.findUnique({ where: { id }, select: { verificationStatus: true, studentDocStatus: true, email: true, fullName: true } });
+
+    // Belge kararı rozet durumunu da belirler. E-postası okul alan adıyla
+    // doğrulanmış bir hesabın rozet başvurusu reddedilirse hesap erişimi
+    // korunur; yalnızca rozet "rejected" olur.
+    if (verificationStatus === 'verified') {
+      data.studentDocStatus = 'approved';
+    } else if (verificationStatus === 'rejected') {
+      data.studentDocStatus = 'rejected';
+      if (previous?.verificationStatus === 'auto_verified') delete data.verificationStatus;
+    }
 
     const updated = await prisma.user.update({
       where: { id },
@@ -315,6 +318,14 @@ router.patch('/users/:id', async (req, res) => {
     if (data.isBanned) {
       const io = req.app.get('io');
       io?.in(`user_${id}`).disconnectSockets(true);
+    }
+
+    // Belge kararı: uygulama içi bildirim (rozet durumu değiştiyse)
+    const io = req.app.get('io');
+    if (verificationStatus === 'verified' && previous?.studentDocStatus !== 'approved') {
+      await createNotification(io, { userId: id, type: 'badge_approved', targetType: 'user', targetId: id });
+    } else if (verificationStatus === 'rejected' && previous?.studentDocStatus !== 'rejected') {
+      await createNotification(io, { userId: id, type: 'badge_rejected', targetType: 'user', targetId: id, message: updated.rejectionReason || null });
     }
 
     // Onay/Red kuyruğu: kararı öğrenciye e-posta ile bildir (SMTP yoksa
@@ -555,22 +566,15 @@ router.get('/reports', async (req, res) => {
               where: { id: r.targetId },
               select: { id: true, content: true, senderId: true },
             });
+          } else if (r.targetType === 'story') {
+            target = await prisma.story.findUnique({
+              where: { id: r.targetId },
+              select: { id: true, imageUrl: true, authorId: true, expiresAt: true },
+            });
           } else if (r.targetType === 'club_message') {
             target = await prisma.clubMessage.findUnique({
               where: { id: r.targetId },
               select: { id: true, content: true, senderId: true },
-            });
-          } else if (r.targetType === 'group_message') {
-            target = await prisma.groupMessage.findUnique({
-              where: { id: r.targetId },
-              select: { id: true, content: true, senderId: true },
-            });
-          } else if (r.targetType === 'confession') {
-            // Grup D: itiraf kutusunda yazar kimliği normalde asla dışa
-            // verilmez, ama admin moderasyon ekranında istisnadır.
-            target = await prisma.confession.findUnique({
-              where: { id: r.targetId },
-              select: { id: true, content: true, authorId: true, status: true, reportCount: true },
             });
           }
         } catch {
@@ -604,70 +608,6 @@ router.patch('/reports/:id', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Şikayet güncellenemedi.' });
-  }
-});
-
-// ============================================================
-// GRUP D: İTİRAF KUTUSU MODERASYONU
-// ============================================================
-// Not: Diğer admin uçlarından farklı olarak burada authorId bilerek dışa
-// verilir - moderasyon (kötüye kullanım/taciz soruşturması, tekrarlayan
-// ihlal tespiti) için gereklidir. Normal kullanıcı uçlarında (routes/confessions.js)
-// authorId asla döndürülmez.
-router.get('/confessions', async (req, res) => {
-  try {
-    const { status = '', university = '', page = '1', pageSize = '20' } = req.query;
-    const take = Math.min(Number(pageSize) || 20, 100);
-    const skip = (Math.max(Number(page) || 1, 1) - 1) * take;
-
-    const where = {
-      AND: [
-        status ? { status } : {},
-        university ? { universityId: Number(university) } : {},
-      ],
-    };
-
-    const [confessions, total] = await Promise.all([
-      prisma.confession.findMany({
-        where,
-        include: {
-          author: { select: { id: true, fullName: true, email: true, isBanned: true } },
-          university: { select: { id: true, name: true } },
-          _count: { select: { reactions: true } },
-        },
-        // Şikayet alanlar (özellikle otomatik gizlenenler) önce gösterilir.
-        orderBy: [{ reportCount: 'desc' }, { createdAt: 'desc' }],
-        take,
-        skip,
-      }),
-      prisma.confession.count({ where }),
-    ]);
-
-    res.json({ confessions, total, page: Number(page) || 1, pageSize: take });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'İtiraflar alınamadı.' });
-  }
-});
-
-// status: visible (yeniden görünür yap) | hidden_admin (elle gizle) | removed (kaldır)
-router.patch('/confessions/:id', async (req, res) => {
-  try {
-    const { status } = req.body;
-    const ALLOWED = ['visible', 'hidden_admin', 'removed'];
-    if (!ALLOWED.includes(status)) {
-      return res.status(400).json({ error: 'Geçersiz durum.' });
-    }
-
-    const confession = await prisma.confession.update({
-      where: { id: Number(req.params.id) },
-      data: { status },
-    });
-
-    res.json({ message: 'İtiraf güncellendi.', confession });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'İtiraf güncellenemedi.' });
   }
 });
 

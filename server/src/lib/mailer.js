@@ -33,7 +33,7 @@ function getTransporter() {
  */
 async function sendMail({ to, subject, html, text }) {
   const t = getTransporter();
-  const from = process.env.MAIL_FROM || 'kampüs+ <no-reply@kampusplus.app>';
+  const from = process.env.MAIL_FROM || 'kampüs· <no-reply@kampusplus.app>';
 
   if (!t) {
     // Geliştirme modu: SMTP tanımlı değil, konsola yaz.
@@ -48,4 +48,26 @@ async function sendMail({ to, subject, html, text }) {
   return { delivered: true, mode: 'smtp' };
 }
 
-module.exports = { sendMail, isRealSmtpConfigured: () => usingRealSmtp || !!getTransporter() };
+// Sunucu açılışında SMTP durumunu bildirir: tanımlı değilse uyarı (kayıt kodları
+// ve şifre sıfırlama bağlantıları gerçek kullanıcılara ulaşmaz), tanımlıysa
+// bağlantıyı doğrular.
+async function checkMailer() {
+  const t = getTransporter();
+  if (!t) {
+    const level = process.env.NODE_ENV === 'production' ? 'UYARI' : 'bilgi';
+    console.log(
+      `[mailer] ${level}: SMTP tanımlı değil; doğrulama kodları ve şifre sıfırlama e-postaları konsola yazılıyor.`
+    );
+    return false;
+  }
+  try {
+    await t.verify();
+    console.log('[mailer] SMTP bağlantısı doğrulandı, e-postalar gerçekten gönderilecek.');
+    return true;
+  } catch (err) {
+    console.error('[mailer] SMTP bağlantısı kurulamadı:', err.message);
+    return false;
+  }
+}
+
+module.exports = { sendMail, checkMailer, isRealSmtpConfigured: () => usingRealSmtp || !!getTransporter() };

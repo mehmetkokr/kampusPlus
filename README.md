@@ -87,13 +87,12 @@ Bu, **http://localhost:5173** adresinde uygulamayı açar — siteyi görmek iç
 - **Dosya yüklemeleri:** Profil fotoğrafları ve öğrenci belgeleri
   `server/uploads/` klasörüne kaydedilir.
 
-- **Yeni özellikler sonrası kurulum:** Şema değişti (yeni alanlar + `Confession`/
-  `ConfessionReaction` tabloları) ve yeni bir bağımlılık (`tesseract.js`, OCR için)
-  eklendi. Bu değişiklikleri çekince şunları çalıştır:
+- **Güncellemeleri çektikten sonra:** Şema değişiklikleri `server/prisma/migrations`
+  altında tutulur. Yeni kodu çektikten sonra şunları çalıştır:
   ```
   cd server
   npm install
-  npx prisma migrate dev --name grup_c_d
+  npx prisma migrate deploy
   ```
   `tesseract.js` ilk çalıştığında dil verilerini internetten indirir; OCR sadece
   resim (jpeg/png/webp) olarak yüklenen öğrenci belgelerinde çalışır, PDF'lerde
@@ -114,11 +113,6 @@ Gerçek bir ödeme sağlayıcısı bağlanınca tek değişmesi gereken yer bu d
 
 ## Grup D — Riskli/Hassas Özellikler
 
-- **Anonim itiraf kutusu** (`/confessions`, backend: `server/src/routes/confessions.js`):
-  yazar kimliği hiçbir kullanıcı uçta dışa verilmez; saatte 5 paylaşım sınırı vardır;
-  bir itiraf yeterince şikayet aldığında (`server/src/lib/moderation.js`) otomatik
-  gizlenir; admin panelinde ayrı bir "İtiraf Kutusu" ekranı (`/admin/confessions`)
-  üzerinden elle gizlenebilir/kaldırılabilir/tekrar görünür yapılabilir.
 - **OCR doğrulama** (`server/src/lib/ocr.js`): öğrenci belgesi yüklenince arka
   planda OCR ile metin çıkarılır ve üniversite adıyla kabaca örtüşüp örtüşmediği
   kontrol edilir. Bu sonuç admin kullanıcı listesinde bir rozet olarak gösterilir,
@@ -150,7 +144,7 @@ satın alanlar (Grup C) listenin başında çıkar (✨ rozetiyle işaretli).
   kullanıcıların toplam kullanıcıya oranı, ayrıca şu an aktif premium oranı
   ayrı gösterilir.
 - **En Aktif Kampüsler** (`GET /api/admin/stats/campuses`): üniversite
-  başına kullanıcı/eşleşme/itiraf sayısı, basit bir "etkinlik skoruna" göre
+  başına kullanıcı ve eşleşme sayısı, basit bir "etkinlik skoruna" göre
   sıralı ilk 10.
 
 ## Sıradaki Adımlar (Henüz Yapılmadı)

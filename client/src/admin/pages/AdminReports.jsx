@@ -15,8 +15,7 @@ const TARGET_TYPE_LABELS = {
   message: 'Mesaj',
   club: 'Kulüp',
   club_message: 'Kulüp Mesajı',
-  group_message: 'Grup Mesajı',
-  confession: 'İtiraf',
+  story: 'Hikaye',
 };
 
 const REASON_LABELS = {
@@ -31,7 +30,7 @@ function targetSummary(report) {
   if (!report.target) return <span className="muted">İçerik silinmiş</span>;
   if (report.targetType === 'user') return `${report.target.fullName} (${report.target.email})`;
   if (report.targetType === 'post') return report.target.caption || '(açıklamasız ilan)';
-  if (report.targetType === 'confession') return report.target.content || '(itiraf)';
+  if (report.targetType === 'story') return `Hikaye #${report.target.id} (fotoğraf)`;
   return report.target.content || '(medya mesajı)';
 }
 

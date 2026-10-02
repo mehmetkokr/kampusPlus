@@ -1,17 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
-import { Flag, ArrowLeft } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Flag, ArrowLeft, Layers, Heart, ChevronRight, BadgeCheck } from 'lucide-react';
+import PageHeader from '../components/PageHeader';
+import PhotoCarousel from '../components/PhotoCarousel';
 import api from '../api';
-import { API_BASE_URL } from '../config';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import ReportModal from '../components/ReportModal';
 import { INTENT_LABEL, INTENT_CHIP_CLASS, parseIntents } from '../constants/intents';
 import { UserPlus as UserPlusIcon, UserCheck as UserCheckIcon } from 'lucide-react';
+import { useI18n } from '../i18n';
+import { FileText, Telescope } from 'lucide-react';
 
 const SWIPE_THRESHOLD = 110;
 
 export default function SwipeDiscoverPage() {
+  const { t } = useI18n();
   const { user } = useAuth();
   const toast = useToast();
   const [candidates, setCandidates] = useState([]);
@@ -19,11 +23,28 @@ export default function SwipeDiscoverPage() {
   const [loading, setLoading] = useState(true);
   const [followedIds, setFollowedIds] = useState(new Set());
   const [reportingUserId, setReportingUserId] = useState(null);
+  const [likesCount, setLikesCount] = useState(0);
+  const navigate = useNavigate();
 
   // Kaydırma (swipe) hareketi için durum
   const [drag, setDrag] = useState({ x: 0, active: false });
-  const dragState = useRef({ startX: 0, dragging: false });
+  const dragState = useRef({ startX: 0, dragging: false, onPhoto: false });
+  const [photoIndex, setPhotoIndex] = useState(0);
+  // Sürükleme miktarı ref'te de tutulur: pointerup anında state güncellemesi
+  // henüz yansımamış olabilir (hızlı dokunuşlarda yanlış kararı önler).
+  const dragXRef = useRef(0);
   const cardRef = useRef(null);
+
+  function loadLikesCount() {
+    api
+      .get('/matches/likes-received')
+      .then((res) => setLikesCount(res.data.count))
+      .catch(() => {});
+  }
+
+  useEffect(() => {
+    loadLikesCount();
+  }, []);
 
   useEffect(() => {
     loadCandidates();
@@ -37,6 +58,7 @@ export default function SwipeDiscoverPage() {
       setCandidates(res.data);
       setIndex(0);
     } catch (err) {
+      if (err.response?.data?.swipeDisabled) return; // aşağıda 'Kart Modu kapalı' kartı gösterilir
       toast.error(err.response?.data?.error || 'Liste yüklenemedi.');
     } finally {
       setLoading(false);
@@ -63,15 +85,18 @@ export default function SwipeDiscoverPage() {
   }
 
   async function handleLike(targetUserId) {
+    // Kartı hemen ilerlet (akıcı his), isteği arkada gönder
+    advanceCard();
     try {
       const res = await api.post(`/matches/like/${targetUserId}`);
       if (res.data.matched) {
-        toast.success('🎉 Eşleştiniz! Sohbet sekmesinden mesajlaşabilirsiniz.', 4500);
+        toast.success('Eşleştiniz! Sohbet sekmesinden mesajlaşabilirsiniz.', 4500);
+        // Seni beğenen biriyle eşleştin: "seni beğendi" sayacı artık bir eksik
+        loadLikesCount();
       }
     } catch (err) {
-      console.error(err);
+      toast.error(err.response?.data?.error || 'Beğeni gönderilemedi.');
     }
-    advanceCard();
   }
 
   function handlePass() {
@@ -80,12 +105,18 @@ export default function SwipeDiscoverPage() {
 
   function advanceCard() {
     setDrag({ x: 0, active: false });
+    dragXRef.current = 0;
+    setPhotoIndex(0);
     setIndex((i) => i + 1);
   }
 
   // ---------- Sürükleyerek kaydırma (Sağa: Beğen, Sola: Geç) ----------
   function onPointerDown(e) {
-    dragState.current = { startX: e.clientX, dragging: true };
+    // Karttaki butonlara (Beğen, Geç, Takip Et, Şikayet) basılınca sürükleme
+    // başlatma: pointer capture tıklamayı karta yönlendirip butonları bozuyordu.
+    if (e.target.closest('button')) return;
+    dragXRef.current = 0;
+    dragState.current = { startX: e.clientX, dragging: true, onPhoto: !!e.target.closest('[data-photo-area]') };
     setDrag((d) => ({ ...d, active: true }));
     cardRef.current?.setPointerCapture?.(e.pointerId);
   }
@@ -93,13 +124,28 @@ export default function SwipeDiscoverPage() {
   function onPointerMove(e) {
     if (!dragState.current.dragging) return;
     const deltaX = e.clientX - dragState.current.startX;
+    dragXRef.current = deltaX;
     setDrag({ x: deltaX, active: true });
   }
 
-  function onPointerUp() {
+  function onPointerUp(e) {
     if (!dragState.current.dragging) return;
     dragState.current.dragging = false;
-    const { x } = drag;
+    const x = dragXRef.current;
+
+    // Fotoğrafa hareketsiz dokunuş: sağ yarı → sonraki, sol yarı → önceki fotoğraf
+    if (Math.abs(x) < 6 && dragState.current.onPhoto && e?.clientX !== undefined) {
+      const area = cardRef.current?.querySelector('[data-photo-area]');
+      const count = current?.photos?.length || 0;
+      if (area && count > 1) {
+        const rect = area.getBoundingClientRect();
+        const goNext = e.clientX > rect.left + rect.width / 2;
+        setPhotoIndex((i) => (goNext ? Math.min(i + 1, count - 1) : Math.max(i - 1, 0)));
+      }
+      setDrag({ x: 0, active: false });
+      return;
+    }
+
     if (x > SWIPE_THRESHOLD) {
       handleLike(current.id);
     } else if (x < -SWIPE_THRESHOLD) {
@@ -113,17 +159,16 @@ export default function SwipeDiscoverPage() {
     return (
       <div className="container">
         <div className="page-title-row">
-        <Link to="/discover" className="chat-back" aria-label="Geri">
+        <Link to="/discover" className="chat-back" aria-label={t("Geri")}>
           <ArrowLeft size={18} />
         </Link>
-        <h2 className="page-title">Kart Modu</h2>
+        <h2 className="page-title">{t("Kart Modu")}</h2>
       </div>
         <div className="card empty-state">
           <div className="empty-icon">⏳</div>
-          <h3>Hesabın İnceleniyor</h3>
+          <h3>{t("Hesabın İnceleniyor")}</h3>
           <p className="muted">
-            Doğrulama tamamlanana kadar diğer öğrencileri görüntüleyemezsin. Lütfen daha sonra
-            tekrar kontrol et.
+            {t("Doğrulama tamamlanana kadar diğer öğrencileri görüntüleyemezsin. Lütfen daha sonra tekrar kontrol et.")}
           </p>
         </div>
       </div>
@@ -134,17 +179,16 @@ export default function SwipeDiscoverPage() {
     return (
       <div className="container">
         <div className="page-title-row">
-        <Link to="/discover" className="chat-back" aria-label="Geri">
+        <Link to="/discover" className="chat-back" aria-label={t("Geri")}>
           <ArrowLeft size={18} />
         </Link>
-        <h2 className="page-title">Kart Modu</h2>
+        <h2 className="page-title">{t("Kart Modu")}</h2>
       </div>
         <div className="card empty-state">
-          <div className="empty-icon">📄</div>
-          <h3>Belgen İnceleniyor</h3>
+          <div className="empty-icon is-glyph"><FileText size={26} strokeWidth={1.8} /></div>
+          <h3>{t("Belgen İnceleniyor")}</h3>
           <p className="muted">
-            Yüklediğin öğrenci belgesi ekibimiz tarafından kontrol ediliyor. Onaylandığında
-            kullanıma başlayabilirsin.
+            {t("Yüklediğin öğrenci belgesi ekibimiz tarafından kontrol ediliyor. Onaylandığında kullanıma başlayabilirsin.")}
           </p>
         </div>
       </div>
@@ -157,23 +201,56 @@ export default function SwipeDiscoverPage() {
     ? { transform: `translateX(${drag.x}px) rotate(${rotation}deg)`, transition: 'none' }
     : { transform: 'translateX(0) rotate(0)', transition: 'transform 0.25s ease' };
 
+  // Kart Modu'nu Ayarlar'dan kapatan kullanıcı
+  if (user?.swipeEnabled === false) {
+    return (
+      <div className="container">
+        <div className="card empty-state" style={{ marginTop: 24 }}>
+          <div className="empty-icon is-glyph">
+            <Layers size={26} strokeWidth={1.8} />
+          </div>
+          <h3>{t('Kart Modu kapalı')}</h3>
+          <p className="muted">{t("Kart Modu'nu Ayarlar'dan kapattın; şu an kimsenin destesinde görünmüyorsun.")}</p>
+          <Link to="/settings" className="btn" style={{ width: 'auto', marginTop: 6 }}>
+            {t("Ayarlar'a git")}
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container">
-      <div className="page-title-row">
-        <Link to="/discover" className="chat-back" aria-label="Geri">
-          <ArrowLeft size={18} />
-        </Link>
-        <h2 className="page-title">Kart Modu</h2>
-      </div>
+      <PageHeader
+        compact
+        tone="rose"
+        icon={Layers}
+        eyebrow={t("Sağa kaydır: beğen · Sola: geç")}
+        title={t("Kart Modu")}
+        onBack={() => navigate('/discover')}
+      />
 
-      {loading && <p className="muted center-text">Yükleniyor...</p>}
+      {likesCount > 0 && (
+        <button type="button" className="likes-teaser" onClick={() => navigate('/matches?tab=likes')}>
+          <span className="likes-teaser-icon">
+            <Heart size={16} fill="currentColor" />
+          </span>
+          <span className="likes-teaser-text">
+            <strong>{likesCount} {t("kişi seni beğendi")}</strong>
+            <small>{user?.isPremium ? t("Kim olduklarını gör") : t("Premium ile kim olduklarını gör")}</small>
+          </span>
+          <ChevronRight size={18} />
+        </button>
+      )}
+
+      {loading && <p className="muted center-text">{t("Yükleniyor...")}</p>}
 
       {!loading && !current && (
         <div className="card empty-state">
-          <div className="empty-icon">🔭</div>
-          <p className="muted">Şu an gösterilecek başka kullanıcı yok.</p>
+          <div className="empty-icon is-glyph"><Telescope size={26} strokeWidth={1.8} /></div>
+          <p className="muted">{t("Şu an gösterilecek başka kullanıcı yok.")}</p>
           <button className="btn btn-secondary" onClick={loadCandidates} style={{ marginTop: 14 }}>
-            Yenile
+            {t("Yenile")}
           </button>
         </div>
       )}
@@ -188,54 +265,73 @@ export default function SwipeDiscoverPage() {
           onPointerUp={onPointerUp}
           onPointerCancel={onPointerUp}
         >
-          {drag.x > 30 && <span className="swipe-stamp like" style={{ opacity: Math.min(1, drag.x / SWIPE_THRESHOLD) }}>Beğen</span>}
-          {drag.x < -30 && <span className="swipe-stamp pass" style={{ opacity: Math.min(1, -drag.x / SWIPE_THRESHOLD) }}>Geç</span>}
+          {drag.x > 30 && <span className="swipe-stamp like" style={{ opacity: Math.min(1, drag.x / SWIPE_THRESHOLD) }}>{t("Beğen")}</span>}
+          {drag.x < -30 && <span className="swipe-stamp pass" style={{ opacity: Math.min(1, -drag.x / SWIPE_THRESHOLD) }}>{t("Geç")}</span>}
 
-          <div className="swipe-card-top">
-            <img
-              className="swipe-card-avatar"
-              src={current.photoUrl ? `${API_BASE_URL}${current.photoUrl}` : undefined}
-              alt={current.fullName}
-              draggable={false}
+          <div className="swipe-card-photo">
+            <PhotoCarousel
+              photos={current.photos}
+              index={photoIndex}
+              name={current.fullName}
+              initials={current.fullName
+                .split(' ')
+                .map((w) => w[0])
+                .slice(0, 2)
+                .join('')}
             />
-            <div className="swipe-card-heading">
-              <div className="swipe-card-info">
+          </div>
+
+          {/* Kişisel bilgiler: fotoğrafın altında ayrı bölme */}
+          <section className="swipe-info-panel" aria-label={t("Kişisel bilgiler")}>
+            <div className="swipe-info-head">
+              <div className="swipe-info-title">
                 <h3>
                   {current.fullName}
-                  {current.age ? `, ${current.age}` : ''}
+                  {current.age ? <span className="swipe-card-age">{current.age}</span> : null}
+                  {current.isStudentVerified && <BadgeCheck size={19} className="swipe-card-verified" aria-label={t("Onaylı öğrenci")} />}
                 </h3>
-                <p className="swipe-card-meta">
-                  {current.department || 'Bölüm belirtilmemiş'}
-                  {current.classYear ? ` · ${current.classYear}. Sınıf` : ''}
-                </p>
-                {current.university?.name && (
-                  <p className="swipe-card-university">{current.university.name}</p>
-                )}
               </div>
-            </div>
+              <div className="swipe-info-actions">
             <button
               className={`follow-toggle-btn ${followedIds.has(current.id) ? 'following' : ''}`}
               onClick={() => handleToggleFollow(current.id)}
             >
               {followedIds.has(current.id) ? (
                 <>
-                  <UserCheckIcon width={14} height={14} /> Takipte
+                  <UserCheckIcon width={14} height={14} /> {t("Takipte")}
                 </>
               ) : (
                 <>
-                  <UserPlusIcon width={14} height={14} /> Takip Et
+                  <UserPlusIcon width={14} height={14} /> {t("Takip Et")}
                 </>
               )}
             </button>
             <button
               className="follow-toggle-btn"
-              title="Şikayet Et"
+              title={t("Şikayet Et")}
               onClick={() => setReportingUserId(current.id)}
-              style={{ marginLeft: 6 }}
+              aria-label={t("Şikayet et")}
             >
               <Flag size={14} />
             </button>
-          </div>
+              </div>
+            </div>
+
+            <dl className="swipe-info-facts">
+              <div>
+                <dt>{t("Bölüm")}</dt>
+                <dd>{current.department || '—'}</dd>
+              </div>
+              <div>
+                <dt>{t("Sınıf")}</dt>
+                <dd>{current.classYear ? (current.classYear >= 5 ? t("Yüksek Lisans") : t(`${current.classYear}. Sınıf`)) : '—'}</dd>
+              </div>
+              <div className="span-2">
+                <dt>{t("Üniversite")}</dt>
+                <dd>{current.university?.name || '—'}</dd>
+              </div>
+            </dl>
+          </section>
 
           {current.intent && (
             <div className="intent-chip-stack">
@@ -270,7 +366,7 @@ export default function SwipeDiscoverPage() {
                   .filter(Boolean)
                   .map((i) => (
                     <span key={`hobby-${i}`} className="interest-chip">
-                      🎯 {i}
+                      {t(i)}
                     </span>
                   ))}
               </div>
@@ -279,10 +375,10 @@ export default function SwipeDiscoverPage() {
 
           <div className="swipe-actions">
             <button className="btn btn-pass" onClick={handlePass}>
-              Geç
+              {t("Geç")}
             </button>
             <button className="btn btn-like" onClick={() => handleLike(current.id)}>
-              Beğen
+              {t("Beğen")}
             </button>
           </div>
         </div>

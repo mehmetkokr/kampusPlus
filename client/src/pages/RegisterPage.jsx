@@ -1,71 +1,215 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, ShieldCheck, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, ShieldCheck, Eye, EyeOff, Check, X, Mail, RotateCw } from 'lucide-react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import AuthBackdrop from '../components/AuthBackdrop';
+import CubeLoader from '../components/CubeLoader';
+import UniversitySelect from '../components/UniversitySelect';
+import { minDuration } from '../utils/wait';
 import { INTENT_OPTIONS } from '../constants/intents';
+import { toTitleCaseTR, normalizeEmail } from '../utils/text';
+import { useI18n } from '../i18n';
+import BirthDateInput from '../components/BirthDateInput';
+import ThemeToggle from '../components/ThemeToggle';
+
+const PASSWORD_MIN = 8;
+const CODE_LENGTH = 6;
+
+// Basit şifre gücü: uzunluk + harf/rakam/sembol çeşitliliği
+function passwordStrength(pw) {
+  if (!pw) return { score: 0, label: '' };
+  let score = 0;
+  if (pw.length >= PASSWORD_MIN) score += 1;
+  if (pw.length >= 10) score += 1;
+  if (/[a-zçğıöşü]/.test(pw) && /[A-ZÇĞİÖŞÜ]/.test(pw)) score += 1;
+  if (/\d/.test(pw)) score += 1;
+  if (/[^A-Za-z0-9çğıöşüÇĞİÖŞÜ]/.test(pw)) score += 1;
+  const labels = ['Çok zayıf', 'Zayıf', 'Orta', 'İyi', 'Güçlü', 'Çok güçlü'];
+  return { score, label: labels[score] };
+}
 
 export default function RegisterPage() {
+  const { t: tx } = useI18n();
   const navigate = useNavigate();
   const { login } = useAuth();
   const toast = useToast();
 
+  const [step, setStep] = useState('details'); // details | code
   const [universities, setUniversities] = useState([]);
   const [form, setForm] = useState({
     fullName: '',
     email: '',
     password: '',
+    passwordConfirm: '',
     universityId: '',
     department: '',
     classYear: '',
+    birthDate: '',
   });
-  const [studentDoc, setStudentDoc] = useState(null);
   const [intents, setIntents] = useState(['friendship']);
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // hesap oluşturuluyor
+  const [sending, setSending] = useState(false); // kod gönderiliyor
 
-  function toggleIntent(value) {
-    setIntents((prev) =>
-      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
-    );
-  }
+  // Doğrulama kodu adımı
+  const [code, setCode] = useState(Array(CODE_LENGTH).fill(''));
+  const [codeError, setCodeError] = useState('');
+  const [resendIn, setResendIn] = useState(0);
+  const [devConsole, setDevConsole] = useState(false);
+  const codeRefs = useRef([]);
 
   useEffect(() => {
     api
       .get('/universities')
       .then((res) => setUniversities(res.data))
-      .catch((err) => {
-        console.error('Üniversiteler alınamadı:', err);
-        toast.error('Üniversite listesi yüklenemedi. Sayfayı yenilemeyi dene.');
-      });
+      .catch(() => toast.error('Üniversite listesi yüklenemedi. Sayfayı yenilemeyi dene.'));
     // Sadece sayfa açılışında bir kez çalışsın istiyoruz.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // "Kodu tekrar gönder" geri sayımı
+  useEffect(() => {
+    if (resendIn <= 0) return undefined;
+    const t = setTimeout(() => setResendIn((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendIn]);
+
+  function toggleIntent(value) {
+    setIntents((prev) => (prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]));
+  }
 
   function handleChange(e) {
     setForm({ ...form, [e.target.name]: e.target.value });
   }
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setLoading(true);
+  // Alandan çıkınca ad/bölümü Türkçe harf kurallarıyla, e-postayı küçük harfle düzelt
+  function handleBlur(e) {
+    const { name, value } = e.target;
+    if (name === 'fullName' || name === 'department') setForm((f) => ({ ...f, [name]: toTitleCaseTR(value) }));
+    if (name === 'email') setForm((f) => ({ ...f, email: normalizeEmail(value) }));
+  }
 
+  const strength = passwordStrength(form.password);
+  const passwordsMatch = form.passwordConfirm.length > 0 && form.password === form.passwordConfirm;
+  const confirmMismatch = form.passwordConfirm.length > 0 && form.password !== form.passwordConfirm;
+  const selectedUni = universities.find((u) => String(u.id) === String(form.universityId));
+  const emailDomain = normalizeEmail(form.email).split('@')[1] || '';
+  const uniDomain = selectedUni?.emailDomain?.toLowerCase();
+  const domainMismatch =
+    uniDomain && emailDomain && emailDomain !== uniDomain && !emailDomain.endsWith('.' + uniDomain);
+
+  // 1. adım → e-postaya kod gönder
+  async function sendCode(e) {
+    e?.preventDefault();
+    if (!form.universityId) return toast.error('Lütfen üniversiteni seç.');
+    if (domainMismatch) {
+      document.getElementById('reg-email')?.focus();
+      return toast.error(tx('Doğrulama kodu yalnızca okul e-postana gönderilir. @{domain} ile biten adresini gir.', { domain: selectedUni.emailDomain }));
+    }
+    if (!form.birthDate) return toast.error('Doğum tarihini kontrol et.');
+    if (form.password.length < PASSWORD_MIN) return toast.error(tx('Şifre en az {n} karakter olmalı.', { n: PASSWORD_MIN }));
+    if (form.password !== form.passwordConfirm) return toast.error('Şifreler birbiriyle eşleşmiyor.');
+
+    setSending(true);
+    try {
+      const res = await api.post('/auth/register/send-code', {
+        email: normalizeEmail(form.email),
+        universityId: form.universityId,
+      });
+      setDevConsole(!!res.data.devConsole);
+      setResendIn(res.data.resendInSec || 60);
+      setCode(Array(CODE_LENGTH).fill(''));
+      setCodeError('');
+      setStep('code');
+      setTimeout(() => codeRefs.current[0]?.focus(), 50);
+    } catch (err) {
+      const retry = err.response?.data?.retryAfter;
+      if (retry) {
+        // Kod zaten gönderilmiş; kod adımına geç, geri sayımı sunucuya göre ayarla
+        setResendIn(retry);
+        setStep('code');
+      }
+      toast.error(err.response?.data?.error || 'Doğrulama kodu gönderilemedi.');
+    } finally {
+      setSending(false);
+    }
+  }
+
+  function setDigit(i, v) {
+    const digits = v.replace(/\D/g, '');
+    // Otomatik doldurma (iOS/Android "one-time-code") ya da hızlı yazım tek
+    // kutuya birden çok rakam bırakabilir: bunları sıradaki kutulara dağıt.
+    // Dolu kutuya tek rakam yazıldıysa (ör. "25") yalnızca yenisini al.
+    const spread = digits.length > 2 || (digits.length === 2 && !code[i]);
+    const chunk = spread ? digits.slice(0, CODE_LENGTH - i) : digits.slice(-1);
+    setCode((prev) => {
+      const next = [...prev];
+      if (!chunk) next[i] = '';
+      [...chunk].forEach((d, k) => {
+        next[i + k] = d;
+      });
+      return next;
+    });
+    setCodeError('');
+    if (chunk) codeRefs.current[Math.min(i + chunk.length, CODE_LENGTH - 1)]?.focus();
+  }
+
+  function onCodeKeyDown(i, e) {
+    if (e.key === 'Backspace' && !code[i] && i > 0) codeRefs.current[i - 1]?.focus();
+    if (e.key === 'ArrowLeft' && i > 0) codeRefs.current[i - 1]?.focus();
+    if (e.key === 'ArrowRight' && i < CODE_LENGTH - 1) codeRefs.current[i + 1]?.focus();
+  }
+
+  function onCodePaste(e) {
+    const digits = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, CODE_LENGTH);
+    if (!digits) return;
+    e.preventDefault();
+    const next = Array(CODE_LENGTH).fill('').map((_, i) => digits[i] || '');
+    setCode(next);
+    codeRefs.current[Math.min(digits.length, CODE_LENGTH - 1)]?.focus();
+  }
+
+  // 2. adım → kodla birlikte hesabı oluştur
+  async function register(e) {
+    e.preventDefault();
+    const joined = code.join('');
+    if (joined.length !== CODE_LENGTH) return setCodeError(tx('6 haneli kodun tamamını gir.'));
+
+    setLoading(true);
+    const waitSuccess = minDuration(1400);
+    const waitError = minDuration(600);
     try {
       const formData = new FormData();
-      Object.entries(form).forEach(([key, value]) => formData.append(key, value));
+      const clean = {
+        ...form,
+        fullName: toTitleCaseTR(form.fullName),
+        department: toTitleCaseTR(form.department),
+        email: normalizeEmail(form.email),
+        code: joined,
+      };
+      Object.entries(clean).forEach(([key, value]) => formData.append(key, value));
       formData.append('intent', (intents.length ? intents : ['friendship']).join(','));
-      if (studentDoc) formData.append('studentDoc', studentDoc);
 
-      const res = await api.post('/auth/register', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-
+      const res = await api.post('/auth/register', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      await waitSuccess();
       login(res.data.token, res.data.user, true);
-      navigate('/discover');
+      // Yeni hesap: önce 3 adımlık başlangıç (fotoğraf, ilgi alanları, takip)
+      navigate('/welcome');
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Kayıt sırasında bir hata oluştu.');
+      await waitError();
+      const data = err.response?.data || {};
+      if (data.codeError) {
+        setCodeError(data.error);
+        if (data.codeError !== 'invalid') setResendIn(0); // süresi doldu / kilitlendi → hemen yeni kod istenebilsin
+        setCode(Array(CODE_LENGTH).fill(''));
+        codeRefs.current[0]?.focus();
+      } else {
+        toast.error(data.error || 'Kayıt sırasında bir hata oluştu.');
+        // Kod dışı bir hata (ör. e-posta alındı) → bilgileri düzeltmek için geri dön
+        if (err.response?.status === 400 || err.response?.status === 409) setStep('details');
+      }
     } finally {
       setLoading(false);
     }
@@ -74,112 +218,227 @@ export default function RegisterPage() {
   return (
     <div className="auth-screen">
       <AuthBackdrop />
+      {loading && <CubeLoader mode="overlay" label={tx("Hesabın oluşturuluyor")} />}
+
+      <ThemeToggle className="auth-theme-toggle" />
 
       <Link to="/" className="auth-back">
-        <ArrowLeft size={15} /> Anasayfa
+        <ArrowLeft size={15} /> {tx("Anasayfa")}
       </Link>
 
       <div className="auth-content">
         <div className="auth-wordmark">
-          kampüs<span className="dot">·</span>
+          {tx("kampüs")}<span className="dot">·</span>
         </div>
-        <p className="auth-tagline">sadece kendi üniversitenden insanlarla tanış</p>
+        <p className="auth-tagline">{tx("sadece kendi üniversitenden insanlarla tanış")}</p>
+
+        <ol className="register-steps" aria-label={tx("Kayıt adımları")}>
+          <li className={step === 'details' ? 'is-current' : 'is-done'}>
+            <span>{step === 'details' ? '1' : <Check size={12} strokeWidth={3} />}</span> {tx("Bilgilerin")}
+          </li>
+          <li className={step === 'code' ? 'is-current' : ''}>
+            <span>2</span> {tx("E-posta doğrulama")}
+          </li>
+        </ol>
 
         <div className="auth-card">
-          <h2>Hesap oluştur</h2>
-          <p className="muted">Üniversite e-postanla katıl</p>
+          {step === 'details' ? (
+            <>
+              <h2>{tx("Hesap oluştur")}</h2>
+              <p className="muted">{tx("Üniversite e-postanla katıl")}</p>
 
-          <form onSubmit={handleSubmit}>
-            <label>Ad Soyad</label>
-            <input name="fullName" value={form.fullName} onChange={handleChange} required />
+              <form onSubmit={sendCode}>
+                <label htmlFor="reg-name">{tx("Ad Soyad")}</label>
+                <input id="reg-name" name="fullName" value={form.fullName} onChange={handleChange} onBlur={handleBlur} autoComplete="name" required />
 
-            <label>Üniversite E-posta Adresi</label>
-            <input
-              type="email"
-              name="email"
-              value={form.email}
-              onChange={handleChange}
-              placeholder="ornek@ogrenci.universite.edu.tr"
-              required
-            />
+                <label htmlFor="reg-uni">{tx("Üniversite")}</label>
+                <UniversitySelect
+                  id="reg-uni"
+                  universities={universities}
+                  value={form.universityId}
+                  onChange={(v) => setForm((f) => ({ ...f, universityId: v }))}
+                  required
+                />
 
-            <label>Şifre</label>
-            <div className="password-field-wrap">
-              <input
-                type={showPassword ? 'text' : 'password'}
-                name="password"
-                value={form.password}
-                onChange={handleChange}
-                minLength={6}
-                placeholder="En az 6 karakter"
-                required
-              />
-              <button
-                type="button"
-                className="password-toggle-btn"
-                onClick={() => setShowPassword((v) => !v)}
-                aria-label={showPassword ? 'Şifreyi gizle' : 'Şifreyi göster'}
-              >
-                {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
-              </button>
-            </div>
+                <label htmlFor="reg-email">{tx("Üniversite E-posta Adresi")}</label>
+                <input
+                  id="reg-email"
+                  type="email"
+                  name="email"
+                  value={form.email}
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  autoComplete="email"
+                  aria-invalid={!!domainMismatch}
+                  aria-describedby="reg-email-hint"
+                  className={domainMismatch ? 'is-invalid' : ''}
+                  placeholder={selectedUni?.emailDomain ? `ornek@${selectedUni.emailDomain}` : tx("ornek@ogrenci.universite.edu.tr")}
+                  required
+                />
+                {domainMismatch ? (
+                  <p id="reg-email-hint" className="field-hint field-hint-warn">
+                    {tx('Bu adres @{domain} ile bitmiyor. Doğrulama kodu yalnızca okul e-postana gönderilir.', { domain: selectedUni.emailDomain })}
+                  </p>
+                ) : (
+                  <p id="reg-email-hint" className="field-hint">
+                    {selectedUni?.emailDomain
+                      ? tx('Doğrulama kodu bu adrese gönderilir. Yalnızca @{domain} uzantılı okul e-postası kabul edilir.', { domain: selectedUni.emailDomain })
+                      : tx('Önce üniversiteni seç; doğrulama kodu yalnızca okul e-postana gönderilir.')}
+                  </p>
+                )}
 
-            <label>Üniversite</label>
-            <select name="universityId" value={form.universityId} onChange={handleChange} required>
-              <option value="">Seçiniz...</option>
-              {universities.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name}
-                </option>
-              ))}
-            </select>
+                <label htmlFor="reg-pass">{tx("Şifre")}</label>
+                <div className="password-field-wrap">
+                  <input
+                    id="reg-pass"
+                    type={showPassword ? 'text' : 'password'}
+                    name="password"
+                    value={form.password}
+                    onChange={handleChange}
+                    minLength={PASSWORD_MIN}
+                    placeholder={tx('En az {n} karakter', { n: PASSWORD_MIN })}
+                    autoComplete="new-password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="password-toggle-btn"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? tx("Şifreyi gizle") : tx("Şifreyi göster")}
+                  >
+                    {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                  </button>
+                </div>
+                {form.password && (
+                  <div className={`pw-strength s-${strength.score}`} aria-live="polite">
+                    <span className="pw-strength-bar">
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <i key={n} className={n <= strength.score ? 'on' : ''} />
+                      ))}
+                    </span>
+                    {tx(strength.label)}
+                  </div>
+                )}
 
-            <label>Bölüm (opsiyonel)</label>
-            <input name="department" value={form.department} onChange={handleChange} />
+                <label htmlFor="reg-pass2">{tx("Şifre (tekrar)")}</label>
+                <div className="password-field-wrap">
+                  <input
+                    id="reg-pass2"
+                    type={showPassword ? 'text' : 'password'}
+                    name="passwordConfirm"
+                    value={form.passwordConfirm}
+                    onChange={handleChange}
+                    autoComplete="new-password"
+                    aria-invalid={confirmMismatch}
+                    className={confirmMismatch ? 'is-invalid' : passwordsMatch ? 'is-valid' : ''}
+                    required
+                  />
+                  {(passwordsMatch || confirmMismatch) && (
+                    <span className={`pw-match ${passwordsMatch ? 'ok' : 'no'}`} aria-hidden="true">
+                      {passwordsMatch ? <Check size={16} /> : <X size={16} />}
+                    </span>
+                  )}
+                </div>
+                {confirmMismatch && <p className="field-hint field-hint-warn">{tx("Şifreler birbiriyle eşleşmiyor.")}</p>}
 
-            <label>Sınıf (opsiyonel)</label>
-            <select name="classYear" value={form.classYear} onChange={handleChange}>
-              <option value="">Seçiniz...</option>
-              <option value="1">1. Sınıf</option>
-              <option value="2">2. Sınıf</option>
-              <option value="3">3. Sınıf</option>
-              <option value="4">4. Sınıf</option>
-              <option value="5">Yüksek Lisans / Diğer</option>
-            </select>
+                <label htmlFor="register-birth">{tx("Doğum Tarihi")}</label>
+                <BirthDateInput
+                  id="register-birth"
+                  value={form.birthDate}
+                  onChange={(v) => setForm((f) => ({ ...f, birthDate: v }))}
+                  required
+                />
+                <p className="field-hint">{tx("Yaşın profilinde görünür, doğum tarihin görünmez. Kayıttan sonra değiştirilemez.")}</p>
 
-            <label>Ne arıyorsun? (en az bir tane seç)</label>
-            <div className="intent-select-grid">
-              {INTENT_OPTIONS.map((opt) => (
-                <button
-                  type="button"
-                  key={opt.value}
-                  className={`intent-toggle ${intents.includes(opt.value) ? 'active' : ''}`}
-                  onClick={() => toggleIntent(opt.value)}
-                >
-                  {opt.label}
+                <label htmlFor="reg-dept">{tx("Bölüm")}</label>
+                <input id="reg-dept" name="department" value={form.department} onChange={handleChange} onBlur={handleBlur} placeholder={tx("örn. Bilgisayar Mühendisliği")} required />
+
+                <label htmlFor="reg-class">{tx("Sınıf")}</label>
+                <select id="reg-class" name="classYear" value={form.classYear} onChange={handleChange} required>
+                  <option value="">{tx("Seçiniz...")}</option>
+                  <option value="1">{tx("1. Sınıf")}</option>
+                  <option value="2">{tx("2. Sınıf")}</option>
+                  <option value="3">{tx("3. Sınıf")}</option>
+                  <option value="4">{tx("4. Sınıf")}</option>
+                  <option value="5">{tx("Yüksek Lisans / Diğer")}</option>
+                </select>
+                <p className="field-hint">{tx("Üniversite, bölüm ve sınıf bilgin kayıttan sonra değiştirilemez; lütfen doğru seç.")}</p>
+
+                <label>{tx("Ne arıyorsun? (en az bir tane seç)")}</label>
+                <div className="intent-select-grid">
+                  {INTENT_OPTIONS.map((opt) => (
+                    <button
+                      type="button"
+                      key={opt.value}
+                      className={`intent-toggle ${intents.includes(opt.value) ? 'active' : ''}`}
+                      onClick={() => toggleIntent(opt.value)}
+                    >
+                      {tx(opt.label)}
+                    </button>
+                  ))}
+                </div>
+                <p className="field-hint intent-dating-note">{tx("Flört ve Uzun Süreli İlişki seçimini yalnızca bunları seçen öğrenciler görür.")}</p>
+
+                <button className="btn" type="submit" disabled={sending}>
+                  {sending ? tx("Kod gönderiliyor…") : tx("Devam et")}
                 </button>
-              ))}
-            </div>
+              </form>
+            </>
+          ) : (
+            <form onSubmit={register} className="code-step">
+              <span className="code-step-icon" aria-hidden="true">
+                <Mail size={22} />
+              </span>
+              <h2>{tx("E-postanı doğrula")}</h2>
+              <p className="muted">
+                {tx('{email} adresine 6 haneli bir kod gönderdik. Kod 10 dakika geçerli.', { email: normalizeEmail(form.email) })}
+              </p>
 
-            <label>Öğrenci Belgesi (e-postanız okul domaini değilse gerekli)</label>
-            <input
-              type="file"
-              accept="image/*,.pdf"
-              onChange={(e) => setStudentDoc(e.target.files[0])}
-            />
+              <div className="code-inputs" onPaste={onCodePaste}>
+                {code.map((d, i) => (
+                  <input
+                    key={i}
+                    ref={(el) => (codeRefs.current[i] = el)}
+                    value={d}
+                    onChange={(e) => setDigit(i, e.target.value)}
+                    onKeyDown={(e) => onCodeKeyDown(i, e)}
+                    inputMode="numeric"
+                    autoComplete={i === 0 ? 'one-time-code' : 'off'}
+                    aria-label={tx('Kodun {n}. hanesi', { n: i + 1 })}
+                    className={codeError ? 'is-invalid' : ''}
+                  />
+                ))}
+              </div>
+              {codeError && <p className="error-text code-error">{codeError}</p>}
 
-            <button className="btn" type="submit" disabled={loading}>
-              {loading ? 'Kaydediliyor...' : 'Kayıt Ol'}
-            </button>
-          </form>
+              {devConsole && (
+                <p className="field-hint code-dev-note">
+                  {tx("Geliştirme ortamı: e-posta sunucusu (SMTP) ayarlı olmadığı için kod, sunucu konsoluna yazıldı.")}
+                </p>
+              )}
+
+              <button className="btn" type="submit" disabled={loading || code.join('').length !== CODE_LENGTH}>
+                {tx("Hesabı oluştur")}
+              </button>
+
+              <div className="code-actions">
+                <button type="button" className="link-btn" disabled={resendIn > 0 || sending} onClick={sendCode}>
+                  <RotateCw size={14} /> {resendIn > 0 ? `Kodu tekrar gönder (${resendIn} sn)` : tx("Kodu tekrar gönder")}
+                </button>
+                <button type="button" className="link-btn" onClick={() => setStep('details')}>
+                  <ArrowLeft size={14} /> {tx("Bilgileri düzenle")}
+                </button>
+              </div>
+            </form>
+          )}
 
           <div className="auth-trust">
-            <ShieldCheck size={13} /> Üniversite e-postanla anında doğrulanır
+            <ShieldCheck size={13} /> {tx("Yalnızca doğrulanmış üniversite öğrencileri")}
           </div>
         </div>
 
         <p className="auth-foot">
-          Zaten hesabın var mı? <Link to="/login">Giriş Yap</Link>
+          {tx("Zaten hesabın var mı?")} <Link to="/login">{tx("Giriş Yap")}</Link>
         </p>
       </div>
     </div>

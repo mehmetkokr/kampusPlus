@@ -26,9 +26,6 @@ export const adminApi = {
   getReports: (params) => api.get('/admin/reports', { params }),
   updateReport: (id, data) => api.patch(`/admin/reports/${id}`, data),
 
-  // Grup D: itiraf kutusu moderasyonu
-  getConfessions: (params) => api.get('/admin/confessions', { params }),
-  updateConfession: (id, data) => api.patch(`/admin/confessions/${id}`, data),
 };
 
 export default adminApi;

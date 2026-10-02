@@ -1,0 +1,276 @@
+/* ==========================================================================
+   Kampüs gökyüzü — tüm sayfaların ortak canlı arka planı (bkz. CampusSky.jsx)
+   Koyu mod: kampüste gece (yıldızlar + bağlantılar + kayan yıldız)
+   Açık mod: kampüste sabah (gün doğumu ışıkları + süzülen zerreler + huzme)
+   Yalnızca transform ve opacity canlandırılır.
+   ========================================================================== */
+
+.campus-sky {
+  --sky-ease: cubic-bezier(0.23, 1, 0.32, 1);
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+  background: radial-gradient(120% 85% at 50% -12%, color-mix(in srgb, var(--amber-soft) 9%, var(--bg)) 0%, var(--bg) 62%);
+}
+.campus-sky--auth { z-index: 0; }
+.campus-sky--landing {
+  position: absolute;
+  background: transparent;
+  -webkit-mask-image: linear-gradient(to bottom, #000 70%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 70%, transparent 100%);
+}
+
+/* Fareyle hafif derinlik: uzak katman az, yakın katman çok kayar */
+.sky-depth {
+  position: absolute;
+  inset: -4%;
+  transition: transform 1.2s var(--sky-ease);
+}
+.sky-depth-far { transform: translate3d(calc(var(--px, 0) * -14px), calc(var(--py, 0) * -10px), 0); }
+.sky-depth-near { transform: translate3d(calc(var(--px, 0) * -30px), calc(var(--py, 0) * -22px), 0); }
+
+/* ---------- Işık kümeleri ---------- */
+.sky-glow {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, var(--glow), transparent);
+  will-change: transform;
+}
+.sky-glow-1 {
+  --glow: #c75b30;
+  width: 70vmax;
+  height: 55vmax;
+  left: -22vmax;
+  top: -26vmax;
+  opacity: 0.26;
+  animation: sky-drift-1 34s ease-in-out infinite alternate;
+}
+.sky-glow-2 {
+  --glow: #8fb89a;
+  width: 52vmax;
+  height: 46vmax;
+  right: -20vmax;
+  top: 10vh;
+  opacity: 0.13;
+  animation: sky-drift-2 42s ease-in-out infinite alternate;
+}
+.sky-glow-3 {
+  --glow: #5f7fa6;
+  width: 64vmax;
+  height: 44vmax;
+  left: -10vmax;
+  bottom: -26vmax;
+  opacity: 0.16;
+  animation: sky-drift-3 48s ease-in-out infinite alternate;
+}
+.sky-glow-4 {
+  --glow: #e0835a;
+  width: 40vmax;
+  height: 30vmax;
+  right: 6vw;
+  top: -14vmax;
+  opacity: 0.1;
+  animation: sky-drift-2 38s ease-in-out -12s infinite alternate-reverse;
+}
+
+@keyframes sky-drift-1 {
+  from { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
+  to { transform: translate3d(9vw, 6vh, 0) rotate(12deg) scale(1.14); }
+}
+@keyframes sky-drift-2 {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(-10vw, 8vh, 0) scale(0.88); }
+}
+@keyframes sky-drift-3 {
+  from { transform: translate3d(0, 0, 0) rotate(0deg) scale(1.05); }
+  to { transform: translate3d(12vw, -7vh, 0) rotate(-10deg) scale(0.94); }
+}
+
+/* ---------- Yıldızlar / ışık zerreleri ---------- */
+.sky-star {
+  position: absolute;
+  width: calc(var(--s) * 1px);
+  height: calc(var(--s) * 1px);
+  margin: calc(var(--s) * -0.5px) 0 0 calc(var(--s) * -0.5px);
+}
+.sky-star i {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #f3ece1;
+  box-shadow: 0 0 calc(var(--s) * 3px) rgba(243, 236, 225, 0.55);
+  opacity: 0.5;
+  animation: sky-twinkle var(--tw) ease-in-out var(--dl) infinite alternate;
+}
+.sky-star.is-node {
+  width: calc(var(--s) * 1.7px);
+  height: calc(var(--s) * 1.7px);
+}
+.sky-star.is-node i {
+  background: #f6c9ad;
+  box-shadow: 0 0 calc(var(--s) * 5px) rgba(224, 131, 90, 0.7);
+}
+
+@keyframes sky-twinkle {
+  from { opacity: 0.15; transform: scale(0.7); }
+  to { opacity: 0.9; transform: scale(1); }
+}
+
+/* ---------- Takımyıldız bağlantıları (tanışan öğrenciler) ---------- */
+.sky-links {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.sky-links line {
+  stroke: #f3ece1;
+  stroke-width: 1;
+  stroke-linecap: round;
+  opacity: 0;
+  animation: sky-link 14s ease-in-out infinite;
+}
+@keyframes sky-link {
+  0%, 100% { opacity: 0; }
+  30%, 55% { opacity: 0.22; }
+}
+
+/* ---------- Kayan yıldız (yalnızca gece, nadiren) ---------- */
+.sky-meteor {
+  position: absolute;
+  top: 14%;
+  left: 62%;
+  width: 140px;
+  height: 1px;
+  border-radius: 1px;
+  background: linear-gradient(90deg, rgba(243, 236, 225, 0), rgba(243, 236, 225, 0.9));
+  opacity: 0;
+  transform: rotate(-24deg) translate3d(0, 0, 0);
+  animation: sky-meteor 17s cubic-bezier(0.23, 1, 0.32, 1) 4s infinite;
+}
+@keyframes sky-meteor {
+  0%, 88% { opacity: 0; transform: rotate(152deg) translate3d(0, 0, 0); }
+  90% { opacity: 1; }
+  96%, 100% { opacity: 0; transform: rotate(152deg) translate3d(38vw, 0, 0); }
+}
+
+/* ---------- Güneş huzmesi (yalnızca sabah) ---------- */
+.sky-ray {
+  display: none;
+  position: absolute;
+  top: -30%;
+  left: 10%;
+  width: 26vmax;
+  height: 160%;
+  background: linear-gradient(90deg, transparent, rgba(255, 236, 205, 0.55) 50%, transparent);
+  transform: rotate(24deg) translate3d(-30vw, 0, 0);
+  animation: sky-ray 26s ease-in-out infinite alternate;
+}
+@keyframes sky-ray {
+  from { transform: rotate(24deg) translate3d(-30vw, 0, 0); opacity: 0.35; }
+  to { transform: rotate(24deg) translate3d(40vw, 0, 0); opacity: 0.8; }
+}
+
+.sky-grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.045;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.sky-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(130% 100% at 50% 25%, transparent 45%, color-mix(in srgb, var(--bg) 80%, transparent) 100%);
+}
+.campus-sky--landing .sky-vignette { display: none; }
+
+/* ---------- Uygulama içi: sakin sürüm (içerik okunurken dikkat dağıtmaz) ---------- */
+.campus-sky--app .sky-depth-near { opacity: 0.85; }
+.campus-sky--app .sky-glow { opacity: calc(var(--o, 1) * 0.85); }
+.campus-sky--app .sky-glow-1 { --o: 0.26; }
+.campus-sky--app .sky-glow-2 { --o: 0.13; }
+.campus-sky--app .sky-glow-3 { --o: 0.16; }
+.campus-sky--app .sky-glow-4 { --o: 0.1; }
+.campus-sky--app .sky-meteor { display: none; }
+
+/* ==========================================================================
+   Açık mod: kampüste sabah
+   ========================================================================== */
+[data-theme='light'] .campus-sky:not(.campus-sky--landing) {
+  background: radial-gradient(120% 85% at 50% -12%, #fff3e3 0%, var(--bg) 62%);
+}
+[data-theme='light'] .sky-glow-1 { --glow: #f2a57f; opacity: 0.42; }
+[data-theme='light'] .sky-glow-2 { --glow: #a9c7a8; opacity: 0.38; }
+[data-theme='light'] .sky-glow-3 { --glow: #b4cbe6; opacity: 0.4; }
+[data-theme='light'] .sky-glow-4 { --glow: #f6d58c; opacity: 0.4; }
+[data-theme='light'] .campus-sky--app .sky-glow-1 { --o: 0.42; }
+[data-theme='light'] .campus-sky--app .sky-glow-2 { --o: 0.38; }
+[data-theme='light'] .campus-sky--app .sky-glow-3 { --o: 0.4; }
+[data-theme='light'] .campus-sky--app .sky-glow-4 { --o: 0.4; }
+[data-theme='light'] .campus-sky--app .sky-glow { opacity: calc(var(--o) * 0.85); }
+
+/* Yıldızlar → güneşte süzülen sıcak ışık zerreleri */
+[data-theme='light'] .sky-star {
+  width: calc(var(--s) * 3.4px);
+  height: calc(var(--s) * 3.4px);
+  animation: sky-float var(--fl) ease-in-out var(--dl) infinite alternate;
+}
+[data-theme='light'] .sky-star i {
+  background: radial-gradient(circle, rgba(199, 91, 48, 0.55), rgba(199, 91, 48, 0) 70%);
+  box-shadow: none;
+}
+[data-theme='light'] .sky-star.is-node i {
+  background: radial-gradient(circle, rgba(79, 125, 93, 0.6), rgba(79, 125, 93, 0) 70%);
+  box-shadow: none;
+}
+@keyframes sky-float {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(14px, -46px, 0); }
+}
+[data-theme='light'] .sky-links line { stroke: #b4501f; }
+[data-theme='light'] .sky-links line { animation-name: sky-link-light; }
+@keyframes sky-link-light {
+  0%, 100% { opacity: 0; }
+  30%, 55% { opacity: 0.14; }
+}
+[data-theme='light'] .sky-meteor { display: none; }
+[data-theme='light'] .sky-ray { display: block; }
+[data-theme='light'] .campus-sky--app .sky-ray { opacity: 0.5; animation: none; transform: rotate(24deg) translate3d(10vw, 0, 0); }
+[data-theme='light'] .sky-grain { opacity: 0.03; mix-blend-mode: multiply; }
+[data-theme='light'] .sky-vignette {
+  background: radial-gradient(130% 100% at 50% 25%, transparent 55%, color-mix(in srgb, var(--bg) 70%, transparent) 100%);
+}
+
+/* ---------- Hareketi azalt: sahne durağan, renkler aynı ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .sky-glow,
+  .sky-star,
+  .sky-star i,
+  .sky-ray,
+  [data-theme='light'] .sky-star { animation: none; }
+  .sky-star i { opacity: 0.55; }
+  .sky-links line { animation: none; opacity: 0.14; }
+  [data-theme='light'] .sky-links line { opacity: 0.08; }
+  .sky-meteor { display: none; }
+  .sky-depth { transition: none; transform: none; }
+}
+
+/* Form ve başlık metinlerinin arkasında bağlantı çizgisi olmasın (net okunsun) */
+.campus-sky--auth .sky-links,
+.campus-sky--landing .sky-links {
+  -webkit-mask-image: radial-gradient(ellipse 46% 42% at 50% 50%, transparent 70%, #000 100%);
+  mask-image: radial-gradient(ellipse 46% 42% at 50% 50%, transparent 70%, #000 100%);
+}
+@media (max-width: 640px) {
+  .campus-sky--auth .sky-links,
+  .campus-sky--landing .sky-links {
+    -webkit-mask-image: linear-gradient(90deg, #000 0, transparent 18%, transparent 82%, #000 100%);
+    mask-image: linear-gradient(90deg, #000 0, transparent 18%, transparent 82%, #000 100%);
+  }
+}

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import api from '../api';
+import { applyTheme, getStoredTheme, systemTheme, takeGuestThemeChoice } from '../utils/theme';
 
 const AuthContext = createContext(null);
 
@@ -32,11 +33,16 @@ export function AuthProvider({ children }) {
       .finally(() => setLoading(false));
   }, [token]);
 
-  // Kullanıcının tema tercihini <html> elementine uygula (CSS değişkenleri
-  // [data-theme='light'] seçicisiyle geçersiz kılınıyor, bkz. index.css)
+  // Tema: oturum açıksa hesabın tercihi; değilse (tanıtım, giriş/kayıt)
+  // tarayıcıda hatırlanan seçim ya da cihazın açık/koyu ayarı. Tüm sayfalar
+  // aynı paleti kullanır, yalnızca mod değişir (bkz. utils/theme.js).
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', user?.theme === 'light' ? 'light' : 'dark');
-  }, [user?.theme]);
+    if (user) {
+      applyTheme(user.theme === 'light' ? 'light' : 'dark', { remember: true });
+    } else if (!loading) {
+      applyTheme(getStoredTheme() || systemTheme());
+    }
+  }, [user, user?.theme, loading]);
 
   function login(newToken, newUser, rememberMe = true) {
     // Önce her iki depolamayı da temizle, sonra tercihe göre yaz
@@ -48,6 +54,15 @@ export function AuthProvider({ children }) {
       sessionStorage.setItem('token', newToken);
     }
     setToken(newToken);
+
+    // Giriş yapmadan önce (ana sayfa, giriş/kayıt ekranı) açık/koyu seçildiyse
+    // en son seçim geçerli olur ve hesaba da kaydedilir.
+    const guestTheme = takeGuestThemeChoice();
+    if (guestTheme && guestTheme !== newUser?.theme) {
+      setUser({ ...newUser, theme: guestTheme });
+      api.put('/profile/me/appearance', { theme: guestTheme }).catch(() => {});
+      return;
+    }
     setUser(newUser);
   }
 
@@ -56,7 +71,7 @@ export function AuthProvider({ children }) {
     sessionStorage.removeItem('token');
     setToken(null);
     setUser(null);
-    document.documentElement.setAttribute('data-theme', 'dark');
+    // Çıkışta tema korunur: tanıtım ve giriş sayfaları da aynı modda kalır
   }
 
   return (

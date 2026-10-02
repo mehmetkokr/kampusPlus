@@ -3,19 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import {
   Search,
   Filter,
-  MoreVertical,
-  Flag,
-  ShieldOff,
-  EyeOff,
   BadgeCheck,
   Heart,
   MessageCircle,
   Share2,
   X,
-  Zap,
   Lock,
-  Globe2,
   Compass,
+  Sparkles,
+  ChevronRight,
 } from 'lucide-react';
 import api from '../api';
 import { API_BASE_URL } from '../config';
@@ -23,20 +19,17 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import NotificationBell from '../components/NotificationBell';
 import PageHeader from '../components/PageHeader';
+import ClubIcon from '../components/ClubIcon';
+import StudentBadgeCard from '../components/StudentBadgeCard';
+import SuggestedPeopleRail from '../components/SuggestedPeopleRail';
+import ActiveNowStrip from '../components/ActiveNowStrip';
+import DiscoverQuickTiles from '../components/DiscoverQuickTiles';
+import InterestTiles from '../components/InterestTiles';
 import ReportModal from '../components/ReportModal';
 import PaywallModal from '../components/PaywallModal';
-import LockedUserCard from '../components/LockedUserCard';
-
-const CATEGORIES = [
-  { value: 'all', label: 'Tümü' },
-  { value: 'nearby', label: 'Yakınımdakiler' },
-  { value: 'university', label: 'Aynı Üniversite' },
-  { value: 'department', label: 'Aynı Bölüm' },
-  { value: 'new', label: 'Yeni Katılanlar' },
-  { value: 'popular', label: 'Popüler' },
-  { value: 'verified', label: 'Doğrulanmış' },
-  { value: 'active', label: 'En Aktif' },
-];
+import { useConfirm } from '../context/ConfirmContext';
+import { useI18n } from '../i18n';
+import { Crown } from 'lucide-react';
 
 function timeAgo(dateStr) {
   const diffMs = Date.now() - new Date(dateStr).getTime();
@@ -50,9 +43,11 @@ function timeAgo(dateStr) {
 }
 
 export default function DiscoverPage() {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const toast = useToast();
-  const { user } = useAuth();
+  const confirm = useConfirm();
+  const { user, setUser } = useAuth();
 
   const [showPaywall, setShowPaywall] = useState(false);
   const [paywallReason, setPaywallReason] = useState('');
@@ -63,7 +58,6 @@ export default function DiscoverPage() {
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [category, setCategory] = useState('all');
   const [hiddenIds, setHiddenIds] = useState(new Set());
   const [followedIds, setFollowedIds] = useState(new Set());
   const [openMenuId, setOpenMenuId] = useState(null);
@@ -78,10 +72,10 @@ export default function DiscoverPage() {
   const [filterDepartment, setFilterDepartment] = useState('');
   const [filterClassYear, setFilterClassYear] = useState('');
 
-  const load = useCallback(async (cat, filters = {}) => {
+  const load = useCallback(async (filters = {}) => {
     setLoading(true);
     try {
-      const params = { category: cat };
+      const params = {};
       if (filters.department) params.department = filters.department;
       if (filters.classYear) params.classYear = filters.classYear;
       const res = await api.get('/discover/home', { params });
@@ -95,9 +89,9 @@ export default function DiscoverPage() {
   }, [toast]);
 
   useEffect(() => {
-    load(category, { department: filterDepartment, classYear: filterClassYear });
+    load({ department: filterDepartment, classYear: filterClassYear });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [category]);
+  }, []);
 
   // ---------- Arama (debounce) ----------
   useEffect(() => {
@@ -143,13 +137,8 @@ export default function DiscoverPage() {
     }
   }
 
-  function handleHide(userId) {
-    setHiddenIds((prev) => new Set(prev).add(userId));
-    setOpenMenuId(null);
-  }
-
   async function handleBlock(userId) {
-    if (!window.confirm('Bu kullanıcıyı engellemek istediğine emin misin?')) {
+    if (!await confirm('Bu kullanıcıyı engellemek istediğine emin misin?')) {
       setOpenMenuId(null);
       return;
     }
@@ -165,14 +154,14 @@ export default function DiscoverPage() {
 
   function applyFilters() {
     setShowFilters(false);
-    load(category, { department: filterDepartment, classYear: filterClassYear });
+    load({ department: filterDepartment, classYear: filterClassYear });
   }
 
   function clearFilters() {
     setFilterDepartment('');
     setFilterClassYear('');
     setShowFilters(false);
-    load(category, {});
+    load({});
   }
 
   async function handlePostLike(postId) {
@@ -218,13 +207,13 @@ export default function DiscoverPage() {
           compact
           tone="sky"
           icon={Compass}
-          eyebrow={user?.university?.name || 'Kampüsünü keşfet'}
-          title="Keşfet"
-          badge={user?.isPremium && <span className="premium-badge">👑 PREMIUM</span>}
+          eyebrow={user?.university?.name || t("Kampüsünü keşfet")}
+          title={t("Keşfet")}
+          badge={user?.isPremium && <span className="premium-badge"><Crown size={11} /> {t("PREMIUM")}</span>}
           actions={
             <>
               <NotificationBell />
-              <button className="icon-btn-amber" aria-label="Filtre" onClick={() => setShowFilters(true)}>
+              <button className="icon-btn-amber" aria-label={t("Filtre")} onClick={() => setShowFilters(true)}>
                 <Filter size={18} />
               </button>
             </>
@@ -234,7 +223,7 @@ export default function DiscoverPage() {
             <Search size={16} />
             <input
               className="discover-search-input"
-              placeholder="Kullanıcı, üniversite veya bölüm ara..."
+              placeholder={t("Kişi, bölüm veya kulüp ara...")}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
@@ -245,9 +234,33 @@ export default function DiscoverPage() {
       {/* ---------- Arama sonuçları ---------- */}
       {query.trim() && (
         <div className="discover-search-results">
-          {searching && <p className="muted center-text">Aranıyor...</p>}
-          {!searching && searchResults && searchResults.results.length === 0 && searchResults.lockedCount === 0 && (
-            <p className="muted center-text">Sonuç bulunamadı.</p>
+          {searching && <p className="muted center-text">{t("Aranıyor...")}</p>}
+          {!searching &&
+            searchResults &&
+            searchResults.results.length === 0 &&
+            searchResults.lockedCount === 0 &&
+            !searchResults.clubs?.length && <p className="muted center-text">{t("Sonuç bulunamadı.")}</p>}
+
+          {/* Kulüpler: aramaya uyan kendi kampüs kulüplerin */}
+          {!searching && searchResults?.clubs?.length > 0 && (
+            <>
+              <div className="search-group-title">{t("Kulüpler")}</div>
+              <div className="search-club-list">
+                {searchResults.clubs.map((c) => (
+                  <button key={c.id} type="button" className="search-club" onClick={() => navigate(`/clubs/${c.id}`)}>
+                    <ClubIcon value={c.iconEmoji} category={c.category} size={40} />
+                    <span className="search-club-text">
+                      <strong>{c.name}</strong>
+                      <span>
+                        {t(c.category)} · {t('{n} üye', { n: c.memberCount })}
+                      </span>
+                    </span>
+                    <ChevronRight size={16} className="search-club-chevron" />
+                  </button>
+                ))}
+              </div>
+              {searchResults.results.length > 0 && <div className="search-group-title">{t("Kişiler")}</div>}
+            </>
           )}
           {!searching &&
             searchResults?.results.map((u) => (
@@ -280,9 +293,9 @@ export default function DiscoverPage() {
               <div className="other-uni-locked-banner-icon">
                 <Lock size={18} />
               </div>
-              <h4>+{searchResults.lockedCount} sonuç daha</h4>
-              <p>Farklı üniversitelerden de "{query.trim()}" ile eşleşen kişiler var. Görmek için Premium'a geç.</p>
-              <button className="btn-premium-cta">Premium'a Geç</button>
+              <h4>{t('+{n} sonuç daha', { n: searchResults.lockedCount })}</h4>
+              <p>{t('Farklı üniversitelerden de "{q}" ile eşleşen kişiler var. Görmek için Premium\'a geç.', { q: query.trim() })}</p>
+              <button className="btn-premium-cta">{t("Premium'a Geç")}</button>
             </div>
           )}
         </div>
@@ -290,255 +303,57 @@ export default function DiscoverPage() {
 
       {!query.trim() && (
         <>
-          {/* ---------- Hızlı Kategoriler ---------- */}
-          <div className="category-scroll">
-            {CATEGORIES.map((c) => (
-              <button
-                key={c.value}
-                className={`category-pill ${category === c.value ? 'active' : ''}`}
-                onClick={() => setCategory(c.value)}
-              >
-                {c.label}
-              </button>
-            ))}
-          </div>
+          {loading && <p className="muted center-text">{t("Yükleniyor...")}</p>}
 
-          {loading && <p className="muted center-text">Yükleniyor...</p>}
-
+          {/* Sıra: canlı kampüs (aktifler + bugünün özeti) → hızlı erişim
+              kutuları → önerilen kişiler → ilgi alanına göre keşfet → rozet
+              çağrısı → kulüpler → paylaşımlar. Kampüs küçükken bile boş
+              kalmayan bölümler (kişinin kendi verisi, davet kartları) önde. */}
           {!loading && data && (
             <>
-              {/* ---------- Önerilen Kişiler ---------- */}
+              <ActiveNowStrip users={data.onlineUsers} />
+              <CampusPulse stats={data.stats} />
+              <DiscoverQuickTiles user={user} quick={data.quick} />
+
+              {/* ---------- Önerilen Kişiler (sonunda davet kartı) ---------- */}
               <div className="section-heading">
-                <h3>⭐ Önerilen Kişiler</h3>
+                <h3>{t("Önerilen Kişiler")}</h3>
               </div>
+              <SuggestedPeopleRail
+                users={suggestedUsers}
+                followedIds={followedIds}
+                onToggleFollow={handleToggleFollow}
+                onReport={setReportingUserId}
+                onBlock={handleBlock}
+              />
 
-              {suggestedUsers.length === 0 && (
-                <div className="card empty-state">
-                  <div className="empty-icon">🔭</div>
-                  <p className="muted">Şu an gösterilecek kimse yok.</p>
-                </div>
-              )}
-
-              {suggestedUsers.map((u) => {
-                const following = followedIds.has(u.id);
-                return (
-                  <div className="suggest-card" key={u.id}>
-                    <div className="suggest-card-top">
-                      <img
-                        className="suggest-card-avatar"
-                        src={u.photoUrl ? `${API_BASE_URL}${u.photoUrl}` : undefined}
-                        alt={u.fullName}
-                        onClick={() => navigate(`/users/${u.id}`)}
-                        style={{ cursor: 'pointer' }}
-                      />
-                      <div className="suggest-card-info" onClick={() => navigate(`/users/${u.id}`)} style={{ cursor: 'pointer' }}>
-                        <div className="suggest-card-name">
-                          {u.fullName}
-                          {u.verified && <BadgeCheck size={15} className="suggest-card-verified" />}
-                        </div>
-                        <div className="suggest-card-university">{u.university?.name}</div>
-                        {u.department && (
-                          <div className="suggest-card-department">
-                            {u.department}
-                            {u.classYear ? ` · ${u.classYear}. Sınıf` : ''}
-                          </div>
-                        )}
-                        {u.mutualCount > 0 && (
-                          <div className="suggest-card-mutual">{u.mutualCount} Ortak Arkadaş</div>
-                        )}
-                      </div>
-
-                      <button
-                        className="suggest-card-menu-btn"
-                        onClick={() => setOpenMenuId(openMenuId === u.id ? null : u.id)}
-                        aria-label="Daha fazla"
-                      >
-                        <MoreVertical size={18} />
-                      </button>
-
-                      {openMenuId === u.id && (
-                        <div className="suggest-card-menu-dropdown">
-                          <button
-                            className="suggest-card-menu-item"
-                            onClick={() => {
-                              setReportingUserId(u.id);
-                              setOpenMenuId(null);
-                            }}
-                          >
-                            <Flag size={14} /> Şikayet Et
-                          </button>
-                          <button className="suggest-card-menu-item danger" onClick={() => handleBlock(u.id)}>
-                            <ShieldOff size={14} /> Engelle
-                          </button>
-                          <button className="suggest-card-menu-item" onClick={() => handleHide(u.id)}>
-                            <EyeOff size={14} /> Gizle
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="suggest-card-bottom">
-                      <span className="suggest-card-last-active">{u.lastActiveLabel || ' '}</span>
-                      <button
-                        className={`btn-discover-accent ${following ? 'following' : ''}`}
-                        onClick={() => handleToggleFollow(u.id)}
-                      >
-                        {following ? 'Takipte' : 'Takip Et'}
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-
-              {/* ---------- Bugün Kampüste ---------- */}
+              {/* ---------- İlgi alanına göre keşfet ---------- */}
               <div className="section-heading">
-                <h3>📈 Bugün Kampüste</h3>
+                <h3>{t("İlgi alanına göre keşfet")}</h3>
               </div>
-              <div className="stat-grid" style={{ marginBottom: 20 }}>
-                <div className="stat-chip">
-                  <span className="stat-chip-value">{data.stats.newUsersToday}</span>
-                  <span className="stat-chip-label">Yeni Kullanıcı</span>
-                </div>
-                <div className="stat-chip">
-                  <span className="stat-chip-value">{data.stats.newPostsToday}</span>
-                  <span className="stat-chip-label">Yeni Paylaşım</span>
-                </div>
-                <div className="stat-chip">
-                  <span className="stat-chip-value">{data.stats.newClubsToday}</span>
-                  <span className="stat-chip-label">Yeni Kulüp</span>
-                </div>
-                <div className="stat-chip">
-                  <span className="stat-chip-value">{data.stats.newEventsToday}</span>
-                  <span className="stat-chip-label">Yeni Etkinlik</span>
-                </div>
-              </div>
+              <InterestTiles tiles={data.interestTiles} />
 
-              {/* ---------- Diğer Üniversiteler (Premium) ---------- */}
-              {data.otherUniversities && (
+              {/* ---------- Onaylı öğrenci rozeti çağrısı ---------- */}
+              <StudentBadgeCard user={user} setUser={setUser} variant="home" />
+
+              {/* ---------- Kulüp yoksa: ilk kulübü kurma çağrısı ---------- */}
+              {data.trendingClubs.length === 0 && (
                 <>
                   <div className="section-heading">
-                    <h3>
-                      <Globe2 size={16} style={{ verticalAlign: -2, marginRight: 4 }} />
-                      Diğer Üniversiteler
-                    </h3>
+                    <h3>{t("Kulüpler")}</h3>
                   </div>
-
-                  {data.otherUniversities.locked ? (
-                    data.otherUniversities.lockedCount > 0 ? (
-                      <div
-                        className="other-uni-locked-banner"
-                        onClick={() =>
-                          openPaywall(
-                            `${data.otherUniversities.lockedCount} kişi farklı üniversitelerden seninle tanışmayı bekliyor.`
-                          )
-                        }
-                        style={{ cursor: 'pointer' }}
-                      >
-                        <div className="other-uni-locked-banner-icon">
-                          <Lock size={18} />
-                        </div>
-                        <h4>{data.otherUniversities.lockedCount} kişi seni bekliyor</h4>
-                        <p>Şu an sadece {user?.university?.name} içindeki kişileri görüyorsun. Premium ile tüm üniversitelerden kişilerle tanış.</p>
-                        {data.otherUniversities.universityBreakdown?.length > 0 && (
-                          <div className="other-uni-chip-row">
-                            {data.otherUniversities.universityBreakdown.map((b) => (
-                              <span className="other-uni-chip" key={b.universityId}>
-                                {b.name} · <b>{b.count}</b>
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                        <button className="btn-premium-cta">👑 Premium'a Geç</button>
-                      </div>
-                    ) : (
-                      <p className="muted" style={{ fontSize: 12.5, marginBottom: 16 }}>
-                        Şu an başka üniversiteden gösterilecek kimse yok.
-                      </p>
-                    )
-                  ) : data.otherUniversities.users.length === 0 ? (
-                    <p className="muted" style={{ fontSize: 12.5, marginBottom: 16 }}>
-                      Şu an başka üniversiteden gösterilecek kimse yok.
-                    </p>
-                  ) : (
-                    data.otherUniversities.users.map((u) => (
-                      <div className="suggest-card" key={u.id} onClick={() => navigate(`/users/${u.id}`)} style={{ cursor: 'pointer' }}>
-                        <div className="suggest-card-top">
-                          <img
-                            className="suggest-card-avatar"
-                            src={u.photoUrl ? `${API_BASE_URL}${u.photoUrl}` : undefined}
-                            alt={u.fullName}
-                          />
-                          <div className="suggest-card-info">
-                            <div className="suggest-card-name">
-                              {u.fullName}
-                              {u.verified && <BadgeCheck size={15} className="suggest-card-verified" />}
-                            </div>
-                            <div className="suggest-card-university">{u.university?.name}</div>
-                            {u.department && (
-                              <div className="suggest-card-department">
-                                {u.department}
-                                {u.classYear ? ` · ${u.classYear}. Sınıf` : ''}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        <div className="suggest-card-bottom">
-                          <span className="suggest-card-last-active">{u.lastActiveLabel || ' '}</span>
-                          <button
-                            className="btn-discover-accent"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleToggleFollow(u.id);
-                            }}
-                          >
-                            {followedIds.has(u.id) ? 'Takipte' : 'Takip Et'}
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </>
-              )}
-
-              {/* ---------- Popüler Üniversiteler ---------- */}
-              {data.popularUniversities.length > 0 && (
-                <>
-                  <div className="section-heading">
-                    <h3>🎓 Popüler Üniversiteler</h3>
-                  </div>
-                  <div className="uni-scroll" style={{ marginBottom: 20 }}>
-                    {data.popularUniversities.map((u) => (
-                      <div key={u.id} className="uni-card" onClick={() => navigate(`/universities/${u.id}`)}>
-                        <div className="uni-card-emoji">🏫</div>
-                        <div className="uni-card-name">{u.name}</div>
-                        <div className="uni-card-count">{u.activeStudents} Aktif Öğrenci</div>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-
-              {/* ---------- Aktif Kullanıcılar ---------- */}
-              {data.onlineUsers.length > 0 && (
-                <>
-                  <div className="section-heading">
-                    <h3>💬 Aktif Kullanıcılar</h3>
-                  </div>
-                  <div className="story-bar" style={{ marginBottom: 20 }}>
-                    {data.onlineUsers.map((u) => (
-                      <div key={u.id} className="active-user-item" onClick={() => navigate(`/users/${u.id}`)}>
-                        <div className="active-user-avatar-wrap">
-                          <img
-                            className="active-user-avatar"
-                            src={u.photoUrl ? `${API_BASE_URL}${u.photoUrl}` : undefined}
-                            alt={u.fullName}
-                          />
-                          <span className="active-user-dot" />
-                        </div>
-                        <span className="active-user-name">{u.fullName.split(' ')[0]}</span>
-                      </div>
-                    ))}
-                  </div>
+                  <button type="button" className="club-starter" onClick={() => navigate('/clubs?new=1')}>
+                    <span className="club-starter-icons" aria-hidden="true">
+                      {['icon:code', 'icon:camera', 'icon:trophy', 'icon:music'].map((icon, i) => (
+                        <ClubIcon key={icon} value={icon} category={['Teknoloji', 'Sanat', 'Spor', 'Sanat'][i]} size={40} />
+                      ))}
+                    </span>
+                    <span className="club-starter-text">
+                      <strong>{t("Kampüsünün ilk kulübünü sen kur")}</strong>
+                      <span>{t("Kodlama, fotoğraf, spor... Aynı şeyi sevenleri bir araya getir.")}</span>
+                    </span>
+                    <ChevronRight size={18} className="club-starter-chevron" />
+                  </button>
                 </>
               )}
 
@@ -546,12 +361,12 @@ export default function DiscoverPage() {
               {data.trendingClubs.length > 0 && (
                 <>
                   <div className="section-heading">
-                    <h3>🏆 Trend Kulüpler</h3>
+                    <h3>{t("Trend Kulüpler")}</h3>
                   </div>
                   <div className="category-scroll" style={{ marginBottom: 20 }}>
                     {data.trendingClubs.map((c) => (
                       <div key={c.id} className="trend-club-chip" onClick={() => navigate(`/clubs/${c.id}`)}>
-                        <span>{c.iconEmoji}</span>
+                        <ClubIcon value={c.iconEmoji} category={c.category} size={22} />
                         <span>{c.name}</span>
                         <span className="count">· {c.memberCount}</span>
                       </div>
@@ -560,25 +375,11 @@ export default function DiscoverPage() {
                 </>
               )}
 
-              {/* ---------- Günün Önerisi ---------- */}
-              {data.dailyTip.department && (
-                <div className="tip-card">
-                  <p>
-                    {data.dailyTip.newInDepartmentToday > 0
-                      ? `Bugün kendi bölümünden ${data.dailyTip.newInDepartmentToday} yeni öğrenci katıldı.`
-                      : `${data.dailyTip.department} bölümünden yeni katılanları kaçırma, düzenli kontrol et!`}
-                  </p>
-                  <button className="tip-card-btn" onClick={() => setCategory('department')}>
-                    İncele
-                  </button>
-                </div>
-              )}
-
               {/* ---------- Son Paylaşımlar ---------- */}
               {data.recentPosts.length > 0 && (
                 <>
                   <div className="section-heading">
-                    <h3>📢 Son Paylaşımlar</h3>
+                    <h3>{t("Son Paylaşımlar")}</h3>
                   </div>
                   {data.recentPosts.map((post) => (
                     <div key={post.id} className="post-card">
@@ -598,7 +399,7 @@ export default function DiscoverPage() {
                           {post.author.fullName}
                         </span>
                         <span className="muted" style={{ marginLeft: 'auto', fontSize: 11.5 }}>
-                          {timeAgo(post.createdAt)}
+                          {t(timeAgo(post.createdAt))}
                         </span>
                       </div>
                       {post.imageUrl ? (
@@ -620,7 +421,7 @@ export default function DiscoverPage() {
                           <Share2 size={20} />
                         </button>
                       </div>
-                      {post.likeCount > 0 && <p className="post-like-count">{post.likeCount} beğenme</p>}
+                      {post.likeCount > 0 && <p className="post-like-count">{post.likeCount} {t("beğenme")}</p>}
                       {post.imageUrl && post.caption && (
                         <p className="post-caption">
                           <span className="post-author-name">{post.author.fullName}</span> {post.caption}
@@ -631,15 +432,6 @@ export default function DiscoverPage() {
                 </>
               )}
 
-              {/* ---------- Kart Modu (eşleşme) erişimi ---------- */}
-              <div className="card center-text" style={{ marginBottom: 90 }}>
-                <p className="muted" style={{ marginBottom: 10 }}>
-                  Kaydırarak eşleşme aramak ister misin?
-                </p>
-                <button className="btn-discover-accent" style={{ margin: '0 auto' }} onClick={() => navigate('/discover/swipe')}>
-                  <Zap size={14} /> Kart Modunu Aç
-                </button>
-              </div>
             </>
           )}
         </>
@@ -649,32 +441,32 @@ export default function DiscoverPage() {
         <div className="modal-overlay" onClick={() => setShowFilters(false)}>
           <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3>Filtrele</h3>
+              <h3>{t("Filtrele")}</h3>
               <button className="modal-close" onClick={() => setShowFilters(false)}>
                 <X size={16} />
               </button>
             </div>
-            <label>Bölüm</label>
+            <label>{t("Bölüm")}</label>
             <input
               type="text"
               value={filterDepartment}
               onChange={(e) => setFilterDepartment(e.target.value)}
-              placeholder="örn. Yönetim Bilişim Sistemleri"
+              placeholder={t("örn. Yönetim Bilişim Sistemleri")}
             />
-            <label>Sınıf</label>
+            <label>{t("Sınıf")}</label>
             <select value={filterClassYear} onChange={(e) => setFilterClassYear(e.target.value)}>
-              <option value="">Farketmez</option>
-              <option value="1">1. Sınıf</option>
-              <option value="2">2. Sınıf</option>
-              <option value="3">3. Sınıf</option>
-              <option value="4">4. Sınıf</option>
+              <option value="">{t("Farketmez")}</option>
+              <option value="1">{t("1. Sınıf")}</option>
+              <option value="2">{t("2. Sınıf")}</option>
+              <option value="3">{t("3. Sınıf")}</option>
+              <option value="4">{t("4. Sınıf")}</option>
             </select>
             <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
               <button className="btn-secondary" style={{ flex: 1 }} onClick={clearFilters}>
-                Temizle
+                {t("Temizle")}
               </button>
               <button className="btn" style={{ flex: 1 }} onClick={applyFilters}>
-                Uygula
+                {t("Uygula")}
               </button>
             </div>
           </div>
@@ -689,9 +481,29 @@ export default function DiscoverPage() {
         <PaywallModal
           contextText={paywallReason}
           onClose={() => setShowPaywall(false)}
-          onUpgraded={() => load(category, { department: filterDepartment, classYear: filterClassYear })}
+          onUpgraded={() => load({ department: filterDepartment, classYear: filterClassYear })}
         />
       )}
     </div>
+  );
+}
+
+// "Bugün kampüste" tek satırlık özet: yalnızca sıfırdan büyük sayılar
+// gösterilir; hepsi sıfırsa satır hiç çıkmaz (0 / 0 / 0 kartları yerine).
+function CampusPulse({ stats }) {
+  const { t } = useI18n();
+  const parts = [
+    stats.newUsersToday > 0 && t('{n} yeni öğrenci katıldı', { n: stats.newUsersToday }),
+    stats.newPostsToday > 0 && t('{n} yeni paylaşım', { n: stats.newPostsToday }),
+    stats.newClubsToday > 0 && t('{n} yeni kulüp', { n: stats.newClubsToday }),
+  ].filter(Boolean);
+  if (parts.length === 0) return null;
+  return (
+    <p className="campus-pulse">
+      <Sparkles size={15} aria-hidden="true" />
+      <span>
+        <strong>{t('Bugün kampüste')}</strong> {parts.join(' · ')}
+      </span>
+    </p>
   );
 }

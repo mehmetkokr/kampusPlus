@@ -7,6 +7,8 @@ import { API_BASE_URL } from '../config';
 import { useToast } from '../context/ToastContext';
 import { ArrowLeft as ArrowLeftIcon, Send as SendIcon, Image as ImageIcon, Mic as MicIcon, Paperclip as PaperclipIcon, File as FileIcon } from 'lucide-react';
 import VoiceMessagePlayer from '../components/VoiceMessagePlayer';
+import { useI18n } from '../i18n';
+import { compressImage } from '../utils/image';
 
 const EMOJI_LIST = [
   '😀', '😂', '🥰', '😍', '😘', '😎', '🤔', '😅', '😢', '😭',
@@ -17,6 +19,7 @@ const EMOJI_LIST = [
 ];
 
 export default function ChatPage() {
+  const { t: tx } = useI18n();
   const { matchId } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
@@ -180,7 +183,7 @@ export default function ChatPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     const formData = new FormData();
-    formData.append('photo', file);
+    formData.append('photo', await compressImage(file));
     try {
       await api.post(`/messages/${matchId}/photo`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -288,16 +291,16 @@ export default function ChatPage() {
           alt={otherUser?.fullName || ''}
         />
         <div>
-          <div className="chat-header-name">{otherUser?.fullName || 'Sohbet'}</div>
+          <div className="chat-header-name">{otherUser?.fullName || tx("Sohbet")}</div>
           {isOtherTyping ? (
             <div className="chat-header-status typing">
-              Yazıyor
+              {tx("Yazıyor")}
               <span className="typing-dots"><span /><span /><span /></span>
             </div>
           ) : presence.online ? (
-            <div className="chat-header-status online">çevrimiçi</div>
+            <div className="chat-header-status online">{tx("çevrimiçi")}</div>
           ) : (
-            <div className="chat-header-status">{formatLastSeen(presence.lastSeenAt)}</div>
+            <div className="chat-header-status">{tx(formatLastSeen(presence.lastSeenAt))}</div>
           )}
         </div>
       </div>
@@ -312,13 +315,13 @@ export default function ChatPage() {
               disabled={loadingOlder}
               style={{ fontSize: 13, padding: '6px 14px' }}
             >
-              {loadingOlder ? 'Yükleniyor...' : 'Daha eski mesajları yükle'}
+              {loadingOlder ? tx("Yükleniyor...") : tx("Daha eski mesajları yükle")}
             </button>
           </div>
         )}
 
         {messages.length === 0 && (
-          <p className="chat-empty">Henüz mesaj yok. İlk mesajı sen gönder 👋</p>
+          <p className="chat-empty">{tx("Henüz mesaj yok. İlk mesajı sen gönder.")}</p>
         )}
 
         {messages.map((m, i) => {
@@ -330,7 +333,7 @@ export default function ChatPage() {
                   <img
                     className={`message-photo ${mine ? 'message-mine' : 'message-theirs'}`}
                     src={buildFileUrl(m.photoUrl)}
-                    alt="gönderilen fotoğraf"
+                    alt={tx("gönderilen fotoğraf")}
                   />
                 )}
                 {m.audioUrl && (
@@ -344,7 +347,7 @@ export default function ChatPage() {
                     className={`file-bubble ${mine ? 'message-mine' : 'message-theirs'}`}
                   >
                     <FileIcon width={18} height={18} />
-                    <span>{m.fileName || 'Dosya'}</span>
+                    <span>{m.fileName || tx("Dosya")}</span>
                   </a>
                 )}
                 {m.content && (
@@ -355,7 +358,7 @@ export default function ChatPage() {
                 <div className="message-time">{formatTime(m.createdAt)}</div>
               </div>
               {mine && i === lastMineIndex && m.isRead && (
-                <div className="message-seen">Görüldü</div>
+                <div className="message-seen">{tx("Görüldü")}</div>
               )}
             </React.Fragment>
           );
@@ -382,9 +385,9 @@ export default function ChatPage() {
         {recording ? (
           <div className="recording-bar">
             <span className="recording-dot" />
-            <span>Kaydediliyor... {formatRecordTime(recordSeconds)}</span>
+            <span>{tx("Kaydediliyor...")} {formatRecordTime(recordSeconds)}</span>
             <button type="button" className="recording-cancel" onClick={() => stopRecording(true)}>
-              İptal
+              {tx("İptal")}
             </button>
             <button type="button" className="recording-send" onClick={() => stopRecording(false)}>
               <SendIcon width={16} height={16} />
@@ -392,17 +395,17 @@ export default function ChatPage() {
           </div>
         ) : (
           <form className="chat-input-inner" onSubmit={sendMessage}>
-            <button type="button" className="chat-attach-btn" onClick={() => photoInputRef.current?.click()} aria-label="Fotoğraf">
+            <button type="button" className="chat-attach-btn" onClick={() => photoInputRef.current?.click()} aria-label={tx("Fotoğraf")}>
               <ImageIcon width={19} height={19} />
             </button>
-            <button type="button" className="chat-attach-btn" onClick={() => fileInputRef.current?.click()} aria-label="Dosya">
+            <button type="button" className="chat-attach-btn" onClick={() => fileInputRef.current?.click()} aria-label={tx("Dosya")}>
               <PaperclipIcon width={19} height={19} />
             </button>
             <button
               type="button"
               className="chat-attach-btn"
               onClick={() => setShowEmojiPicker((v) => !v)}
-              aria-label="Emoji"
+              aria-label={tx("Emoji")}
             >
               <Smile size={19} />
             </button>
@@ -415,14 +418,14 @@ export default function ChatPage() {
             />
             <input ref={fileInputRef} type="file" style={{ display: 'none' }} onChange={handleFileSelect} />
 
-            <input value={text} onChange={handleTextChange} placeholder="Mesaj yaz..." />
+            <input value={text} onChange={handleTextChange} placeholder={tx("Mesaj yaz...")} />
 
             {text.trim() ? (
               <button className="chat-send-btn has-text" type="submit">
                 <SendIcon />
               </button>
             ) : (
-              <button type="button" className="chat-send-btn" onClick={startRecording} aria-label="Sesli mesaj kaydet">
+              <button type="button" className="chat-send-btn" onClick={startRecording} aria-label={tx("Sesli mesaj kaydet")}>
                 <MicIcon width={18} height={18} />
               </button>
             )}
