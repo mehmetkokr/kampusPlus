@@ -10,12 +10,15 @@
 //    false      : çevrimiçi / son görülme bilgisi kimseye gösterilmez
 //  isFrozen / isBanned
 //    dondurulmuş veya askıya alınmış hesaplar hiçbir listede görünmez
+//  isAdmin
+//    yönetici hesapları öğrenci listelerinde (keşif, arama, Kart Modu) görünmez
 
 // Prisma "where" koşulu: izleyicinin keşif listelerinde görebileceği kullanıcılar
 function discoverableUserWhere(viewerUniversityId) {
   return {
     isFrozen: false,
     isBanned: false,
+    isAdmin: false,
     profileVisibility: { not: 'nobody' },
     OR: [{ profileVisibility: 'everyone' }, { universityId: viewerUniversityId }],
   };
@@ -23,7 +26,7 @@ function discoverableUserWhere(viewerUniversityId) {
 
 // Tek bir kullanıcı nesnesi için aynı kural (profileVisibility, universityId gerekli)
 function isDiscoverableBy(user, viewerUniversityId) {
-  if (!user || user.isFrozen || user.isBanned) return false;
+  if (!user || user.isFrozen || user.isBanned || user.isAdmin) return false;
   if (user.profileVisibility === 'nobody') return false;
   if (user.profileVisibility === 'university') return user.universityId === viewerUniversityId;
   return true;

@@ -11,7 +11,8 @@
     "prisma:migrate": "prisma migrate dev --name init",
     "prisma:studio": "prisma studio",
     "prisma:seed": "node prisma/seed.js",
-    "mail:test": "node scripts/mail-test.js"
+    "mail:test": "node scripts/mail-test.js",
+    "admin:create": "node scripts/create-admin.js"
   },
   "dependencies": {
     "@prisma/client": "^5.20.0",
