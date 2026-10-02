@@ -1,225 +1,181 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { FileCheck2, X as CloseIcon, ExternalLink, ShieldQuestion } from 'lucide-react';
-import adminApi from '../adminApi';
+import React, { useCallback, useEffect, useState } from 'react';
+import { BadgeCheck, ExternalLink, FileText, ShieldQuestion, X } from 'lucide-react';
+import adminApi, { errorText, refreshCounts } from '../adminApi';
+import { Empty, PageHead, Person, Skeleton, fmtDate, timeAgo } from '../ui';
 import { buildFileUrl } from '../../api';
+import { useToast } from '../../context/ToastContext';
 
-// Onay/Red Kuyruğu (Grup: OCR doğrulama ile birlikte çalışır)
-// -----------------------------------------------------------
-// "manual_review" durumundaki her kullanıcı burada listelenir. Liste zaten
-// backend'de öncelikli doğrulama satın alanlara göre sıralı gelir
-// (bkz. admin.js -> GET /users, status=manual_review özel orderBy).
-// Bir satıra tıklayınca belge (öğrenci kimliği/e-devlet belgesi) büyük
-// boyutta gösterilir, OCR ön kontrol sonucu bir ipucu olarak sunulur ve
-// admin tek tıkla Onayla/Reddet yapabilir. Reddederken kısa bir gerekçe
-// zorunludur - bu gerekçe öğrenciye e-posta ile iletilir (bkz. admin.js).
+const REJECT_REASONS = [
+  'Belge okunaklı değil, lütfen net bir fotoğraf ya da PDF yükle.',
+  'Belgedeki isim hesabındaki isimle eşleşmiyor.',
+  'Belge güncel değil; bu döneme ait e-Devlet öğrenci belgesi yükle.',
+  'Yüklenen dosya öğrenci belgesi değil.',
+];
+
+// Onaylı öğrenci rozeti için yüklenen e-Devlet belgeleri.
+// En eski başvuru en üstte. OCR yalnızca ipucudur; kararı yönetici verir.
 export default function AdminVerificationQueue() {
-  const [users, setUsers] = useState([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [selected, setSelected] = useState(null); // detaylı kullanıcı (GET /users/:id)
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [rejectReason, setRejectReason] = useState('');
-  const [showRejectFor, setShowRejectFor] = useState(null); // userId | null
-  const [actingId, setActingId] = useState(null);
+  const toast = useToast();
+  const [users, setUsers] = useState(null);
+  const [selected, setSelected] = useState(null);
+  const [reason, setReason] = useState('');
+  const [rejecting, setRejecting] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const load = useCallback(() => {
-    setLoading(true);
     adminApi
-      .getUsers({ status: 'manual_review', page: 1, pageSize: 50 })
-      .then((res) => {
-        setUsers(res.data.users);
-        setTotal(res.data.total);
-      })
-      .catch((err) => {
-        console.error('Kuyruk alınamadı:', err);
-        setError('Kuyruk yüklenemedi.');
-      })
-      .finally(() => setLoading(false));
-  }, []);
+      .getUsers({ status: 'manual_review', pageSize: 100 })
+      .then((res) => setUsers(res.data.users))
+      .catch((err) => toast.error(errorText(err, 'Kuyruk yüklenemedi.')));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(load, [load]);
 
-  useEffect(() => { load(); }, [load]);
-
-  function openDetail(userId) {
-    setDetailLoading(true);
-    setSelected({ id: userId });
+  function open(id) {
+    setRejecting(false);
+    setReason('');
+    setSelected({ id });
     adminApi
-      .getUser(userId)
+      .getUser(id)
       .then((res) => setSelected(res.data))
-      .catch(() => setError('Kullanıcı detayı alınamadı.'))
-      .finally(() => setDetailLoading(false));
+      .catch((err) => {
+        toast.error(errorText(err, 'Belge yüklenemedi.'));
+        setSelected(null);
+      });
   }
 
-  async function approve(userId) {
-    setActingId(userId);
+  async function decide(verificationStatus) {
+    setBusy(true);
     try {
-      await adminApi.updateUser(userId, { verificationStatus: 'verified' });
-      setUsers((prev) => prev.filter((u) => u.id !== userId));
-      setTotal((t) => t - 1);
-      if (selected?.id === userId) setSelected(null);
+      await adminApi.updateUser(selected.id, verificationStatus === 'rejected' ? { verificationStatus, rejectionReason: reason.trim() } : { verificationStatus });
+      toast.success(verificationStatus === 'verified' ? `${selected.fullName} onaylandı, rozet verildi.` : 'Başvuru reddedildi, öğrenciye gerekçe iletildi.');
+      refreshCounts();
+      // Sıradaki başvuruyu otomatik aç
+      const rest = users.filter((u) => u.id !== selected.id);
+      setUsers(rest);
+      if (rest[0]) open(rest[0].id);
+      else setSelected(null);
     } catch (err) {
-      alert(err.response?.data?.error || 'Onaylanamadı.');
+      toast.error(errorText(err, 'İşlem yapılamadı.'));
     } finally {
-      setActingId(null);
+      setBusy(false);
     }
   }
 
-  async function reject(userId) {
-    if (!rejectReason.trim()) return;
-    setActingId(userId);
-    try {
-      await adminApi.updateUser(userId, { verificationStatus: 'rejected', rejectionReason: rejectReason.trim() });
-      setUsers((prev) => prev.filter((u) => u.id !== userId));
-      setTotal((t) => t - 1);
-      setShowRejectFor(null);
-      setRejectReason('');
-      if (selected?.id === userId) setSelected(null);
-    } catch (err) {
-      alert(err.response?.data?.error || 'Reddedilemedi.');
-    } finally {
-      setActingId(null);
-    }
-  }
+  const doc = selected?.studentDocUrl ? buildFileUrl(selected.studentDocUrl) : null;
+  const isPdf = selected?.studentDocUrl?.toLowerCase().endsWith('.pdf');
 
   return (
     <div>
-      <h1 className="admin-page-title">Onay/Red Kuyruğu</h1>
-      <p className="admin-page-sub">
-        Manuel incelemeye düşen öğrenci belgeleri ({total} bekliyor). ⚡ ile işaretlenenler
-        öncelikli doğrulama satın aldı ve listenin başında gösteriliyor. OCR rozeti sadece bir
-        ipucudur — son kararı sen veriyorsun.
-      </p>
-
-      {error && <div className="admin-error">{error}</div>}
-
-      <div style={{ display: 'grid', gridTemplateColumns: selected ? '1fr 1fr' : '1fr', gap: 20 }}>
-        <div className="admin-card">
-          {loading ? (
-            <div className="admin-loading">Yükleniyor...</div>
+      <PageHead
+        title="Onay Kuyruğu"
+        sub="Onaylı öğrenci rozeti için yüklenen e-Devlet belgeleri. Onayladığında öğrenciye bildirim ve e-posta gider; reddederken yazdığın gerekçe öğrenciye iletilir."
+      />
+      <div className="adm-grid adm-grid-main" style={{ alignItems: 'start' }}>
+        <section className="adm-card">
+          <h2 className="adm-card-title">Bekleyenler {users && <span className="adm-badge">{users.length}</span>}</h2>
+          {users === null ? (
+            <Skeleton h={200} />
           ) : users.length === 0 ? (
-            <div className="admin-empty">Kuyrukta bekleyen kimse yok 🎉</div>
+            <Empty icon={BadgeCheck}>Kuyruk boş. Bekleyen belge yok.</Empty>
           ) : (
-            <div className="admin-table-wrap">
-              <table className="admin-table">
+            <div className="adm-table-wrap">
+              <table className="adm-table">
                 <thead>
-                  <tr>
-                    <th>Ad Soyad</th>
-                    <th>Üniversite</th>
-                    <th>Bölüm</th>
-                    <th></th>
-                  </tr>
+                  <tr><th>Öğrenci</th><th className="hide-sm">Bölüm</th><th>OCR</th><th className="hide-sm">Kayıt</th></tr>
                 </thead>
                 <tbody>
                   {users.map((u) => (
                     <tr
                       key={u.id}
-                      onClick={() => openDetail(u.id)}
-                      style={{ cursor: 'pointer', background: selected?.id === u.id ? 'rgba(232,163,61,0.08)' : undefined }}
+                      className={`clickable ${selected?.id === u.id ? 'selected' : ''}`}
+                      onClick={() => open(u.id)}
+                      tabIndex={0}
+                      onKeyDown={(e) => e.key === 'Enter' && open(u.id)}
                     >
-                      <td>{u.fullName}</td>
-                      <td>{u.university?.name}</td>
-                      <td>{u.department || '—'}</td>
+                      <td><Person user={u} meta={u.university?.name} /></td>
+                      <td className="hide-sm adm-muted">{u.department || '—'}</td>
                       <td>
-                        {u.ocrAutoCheckPassed === true && <span className="admin-badge admin-badge-teal">OCR ✓</span>}
-                        {u.ocrAutoCheckPassed === false && <span className="admin-badge admin-badge-coral">OCR ✗</span>}
+                        {u.ocrAutoCheckPassed === true && <span className="adm-badge green">Örtüşüyor</span>}
+                        {u.ocrAutoCheckPassed === false && <span className="adm-badge red">Örtüşmüyor</span>}
+                        {u.ocrAutoCheckPassed == null && <span className="adm-badge">Yok</span>}
                       </td>
+                      <td className="hide-sm adm-muted">{timeAgo(u.createdAt)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           )}
-        </div>
+        </section>
 
-        {selected && (
-          <div className="admin-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <h3 style={{ margin: 0 }}>{selected.fullName || 'Yükleniyor...'}</h3>
-              <button className="admin-btn admin-btn-outline admin-btn-small" onClick={() => setSelected(null)}>
-                <CloseIcon size={14} />
-              </button>
-            </div>
+        <section className="adm-card">
+          {!selected ? (
+            <Empty icon={FileText}>İncelemek için soldan bir başvuru seç.</Empty>
+          ) : !selected.email ? (
+            <Skeleton h={420} />
+          ) : (
+            <div className="adm-grid" style={{ gap: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                <Person user={selected} meta={`${selected.university?.name} · ${selected.department || 'bölüm yok'}`} />
+                <button type="button" className="adm-btn ghost small icon" onClick={() => setSelected(null)} aria-label="Kapat"><X /></button>
+              </div>
+              <p className="adm-faint" style={{ margin: 0 }}>{selected.email} · Kayıt {fmtDate(selected.createdAt)}</p>
 
-            {detailLoading ? (
-              <div className="admin-loading">Yükleniyor...</div>
-            ) : (
-              <>
-                <p className="muted" style={{ fontSize: 13, margin: '4px 0 14px' }}>
-                  {selected.email} · {selected.university?.name} · {selected.department || 'Bölüm belirtilmemiş'}
-                </p>
-
-                {selected.studentDocUrl ? (
-                  <a href={buildFileUrl(selected.studentDocUrl)} target="_blank" rel="noreferrer">
-                    <img
-                      src={buildFileUrl(selected.studentDocUrl)}
-                      alt="Öğrenci belgesi"
-                      style={{ width: '100%', maxHeight: 420, objectFit: 'contain', borderRadius: 10, border: '1px solid var(--border)', background: '#0b0d12' }}
-                      onError={(e) => { e.target.style.display = 'none'; }}
-                    />
-                    <div className="muted" style={{ fontSize: 12, marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <ExternalLink size={12} /> Tam boyutta / PDF olarak aç
-                    </div>
+              {doc ? (
+                <>
+                  {isPdf ? (
+                    <iframe title="Öğrenci belgesi" src={doc} className="adm-doc" style={{ height: 440 }} />
+                  ) : (
+                    <img src={doc} alt={`${selected.fullName} öğrenci belgesi`} className="adm-doc" />
+                  )}
+                  <a href={doc} target="_blank" rel="noopener noreferrer" className="adm-btn ghost small" style={{ alignSelf: 'start' }}>
+                    <ExternalLink /> Tam boyutta aç
                   </a>
-                ) : (
-                  <div className="admin-empty">Belge yüklenmemiş.</div>
-                )}
+                </>
+              ) : (
+                <Empty>Belge bulunamadı.</Empty>
+              )}
 
-                <div className="admin-card" style={{ marginTop: 14, marginBottom: 14, background: 'rgba(255,255,255,0.03)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                    <ShieldQuestion size={16} color="var(--sky)" />
-                    <strong style={{ fontSize: 13 }}>OCR ön kontrolü (sadece ipucu)</strong>
-                    {selected.ocrAutoCheckPassed === true && <span className="admin-badge admin-badge-teal">Örtüşüyor</span>}
-                    {selected.ocrAutoCheckPassed === false && <span className="admin-badge admin-badge-coral">Örtüşmüyor</span>}
-                    {(selected.ocrAutoCheckPassed === null || selected.ocrAutoCheckPassed === undefined) && (
-                      <span className="admin-badge admin-badge-muted">Çalıştırılamadı (ör. PDF)</span>
-                    )}
-                  </div>
-                  <p className="muted" style={{ fontSize: 12, whiteSpace: 'pre-wrap', maxHeight: 120, overflowY: 'auto', margin: 0 }}>
-                    {selected.ocrExtractedText || 'Belgeden metin çıkarılamadı.'}
-                  </p>
+              <div className="adm-note">
+                <ShieldQuestion />
+                <div style={{ minWidth: 0 }}>
+                  <b style={{ color: 'var(--text)' }}>OCR ön kontrolü</b> (yalnızca ipucu):{' '}
+                  {selected.ocrAutoCheckPassed === true ? 'belgedeki metin isim ve üniversiteyle örtüşüyor.' : selected.ocrAutoCheckPassed === false ? 'belgedeki metin örtüşmüyor, dikkatli bak.' : 'çalıştırılamadı (ör. PDF).'}
+                  {selected.ocrExtractedText && (
+                    <details style={{ marginTop: 6 }}>
+                      <summary style={{ cursor: 'pointer' }}>Okunan metni göster</summary>
+                      <pre style={{ whiteSpace: 'pre-wrap', fontSize: '0.75rem', maxHeight: 160, overflow: 'auto', margin: '6px 0 0' }}>{selected.ocrExtractedText}</pre>
+                    </details>
+                  )}
                 </div>
+              </div>
 
-                {showRejectFor === selected.id ? (
-                  <div>
-                    <textarea
-                      className="admin-select"
-                      style={{ width: '100%', minHeight: 70 }}
-                      placeholder="Öğrenciye gösterilecek kısa red gerekçesi (ör. 'Belge okunaklı değil, lütfen net bir fotoğraf yükle.')"
-                      value={rejectReason}
-                      onChange={(e) => setRejectReason(e.target.value)}
-                    />
-                    <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                      <button
-                        className="admin-btn admin-btn-danger"
-                        disabled={!rejectReason.trim() || actingId === selected.id}
-                        onClick={() => reject(selected.id)}
-                      >
-                        Reddi Onayla ve Gönder
+              {rejecting ? (
+                <div className="adm-grid" style={{ gap: 8 }}>
+                  <div className="adm-chips">
+                    {REJECT_REASONS.map((r) => (
+                      <button key={r} type="button" className={`adm-chip ${reason === r ? 'on' : ''}`} onClick={() => setReason(r)}>
+                        {r.split(',')[0].split(';')[0]}
                       </button>
-                      <button className="admin-btn admin-btn-outline" onClick={() => { setShowRejectFor(null); setRejectReason(''); }}>
-                        Vazgeç
-                      </button>
-                    </div>
+                    ))}
                   </div>
-                ) : (
+                  <textarea className="adm-textarea" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Öğrenciye gösterilecek gerekçe" aria-label="Red gerekçesi" />
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <button
-                      className="admin-btn"
-                      disabled={actingId === selected.id}
-                      onClick={() => approve(selected.id)}
-                    >
-                      <FileCheck2 size={14} style={{ marginRight: 6 }} />
-                      {actingId === selected.id ? 'İşleniyor...' : 'Onayla'}
-                    </button>
-                    <button className="admin-btn admin-btn-danger" onClick={() => setShowRejectFor(selected.id)}>
-                      Reddet
-                    </button>
+                    <button type="button" className="adm-btn danger" disabled={busy || !reason.trim()} onClick={() => decide('rejected')}>Reddet ve gönder</button>
+                    <button type="button" className="adm-btn ghost" onClick={() => setRejecting(false)}>Vazgeç</button>
                   </div>
-                )}
-              </>
-            )}
-          </div>
-        )}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button type="button" className="adm-btn" disabled={busy} onClick={() => decide('verified')}>
+                    <BadgeCheck /> Onayla ve rozet ver
+                  </button>
+                  <button type="button" className="adm-btn danger-ghost" disabled={busy} onClick={() => setRejecting(true)}>Reddet</button>
+                </div>
+              )}
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );

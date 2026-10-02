@@ -78,6 +78,16 @@ export function formatNotification(n, t = plain) {
           : t('Öğrenci belgen onaylanmadı. Profilinden yeni belge yükleyebilirsin.'),
         link: '/profile',
       };
+    case 'announcement': {
+      // Yönetim panelinden gelen duyuru / kampanya. message: { title, body, link } (JSON)
+      let info = {};
+      try {
+        info = JSON.parse(n.message || '{}');
+      } catch {
+        info = { title: n.message };
+      }
+      return { text: info.title || t('Duyuru'), detail: info.body || '', link: info.link || null };
+    }
     default:
       return { text: n.message || t('Yeni bildirim'), link: null };
   }

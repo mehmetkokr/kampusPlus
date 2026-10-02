@@ -10,6 +10,12 @@ const { getOnlineUserIds } = require('../socket');
 const router = express.Router();
 router.use(requireAdmin);
 
+// Pazarlama analitiği ve kampanyalar (ayrı dosyalarda, aynı yetki kontrolüyle)
+router.use(require('./adminInsights'));
+router.use(require('./adminCampaigns'));
+
+const DAY = 24 * 60 * 60 * 1000;
+
 // ============================================================
 // DASHBOARD
 // ============================================================
@@ -163,31 +169,54 @@ router.get('/stats/campuses', async (req, res) => {
 // ============================================================
 // KULLANICILAR
 // ============================================================
+// Liste ve CSV dışa aktarma aynı filtreleri kullanır
+//   search, university, status (doğrulama), badge (none|pending|approved|rejected),
+//   premium (yes|no), role (admin|banned|active), joined (gün), inactive (gün)
+function userListWhere(q) {
+  const now = new Date();
+  const and = [];
+  const search = (q.search || '').trim();
+  if (search) and.push({ OR: [{ fullName: { contains: search } }, { email: { contains: search } }, { department: { contains: search } }] });
+  if (q.university) and.push({ universityId: Number(q.university) });
+  // "manual_review" kuyruğu: erişim bekleyen hesaplar + rozet (belge) başvuruları
+  if (q.status === 'manual_review') and.push({ OR: [{ verificationStatus: 'manual_review' }, { studentDocStatus: 'pending' }] });
+  else if (q.status) and.push({ verificationStatus: q.status });
+  if (['none', 'pending', 'approved', 'rejected'].includes(q.badge)) and.push({ studentDocStatus: q.badge });
+  if (q.premium === 'yes') and.push({ isPremium: true, OR: [{ premiumUntil: null }, { premiumUntil: { gt: now } }] });
+  if (q.premium === 'no') and.push({ OR: [{ isPremium: false }, { premiumUntil: { lte: now } }] });
+  if (q.role === 'admin') and.push({ isAdmin: true });
+  if (q.role === 'banned') and.push({ isBanned: true });
+  if (q.role === 'active') and.push({ isBanned: false, isAdmin: false });
+  if (Number(q.joined) > 0) and.push({ createdAt: { gte: new Date(now.getTime() - Number(q.joined) * DAY) } });
+  if (Number(q.inactive) > 0) {
+    const before = new Date(now.getTime() - Number(q.inactive) * DAY);
+    and.push({ OR: [{ lastSeenAt: { lt: before } }, { lastSeenAt: null, createdAt: { lt: before } }] });
+  }
+  return { AND: and };
+}
+
+const USER_SORTS = {
+  newest: { createdAt: 'desc' },
+  oldest: { createdAt: 'asc' },
+  lastSeen: { lastSeenAt: { sort: 'desc', nulls: 'last' } },
+  name: { fullName: 'asc' },
+};
+
+// CSV'de 'ne arıyor' alanı okunabilir olsun
+const INTENT_TR = {
+  friendship: 'Arkadaşlık', coffee: 'Bir Kahve', study: 'Çalışma Arkadaşı', event: 'Etkinlik Arkadaşı',
+  club: 'Kulüp Arkadaşı', sports: 'Spor Arkadaşı', project: 'Proje Ortağı', language: 'Dil Pratiği',
+  travel: 'Gezi Arkadaşı', roommate: 'Ev Arkadaşı', dating: 'Flört', relationship: 'Uzun Süreli İlişki',
+};
+
+const premiumActive = (u, now = new Date()) => !!u.isPremium && (!u.premiumUntil || new Date(u.premiumUntil) > now);
+
 router.get('/users', async (req, res) => {
   try {
-    const { search = '', university = '', status = '', page = '1', pageSize = '20' } = req.query;
+    const { status = '', page = '1', pageSize = '20', sort = 'newest' } = req.query;
     const take = Math.min(Number(pageSize) || 20, 100);
     const skip = (Math.max(Number(page) || 1, 1) - 1) * take;
-
-    const where = {
-      AND: [
-        search
-          ? {
-              OR: [
-                { fullName: { contains: search } },
-                { email: { contains: search } },
-              ],
-            }
-          : {},
-        university ? { universityId: Number(university) } : {},
-        // "manual_review" kuyruğu: erişim bekleyen hesaplar + rozet (belge) başvuruları
-        status === 'manual_review'
-          ? { OR: [{ verificationStatus: 'manual_review' }, { studentDocStatus: 'pending' }] }
-          : status
-            ? { verificationStatus: status }
-            : {},
-      ],
-    };
+    const where = userListWhere(req.query);
 
     const [users, total] = await Promise.all([
       prisma.user.findMany({
@@ -196,60 +225,140 @@ router.get('/users', async (req, res) => {
           id: true,
           email: true,
           fullName: true,
+          photoUrl: true,
           department: true,
           classYear: true,
+          intent: true,
           verificationStatus: true,
           studentDocStatus: true,
           ocrAutoCheckPassed: true,
           isAdmin: true,
           isBanned: true,
+          isFrozen: true,
+          isPremium: true,
+          premiumUntil: true,
+          lastSeenAt: true,
           createdAt: true,
           university: { select: { id: true, name: true } },
         },
         // Manuel inceleme kuyruğunda en eski talep en önce
-        orderBy: status === 'manual_review' ? { createdAt: 'asc' } : { createdAt: 'desc' },
+        orderBy: status === 'manual_review' ? { createdAt: 'asc' } : USER_SORTS[sort] || USER_SORTS.newest,
         take,
         skip,
       }),
       prisma.user.count({ where }),
     ]);
 
-    res.json({ users, total, page: Number(page) || 1, pageSize: take });
+    const now = new Date();
+    res.json({
+      users: users.map((u) => ({ ...u, premiumActive: premiumActive(u, now) })),
+      total,
+      page: Number(page) || 1,
+      pageSize: take,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Kullanıcılar alınamadı.' });
   }
 });
 
+// GET /admin/users/export.csv — filtrelenmiş listeyi Excel uyumlu CSV olarak indir
+router.get('/users/export.csv', async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      where: userListWhere(req.query),
+      select: {
+        id: true, fullName: true, email: true, department: true, classYear: true, intent: true,
+        studentDocStatus: true, isPremium: true, premiumUntil: true, isBanned: true, createdAt: true, lastSeenAt: true,
+        university: { select: { name: true } },
+      },
+      orderBy: USER_SORTS[req.query.sort] || USER_SORTS.newest,
+      take: 50000,
+    });
+    const now = new Date();
+    const cell = (v) => {
+      const s = v === null || v === undefined ? '' : String(v);
+      // Excel formül enjeksiyonuna karşı (=, +, -, @ ile başlayan hücreler)
+      const safe = /^[=+\-@]/.test(s) ? `'${s}` : s;
+      return /[";\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
+    };
+    const date = (d) => (d ? new Date(d).toISOString().slice(0, 10) : '');
+    const header = ['ID', 'Ad Soyad', 'E-posta', 'Üniversite', 'Bölüm', 'Sınıf', 'Ne arıyor', 'Rozet', 'Premium', 'Askıda', 'Kayıt', 'Son görülme'];
+    const rows = users.map((u) => [
+      u.id, u.fullName, u.email, u.university?.name, u.department, u.classYear,
+      (u.intent || '').split(',').filter(Boolean).map((i) => INTENT_TR[i] || i).join(', '),
+      u.studentDocStatus === 'approved' ? 'Evet' : 'Hayır', premiumActive(u, now) ? 'Evet' : 'Hayır',
+      u.isBanned ? 'Evet' : 'Hayır', date(u.createdAt), date(u.lastSeenAt),
+    ]);
+    const csv = '﻿' + [header, ...rows].map((r) => r.map(cell).join(';')).join('\r\n');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="kampus-kullanicilar-${date(now)}.csv"`);
+    res.send(csv);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'CSV oluşturulamadı.' });
+  }
+});
+
 router.get('/users/:id', async (req, res) => {
   try {
+    const id = Number(req.params.id);
     const user = await prisma.user.findUnique({
-      where: { id: Number(req.params.id) },
+      where: { id },
       select: {
         id: true,
         email: true,
         fullName: true,
         department: true,
         classYear: true,
+        age: true,
         bio: true,
         photoUrl: true,
         interests: true,
+        hobbies: true,
         intent: true,
         verificationStatus: true,
         rejectionReason: true,
         studentDocUrl: true,
+        studentDocStatus: true,
         // Grup D: OCR ön kontrolü - hesabı doğrulamaz, sadece admin'e ipucu verir.
         ocrExtractedText: true,
         ocrAutoCheckPassed: true,
         ocrProcessedAt: true,
         isAdmin: true,
         isBanned: true,
+        isFrozen: true,
+        isPremium: true,
+        premiumUntil: true,
+        premiumSince: true,
+        swipeEnabled: true,
+        profileVisibility: true,
+        lastSeenAt: true,
         createdAt: true,
         university: { select: { id: true, name: true } },
+        photos: { select: { id: true, url: true }, orderBy: { position: 'asc' }, take: 6 },
       },
     });
     if (!user) return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
-    res.json(user);
+
+    const [likesGiven, likesReceived, matches, messages, posts, clubs, followers, reportsAgainst, payments] = await Promise.all([
+      prisma.like.count({ where: { fromUserId: id } }),
+      prisma.like.count({ where: { toUserId: id } }),
+      prisma.match.count({ where: { OR: [{ userAId: id }, { userBId: id }] } }),
+      prisma.message.count({ where: { senderId: id } }),
+      prisma.post.count({ where: { authorId: id } }),
+      prisma.clubMembership.count({ where: { userId: id, status: 'active' } }),
+      prisma.follow.count({ where: { followingId: id } }),
+      prisma.report.count({ where: { targetType: 'user', targetId: id } }),
+      prisma.paymentLog.findMany({ where: { userId: id }, orderBy: { createdAt: 'desc' }, take: 10 }),
+    ]);
+
+    res.json({
+      ...user,
+      premiumActive: premiumActive(user),
+      stats: { likesGiven, likesReceived, matches, messages, posts, clubs, followers, reportsAgainst },
+      payments,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Kullanıcı alınamadı.' });
@@ -260,7 +369,7 @@ router.get('/users/:id', async (req, res) => {
 router.patch('/users/:id', async (req, res) => {
   try {
     const id = Number(req.params.id);
-    const { verificationStatus, isAdmin, isBanned, rejectionReason } = req.body;
+    const { verificationStatus, isAdmin, isBanned, rejectionReason, premiumDays, revokePremium } = req.body;
 
     if (id === req.userId && (isAdmin === false || isBanned === true)) {
       return res.status(400).json({ error: 'Kendi admin yetkinizi kaldıramaz ya da kendinizi banlayamazsınız.' });
@@ -276,16 +385,32 @@ router.patch('/users/:id', async (req, res) => {
         return res.status(400).json({ error: 'Reddetmek için kısa bir gerekçe yazmalısın (öğrenciye gösterilecek).' });
       }
       data.verificationStatus = verificationStatus;
-      // Onay/Red kuyruğundan çıktığında öncelikli doğrulama işareti de temizlenir
-      // (satın alma amacına ulaştı: kuyruktan bir insan tarafından çıkarıldı).
-      if (verificationStatus === 'verified' || verificationStatus === 'rejected') {
-      }
       data.rejectionReason = verificationStatus === 'rejected' ? rejectionReason.trim() : null;
     }
     if (isAdmin !== undefined) data.isAdmin = !!isAdmin;
     if (isBanned !== undefined) data.isBanned = !!isBanned;
 
-    const previous = await prisma.user.findUnique({ where: { id }, select: { verificationStatus: true, studentDocStatus: true, email: true, fullName: true } });
+    const previous = await prisma.user.findUnique({
+      where: { id },
+      select: { verificationStatus: true, studentDocStatus: true, email: true, fullName: true, isPremium: true, premiumUntil: true, premiumSince: true },
+    });
+    if (!previous) return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
+
+    // Hediye Premium (kampanya / ödül): mevcut süreye eklenir, gelir sayılmaz
+    const giftDays = Number(premiumDays);
+    if (premiumDays !== undefined) {
+      if (!Number.isInteger(giftDays) || giftDays < 1 || giftDays > 365) {
+        return res.status(400).json({ error: 'Premium süresi 1–365 gün olmalı.' });
+      }
+      const now = new Date();
+      const base = previous.isPremium && previous.premiumUntil && new Date(previous.premiumUntil) > now ? new Date(previous.premiumUntil) : now;
+      data.isPremium = true;
+      data.premiumUntil = new Date(base.getTime() + giftDays * DAY);
+      data.premiumSince = previous.premiumSince || now;
+    } else if (revokePremium === true) {
+      data.isPremium = false;
+      data.premiumUntil = null;
+    }
 
     // Belge kararı rozet durumunu da belirler. E-postası okul alan adıyla
     // doğrulanmış bir hesabın rozet başvurusu reddedilirse hesap erişimi
@@ -308,8 +433,24 @@ router.patch('/users/:id', async (req, res) => {
         rejectionReason: true,
         isAdmin: true,
         isBanned: true,
+        isPremium: true,
+        premiumUntil: true,
       },
     });
+
+    if (premiumDays !== undefined) {
+      await prisma.paymentLog.create({ data: { userId: id, plan: `gift_${giftDays}d`, amount: 0, provider: 'admin_gift' } });
+      await createNotification(req.app.get('io'), {
+        userId: id,
+        type: 'announcement',
+        targetType: 'campaign',
+        message: JSON.stringify({
+          title: 'Sana Premium hediye ettik',
+          body: `${giftDays} günlük kampüs· Premium hesabına tanımlandı. Keyfini çıkar!`,
+          link: '/settings',
+        }),
+      });
+    }
 
     // Kullanıcı yasaklandıysa, hâlâ bağlı olan socket bağlantısını hemen
     // kapat — aksi halde token süresi dolana kadar (7 gün) mesajlaşmaya
@@ -497,7 +638,8 @@ router.get('/posts', async (req, res) => {
           imageUrl: true,
           caption: true,
           createdAt: true,
-          author: { select: { id: true, fullName: true, email: true } },
+          visibility: true,
+          author: { select: { id: true, fullName: true, email: true, university: { select: { name: true } } } },
           _count: { select: { likes: true, comments: true } },
         },
         orderBy: { createdAt: 'desc' },
@@ -510,17 +652,17 @@ router.get('/posts', async (req, res) => {
     res.json({ posts, total, page: Number(page) || 1, pageSize: take });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'İlanlar alınamadı.' });
+    res.status(500).json({ error: 'Gönderiler alınamadı.' });
   }
 });
 
 router.delete('/posts/:id', async (req, res) => {
   try {
     await prisma.post.delete({ where: { id: Number(req.params.id) } });
-    res.json({ message: 'İlan silindi.' });
+    res.json({ message: 'Gönderi silindi.' });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'İlan silinemedi.' });
+    res.status(500).json({ error: 'Gönderi silinemedi.' });
   }
 });
 
@@ -576,11 +718,29 @@ router.get('/reports', async (req, res) => {
               where: { id: r.targetId },
               select: { id: true, content: true, senderId: true },
             });
+          } else if (r.targetType === 'comment') {
+            target = await prisma.comment.findUnique({
+              where: { id: r.targetId },
+              select: { id: true, content: true, authorId: true },
+            });
+          } else if (r.targetType === 'club') {
+            target = await prisma.club.findUnique({
+              where: { id: r.targetId },
+              select: { id: true, name: true, creatorId: true },
+            });
           }
         } catch {
           target = null;
         }
-        return { ...r, target };
+        // Şikayet edilen içeriğin sahibi (askıya alma işlemi için)
+        const ownerId = target ? reportTargetOwnerId(r.targetType, target) : null;
+        const owner = ownerId
+          ? await prisma.user.findUnique({ where: { id: ownerId }, select: { id: true, fullName: true, email: true, isBanned: true } })
+          : null;
+        const previousReports = ownerId
+          ? await prisma.report.count({ where: { targetType: 'user', targetId: ownerId } })
+          : 0;
+        return { ...r, target, owner, previousReports };
       })
     );
 
@@ -608,6 +768,207 @@ router.patch('/reports/:id', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Şikayet güncellenemedi.' });
+  }
+});
+
+// POST /admin/reports/:id/action — tek tıkla karar
+//   ban_user       içeriğin sahibini askıya al + şikayeti "çözüldü" yap
+//   delete_content içeriği sil + şikayeti "çözüldü" yap
+//   dismiss        şikayeti reddet (işlem gerekmez)
+router.post('/reports/:id/action', async (req, res) => {
+  try {
+    const { action } = req.body;
+    const report = await prisma.report.findUnique({ where: { id: Number(req.params.id) } });
+    if (!report) return res.status(404).json({ error: 'Şikayet bulunamadı.' });
+
+    const io = req.app.get('io');
+    let message = '';
+    if (action === 'dismiss') {
+      message = 'Şikayet reddedildi.';
+    } else if (action === 'ban_user') {
+      const target = await loadReportTarget(report);
+      const ownerId = target ? reportTargetOwnerId(report.targetType, target) : null;
+      if (!ownerId) return res.status(400).json({ error: 'İçerik silinmiş; askıya alınacak kullanıcı bulunamadı.' });
+      if (ownerId === req.userId) return res.status(400).json({ error: 'Kendini askıya alamazsın.' });
+      const owner = await prisma.user.update({ where: { id: ownerId }, data: { isBanned: true }, select: { fullName: true } });
+      io?.in(`user_${ownerId}`).disconnectSockets(true);
+      message = `${owner.fullName} askıya alındı.`;
+    } else if (action === 'delete_content') {
+      const model = { post: 'post', story: 'story', message: 'message', club_message: 'clubMessage', comment: 'comment', club: 'club' }[report.targetType];
+      if (!model) return res.status(400).json({ error: 'Bu şikayet türünde silinecek içerik yok; kullanıcıyı askıya alabilirsin.' });
+      const result = await prisma[model].deleteMany({ where: { id: report.targetId } });
+      message = result.count ? 'İçerik silindi.' : 'İçerik zaten silinmiş.';
+    } else {
+      return res.status(400).json({ error: 'Geçersiz işlem.' });
+    }
+
+    await prisma.report.update({
+      where: { id: report.id },
+      data: { status: action === 'dismiss' ? 'dismissed' : 'resolved', reviewedAt: new Date() },
+    });
+    res.json({ message });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'İşlem uygulanamadı.' });
+  }
+});
+
+function reportTargetOwnerId(type, target) {
+  if (!target) return null;
+  if (type === 'user') return target.id;
+  return target.authorId || target.senderId || target.creatorId || null;
+}
+
+async function loadReportTarget(report) {
+  const id = report.targetId;
+  const select = {
+    user: { id: true },
+    post: { authorId: true },
+    story: { authorId: true },
+    comment: { authorId: true },
+    message: { senderId: true },
+    club_message: { senderId: true },
+    club: { creatorId: true },
+  }[report.targetType];
+  const model = { user: 'user', post: 'post', story: 'story', comment: 'comment', message: 'message', club_message: 'clubMessage', club: 'club' }[report.targetType];
+  if (!model) return null;
+  return prisma[model].findUnique({ where: { id }, select });
+}
+
+// ============================================================
+// TEK KULLANICIYA BİLDİRİM
+// ============================================================
+router.post('/users/:id/notify', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const title = (req.body.title || '').trim();
+    const body = (req.body.body || '').trim();
+    if (!title || title.length > 80 || !body || body.length > 500) {
+      return res.status(400).json({ error: 'Başlık (en fazla 80) ve mesaj (en fazla 500 karakter) zorunlu.' });
+    }
+    const user = await prisma.user.findUnique({ where: { id }, select: { id: true, fullName: true } });
+    if (!user) return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
+    await createNotification(req.app.get('io'), {
+      userId: id,
+      type: 'announcement',
+      targetType: 'campaign',
+      message: JSON.stringify({ title, body, link: null }),
+    });
+    res.json({ message: `${user.fullName} kişisine bildirim gönderildi.` });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Bildirim gönderilemedi.' });
+  }
+});
+
+// ============================================================
+// KULÜPLER ve ETKİNLİKLER
+// ============================================================
+router.get('/clubs', async (req, res) => {
+  try {
+    const search = (req.query.search || '').trim();
+    const where = {
+      AND: [
+        search ? { OR: [{ name: { contains: search } }, { university: { name: { contains: search } } }] } : {},
+        req.query.university ? { universityId: Number(req.query.university) } : {},
+      ],
+    };
+    const clubs = await prisma.club.findMany({
+      where,
+      select: {
+        id: true,
+        name: true,
+        category: true,
+        iconEmoji: true,
+        createdAt: true,
+        university: { select: { id: true, name: true } },
+        creator: { select: { id: true, fullName: true } },
+        _count: { select: { memberships: { where: { status: 'active' } }, events: true, messages: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    });
+    res.json(clubs);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Kulüpler alınamadı.' });
+  }
+});
+
+router.delete('/clubs/:id', async (req, res) => {
+  try {
+    await prisma.club.delete({ where: { id: Number(req.params.id) } });
+    res.json({ message: 'Kulüp silindi.' });
+  } catch (err) {
+    if (err.code === 'P2025') return res.status(404).json({ error: 'Kulüp bulunamadı.' });
+    console.error(err);
+    res.status(500).json({ error: 'Kulüp silinemedi.' });
+  }
+});
+
+router.get('/events', async (req, res) => {
+  try {
+    const now = new Date();
+    const past = req.query.scope === 'past';
+    const events = await prisma.event.findMany({
+      where: { startsAt: past ? { lt: now } : { gte: now } },
+      select: {
+        id: true,
+        title: true,
+        location: true,
+        startsAt: true,
+        club: { select: { id: true, name: true, iconEmoji: true, university: { select: { name: true } } } },
+        _count: { select: { rsvps: true } },
+      },
+      orderBy: { startsAt: past ? 'desc' : 'asc' },
+      take: 200,
+    });
+    res.json(events);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Etkinlikler alınamadı.' });
+  }
+});
+
+router.delete('/events/:id', async (req, res) => {
+  try {
+    await prisma.event.delete({ where: { id: Number(req.params.id) } });
+    res.json({ message: 'Etkinlik silindi.' });
+  } catch (err) {
+    if (err.code === 'P2025') return res.status(404).json({ error: 'Etkinlik bulunamadı.' });
+    console.error(err);
+    res.status(500).json({ error: 'Etkinlik silinemedi.' });
+  }
+});
+
+// ============================================================
+// YÖNETİCİLER
+// ============================================================
+router.get('/admins', async (req, res) => {
+  try {
+    const admins = await prisma.user.findMany({
+      where: { isAdmin: true },
+      select: { id: true, fullName: true, email: true, createdAt: true, lastSeenAt: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    res.json(admins.map((a) => ({ ...a, isMe: a.id === req.userId })));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Yöneticiler alınamadı.' });
+  }
+});
+
+router.post('/admins', async (req, res) => {
+  try {
+    const email = (req.body.email || '').trim().toLowerCase();
+    const user = email ? await prisma.user.findUnique({ where: { email } }) : null;
+    if (!user) return res.status(404).json({ error: 'Bu e-postayla kayıtlı bir kullanıcı bulunamadı.' });
+    if (user.isAdmin) return res.status(409).json({ error: `${user.fullName} zaten yönetici.` });
+    await prisma.user.update({ where: { id: user.id }, data: { isAdmin: true } });
+    res.json({ message: `${user.fullName} artık yönetici.` });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Yönetici eklenemedi.' });
   }
 });
 

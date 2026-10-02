@@ -1,152 +1,175 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import adminApi from '../adminApi';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Ban, CheckCircle2, Flag, Trash2, XCircle } from 'lucide-react';
+import adminApi, { errorText, refreshCounts } from '../adminApi';
+import { Empty, PageHead, Pager, Segmented, Skeleton, timeAgo } from '../ui';
+import { useToast } from '../../context/ToastContext';
+import { useConfirm } from '../../context/ConfirmContext';
 
-const STATUS_LABELS = {
-  pending: { label: 'Bekliyor', cls: 'admin-badge-sky' },
-  reviewed: { label: 'İncelendi', cls: 'admin-badge-amber' },
-  resolved: { label: 'Çözüldü', cls: 'admin-badge-teal' },
-  dismissed: { label: 'Reddedildi', cls: 'admin-badge-muted' },
+const STATUS = [
+  { value: 'pending', label: 'Bekleyen' },
+  { value: 'resolved', label: 'Çözülen' },
+  { value: 'dismissed', label: 'Reddedilen' },
+  { value: '', label: 'Tümü' },
+];
+
+const STATUS_BADGE = {
+  pending: ['amber', 'Bekliyor'],
+  reviewed: ['blue', 'İncelendi'],
+  resolved: ['green', 'Çözüldü'],
+  dismissed: ['', 'Reddedildi'],
 };
 
-const TARGET_TYPE_LABELS = {
-  user: 'Kullanıcı',
-  post: 'İlan',
+const TYPE_LABEL = {
+  user: 'Profil',
+  post: 'Gönderi',
   comment: 'Yorum',
-  message: 'Mesaj',
+  message: 'Özel mesaj',
   club: 'Kulüp',
-  club_message: 'Kulüp Mesajı',
-  story: 'Hikaye',
+  club_message: 'Kulüp mesajı',
+  story: 'Hikâye',
 };
 
-const REASON_LABELS = {
+const REASON_LABEL = {
   spam: 'Spam',
-  harassment: 'Taciz / Zorbalık',
-  inappropriate_content: 'Uygunsuz İçerik',
-  fake_profile: 'Sahte Profil',
+  harassment: 'Taciz / zorbalık',
+  inappropriate_content: 'Uygunsuz içerik',
+  fake_profile: 'Sahte profil',
   other: 'Diğer',
 };
 
-function targetSummary(report) {
-  if (!report.target) return <span className="muted">İçerik silinmiş</span>;
-  if (report.targetType === 'user') return `${report.target.fullName} (${report.target.email})`;
-  if (report.targetType === 'post') return report.target.caption || '(açıklamasız ilan)';
-  if (report.targetType === 'story') return `Hikaye #${report.target.id} (fotoğraf)`;
-  return report.target.content || '(medya mesajı)';
+const DELETABLE = ['post', 'comment', 'message', 'club_message', 'story', 'club'];
+
+function targetText(r) {
+  if (!r.target) return <span className="adm-faint">İçerik silinmiş</span>;
+  switch (r.targetType) {
+    case 'user':
+      return `${r.target.fullName} (${r.target.email})`;
+    case 'post':
+      return r.target.caption || 'Açıklamasız gönderi';
+    case 'story':
+      return 'Fotoğraflı hikâye';
+    case 'club':
+      return r.target.name;
+    default:
+      return r.target.content || 'Medya mesajı';
+  }
 }
 
 export default function AdminReports() {
-  const [reports, setReports] = useState([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
+  const toast = useToast();
+  const confirm = useConfirm();
   const [status, setStatus] = useState('pending');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const pageSize = 20;
+  const [page, setPage] = useState(1);
+  const [data, setData] = useState(null);
+  const [busyId, setBusyId] = useState(null);
 
   const load = useCallback(() => {
-    setLoading(true);
     adminApi
-      .getReports({ status, page, pageSize })
-      .then((res) => {
-        setReports(res.data.reports);
-        setTotal(res.data.total);
-      })
-      .catch((err) => {
-        console.error('Şikayetler alınamadı:', err);
-        setError('Şikayetler yüklenemedi.');
-      })
-      .finally(() => setLoading(false));
-  }, [status, page]);
+      .getReports({ status, page, pageSize: 20 })
+      .then((res) => setData(res.data))
+      .catch((err) => toast.error(errorText(err, 'Şikayetler yüklenemedi.')));
+  }, [status, page]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(load, [load]);
 
-  useEffect(() => { load(); }, [load]);
-
-  async function updateStatus(id, newStatus) {
+  async function act(r, action) {
+    const prompts = {
+      ban_user: {
+        title: `${r.owner?.fullName || 'Kullanıcı'} askıya alınsın mı?`,
+        message: 'Hesaba giriş yapamaz ve listelerden kalkar. Kullanıcılar sayfasından geri alabilirsin.',
+        confirmLabel: 'Askıya al',
+        danger: true,
+      },
+      delete_content: {
+        title: `${TYPE_LABEL[r.targetType]} silinsin mi?`,
+        message: 'İçerik kalıcı olarak silinir.',
+        confirmLabel: 'Sil',
+        danger: true,
+      },
+    };
+    if (prompts[action] && !(await confirm(prompts[action]))) return;
+    setBusyId(r.id);
     try {
-      await adminApi.updateReport(id, { status: newStatus });
+      const res = await adminApi.reportAction(r.id, action);
+      refreshCounts();
+      toast.success(res.data.message);
       load();
     } catch (err) {
-      alert('Şikayet güncellenemedi.');
+      toast.error(errorText(err, 'İşlem yapılamadı.'));
+    } finally {
+      setBusyId(null);
     }
   }
 
-  const totalPages = Math.max(Math.ceil(total / pageSize), 1);
-
   return (
     <div>
-      <h1 className="admin-page-title">Şikayetler</h1>
-      <p className="admin-page-sub">Kullanıcıların bildirdiği kullanıcı/içerik şikayetleri.</p>
+      <PageHead title="Şikayetler" sub="Öğrencilerin bildirdiği profil ve içerikler. Tek tıkla içeriği sil, sahibini askıya al ya da şikayeti reddet.">
+        <Segmented
+          label="Durum"
+          value={status}
+          options={STATUS}
+          onChange={(v) => {
+            setStatus(v);
+            setPage(1);
+          }}
+        />
+      </PageHead>
 
-      {error && <div className="admin-error">{error}</div>}
-
-      <div className="admin-card">
-        <div className="admin-toolbar">
-          <select className="admin-select" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
-            <option value="">Tüm durumlar</option>
-            {Object.entries(STATUS_LABELS).map(([key, v]) => (
-              <option key={key} value={key}>{v.label}</option>
-            ))}
-          </select>
-        </div>
-
-        {loading ? (
-          <div className="admin-loading">Yükleniyor...</div>
-        ) : reports.length === 0 ? (
-          <div className="admin-empty">Bu durumda şikayet yok.</div>
+      <section className="adm-card">
+        {!data ? (
+          <Skeleton h={260} />
+        ) : data.reports.length === 0 ? (
+          <Empty icon={Flag}>{status === 'pending' ? 'Bekleyen şikayet yok.' : 'Bu durumda şikayet yok.'}</Empty>
         ) : (
-          <div className="admin-table-wrap">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>Şikayet Eden</th>
-                  <th>Tür</th>
-                  <th>Hedef</th>
-                  <th>Sebep</th>
-                  <th>Açıklama</th>
-                  <th>Durum</th>
-                  <th>Tarih</th>
-                  <th>İşlem</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reports.map((r) => (
-                  <tr key={r.id}>
-                    <td>{r.reporter?.fullName}</td>
-                    <td>{TARGET_TYPE_LABELS[r.targetType] || r.targetType}</td>
-                    <td style={{ maxWidth: 200 }}>{targetSummary(r)}</td>
-                    <td>{REASON_LABELS[r.reason] || r.reason}</td>
-                    <td style={{ maxWidth: 200 }}>{r.description || <span className="muted">—</span>}</td>
-                    <td>
-                      <span className={`admin-badge ${STATUS_LABELS[r.status]?.cls || 'admin-badge-muted'}`}>
-                        {STATUS_LABELS[r.status]?.label || r.status}
-                      </span>
-                    </td>
-                    <td>{new Date(r.createdAt).toLocaleDateString('tr-TR')}</td>
-                    <td>
-                      <select
-                        className="admin-select"
-                        value={r.status}
-                        onChange={(e) => updateStatus(r.id, e.target.value)}
-                      >
-                        {Object.entries(STATUS_LABELS).map(([key, v]) => (
-                          <option key={key} value={key}>{v.label}</option>
-                        ))}
-                      </select>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          data.reports.map((r) => {
+            const [cls, label] = STATUS_BADGE[r.status] || ['', r.status];
+            const open = r.status === 'pending' || r.status === 'reviewed';
+            return (
+              <article className="adm-campaign" key={r.id}>
+                <div style={{ minWidth: 0 }}>
+                  <div className="adm-campaign-meta" style={{ marginBottom: 6 }}>
+                    <span className={`adm-badge ${cls}`}>{label}</span>
+                    <span className="adm-badge">{TYPE_LABEL[r.targetType] || r.targetType}</span>
+                    <span className="adm-badge red">{REASON_LABEL[r.reason] || r.reason}</span>
+                    <span className="adm-faint">{timeAgo(r.createdAt)}</span>
+                  </div>
+                  <h4 className="adm-ellipsis" style={{ maxWidth: '100%' }}>{targetText(r)}</h4>
+                  {r.description && <p>“{r.description}”</p>}
+                  <span className="adm-faint">
+                    Bildiren: {r.reporter?.fullName || 'silinmiş hesap'}
+                    {r.owner && r.targetType !== 'user' ? ` · İçerik sahibi: ${r.owner.fullName}` : ''}
+                    {r.previousReports > 1 ? ` · Bu kişi hakkında toplam ${r.previousReports} profil şikayeti var` : ''}
+                    {r.owner?.isBanned ? ' · Sahibi askıda' : ''}
+                  </span>
+                </div>
+                <div />
+                {open && (
+                  <div className="adm-campaign-actions">
+                    {DELETABLE.includes(r.targetType) && r.target && (
+                      <button type="button" className="adm-btn danger-ghost small" disabled={busyId === r.id} onClick={() => act(r, 'delete_content')}>
+                        <Trash2 /> İçeriği sil
+                      </button>
+                    )}
+                    {r.owner && !r.owner.isBanned && (
+                      <button type="button" className="adm-btn danger-ghost small" disabled={busyId === r.id} onClick={() => act(r, 'ban_user')}>
+                        <Ban /> Sahibini askıya al
+                      </button>
+                    )}
+                    <button type="button" className="adm-btn ghost small" disabled={busyId === r.id} onClick={() => act(r, 'dismiss')}>
+                      <XCircle /> Şikayeti reddet
+                    </button>
+                  </div>
+                )}
+                {!open && r.reviewedAt && (
+                  <div className="adm-campaign-actions adm-faint">
+                    <CheckCircle2 size={14} /> {timeAgo(r.reviewedAt)} karar verildi
+                  </div>
+                )}
+              </article>
+            );
+          })
         )}
-
-        <div className="admin-pagination">
-          <span>Sayfa {page} / {totalPages}</span>
-          <div className="admin-row-actions">
-            <button className="admin-btn admin-btn-outline admin-btn-small" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>Önceki</button>
-            <button className="admin-btn admin-btn-outline admin-btn-small" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Sonraki</button>
-          </div>
-        </div>
-      </div>
+        {data && data.total > 20 && <Pager page={page} total={data.total} pageSize={20} onPage={setPage} />}
+      </section>
     </div>
   );
 }

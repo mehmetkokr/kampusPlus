@@ -25,6 +25,7 @@ const notificationRoutes = require('./routes/notifications');
 const discoverRoutes = require('./routes/discover');
 const filesRoutes = require('./routes/files');
 const premiumRoutes = require('./routes/premium');
+const announcementRoutes = require('./routes/announcements');
 const { setupSocket } = require('./socket');
 const { startCronJobs } = require('./lib/cron');
 
@@ -113,6 +114,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/discover', discoverRoutes);
 app.use('/api/files', filesRoutes);
 app.use('/api/premium', premiumRoutes);
+app.use('/api/announcements', announcementRoutes);
 
 app.set('io', io);
 const { checkMailer } = require('./lib/mailer');

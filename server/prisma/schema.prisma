@@ -15,10 +15,10 @@ datasource db {
 // Üniversite listesi
 // ----------------------------
 model University {
-  id        Int      @id @default(autoincrement())
-  name      String   @unique // örn. "İstanbul Teknik Üniversitesi"
+  id          Int      @id @default(autoincrement())
+  name        String   @unique // örn. "İstanbul Teknik Üniversitesi"
   emailDomain String? // örn. "itu.edu.tr" - otomatik doğrulama için
-  createdAt DateTime @default(now())
+  createdAt   DateTime @default(now())
 
   users User[]
   clubs Club[]
@@ -31,15 +31,15 @@ model University {
 // kimliğini tutmak için ayrıldı.
 // ----------------------------
 model PaymentLog {
-  id         Int      @id @default(autoincrement())
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId     Int
-  plan       String   @default("monthly") // monthly | yearly
-  amount     Float
-  provider   String   @default("mock")    // mock | iyzico
+  id          Int      @id @default(autoincrement())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      Int
+  plan        String   @default("monthly") // monthly | yearly
+  amount      Float
+  provider    String   @default("mock") // mock | iyzico
   providerRef String?
-  status     String   @default("success") // success | failed | refunded
-  createdAt  DateTime @default(now())
+  status      String   @default("success") // success | failed | refunded
+  createdAt   DateTime @default(now())
 
   @@index([userId])
 }
@@ -48,53 +48,53 @@ model PaymentLog {
 // Kullanıcı
 // ----------------------------
 model User {
-  id            Int      @id @default(autoincrement())
-  email         String   @unique
-  passwordHash  String
-  fullName      String
+  id           Int        @id @default(autoincrement())
+  email        String     @unique
+  passwordHash String
+  fullName     String
   // Bir üniversite silinirse öğrencileri silinmesin - önce öğrenciler
   // başka bir üniversiteye taşınmalı/silinmeli (Restrict = varsayılan davranış).
-  university    University @relation(fields: [universityId], references: [id])
-  universityId  Int
-  department    String?  // bölüm
-  classYear     Int?     // sınıf (1, 2, 3, 4...)
+  university   University @relation(fields: [universityId], references: [id])
+  universityId Int
+  department   String? // bölüm
+  classYear    Int? // sınıf (1, 2, 3, 4...)
 
   // Profil bilgileri
-  age           Int?
-  bio           String?
-  photoUrl      String?
-  interests     String?  // virgülle ayrılmış ilgi alanları (basit MVP için)
-  hobbies       String?  // virgülle ayrılmış hobiler
-  instagramUrl  String?  // sosyal medya (isteğe bağlı)
-  twitterUrl    String?
-  linkedinUrl   String?
+  age          Int?
+  bio          String?
+  photoUrl     String?
+  interests    String? // virgülle ayrılmış ilgi alanları (basit MVP için)
+  hobbies      String? // virgülle ayrılmış hobiler
+  instagramUrl String? // sosyal medya (isteğe bağlı)
+  twitterUrl   String?
+  linkedinUrl  String?
 
   // Kullanım amacı: "friendship" (arkadaşlık) veya "dating" (flört)
-  intent        String   @default("friendship")
+  intent String @default("friendship")
 
   // Bildirim tercihleri
-  notifyMatches  Boolean @default(true)
-  notifyMessages Boolean @default(true)
+  notifyMatches      Boolean @default(true)
+  notifyMessages     Boolean @default(true)
   // Gönderi beğenisi, yorum ve yorum beğenisi bildirimlerini tek bir
   // anahtardan açıp kapatabilmek için (ayrı ayrı tercih alanları yerine).
   notifyPostActivity Boolean @default(true)
 
   // Ayarlar: gizlilik
   profileVisibility  String  @default("everyone") // everyone | university | nobody
-  showActivityStatus Boolean @default(true)        // çevrimiçi / son görülme bilgisini başkalarına göster
+  showActivityStatus Boolean @default(true) // çevrimiçi / son görülme bilgisini başkalarına göster
   // Kart Modu: kapatan kişi Kart Modu'nu kullanmaz ve kimsenin destesinde görünmez
   // (yalnızca akış ve kulüpleri kullanmak isteyenler için)
   swipeEnabled       Boolean @default(true)
 
   // Ayarlar: görünüm ve dil
-  theme    String @default("dark")  // dark | light
-  language String @default("tr")    // tr | en
+  theme    String @default("dark") // dark | light
+  language String @default("tr") // tr | en
 
   // Çevrimiçi / son görülme durumu (mesajlaşma için)
-  lastSeenAt    DateTime?
+  lastSeenAt DateTime?
 
   // Doğrulama durumu
-  verificationStatus String @default("pending") // pending | auto_verified | manual_review | verified | rejected
+  verificationStatus String  @default("pending") // pending | auto_verified | manual_review | verified | rejected
   // Belge Onay/Red kuyruğu: admin reddederse öğrenciye gösterilecek kısa gerekçe.
   // Kullanıcı belgeyi yenileyip tekrar manual_review'a düşerse temizlenir.
   rejectionReason    String?
@@ -109,9 +109,9 @@ model User {
   tokenVersion Int @default(0)
 
   // Yönetim
-  isAdmin   Boolean @default(false) // admin paneline erişimi olan kullanıcı
-  isBanned  Boolean @default(false) // şikayet sonucu askıya alınmış hesap
-  isFrozen  Boolean @default(false) // kullanıcının kendi isteğiyle dondurduğu hesap
+  isAdmin  Boolean @default(false) // admin paneline erişimi olan kullanıcı
+  isBanned Boolean @default(false) // şikayet sonucu askıya alınmış hesap
+  isFrozen Boolean @default(false) // kullanıcının kendi isteğiyle dondurduğu hesap
 
   // Premium üyelik: ücretsiz kullanıcılar sadece kendi üniversitesindeki
   // kişileri görebilir; premium kullanıcılar tüm üniversitelerdeki kişilere
@@ -149,8 +149,8 @@ model User {
   weeklySummaryEnabled Boolean   @default(true)
   lastWeeklySummaryAt  DateTime?
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // İlişkiler
   // Aşağıdaki ilişkilerin çoğu Cascade: kullanıcı silinince onun kişisel
@@ -159,17 +159,17 @@ model User {
   // bir topluluk kaynağının sahibi silinmeden önce sahiplik devredilmeli ya da
   // kaynak silinmeli - aksi halde o kaynağa bağlı diğer üyelerin verisi de
   // sessizce silinmiş olur.
-  sentLikes     Like[]   @relation("LikesSent")
-  receivedLikes Like[]   @relation("LikesReceived")
+  sentLikes     Like[] @relation("LikesSent")
+  receivedLikes Like[] @relation("LikesReceived")
 
   matchesAsUserA Match[] @relation("MatchUserA")
   matchesAsUserB Match[] @relation("MatchUserB")
 
-  sentMessages  Message[] @relation("MessagesSent")
+  sentMessages Message[] @relation("MessagesSent")
 
-  createdClubs      Club[]           @relation("ClubCreator")
-  clubMemberships   ClubMembership[]
-  clubMessages      ClubMessage[]
+  createdClubs    Club[]           @relation("ClubCreator")
+  clubMemberships ClubMembership[]
+  clubMessages    ClubMessage[]
 
   posts        Post[]
   postLikes    PostLike[]
@@ -178,19 +178,21 @@ model User {
   comments     Comment[]
   stories      Story[]
   storyViews   StoryView[]
-  following    Follow[]  @relation("Follower")
-  followers    Follow[]  @relation("Following")
+  following    Follow[]      @relation("Follower")
+  followers    Follow[]      @relation("Following")
 
   createdEvents Event[]     @relation("EventCreator")
   eventRSVPs    EventRSVP[]
 
-  reportsFiled  Report[]    @relation("ReportsFiled")
+  reportsFiled Report[] @relation("ReportsFiled")
 
-  notifications        Notification[] @relation("NotificationsReceived")
-  notificationsCaused  Notification[] @relation("NotificationsActor")
+  notifications       Notification[] @relation("NotificationsReceived")
+  notificationsCaused Notification[] @relation("NotificationsActor")
 
   blocksMade     Block[] @relation("BlocksMade")
   blocksReceived Block[] @relation("BlocksReceived")
+
+  campaignsCreated Campaign[] @relation("CampaignAuthor")
 
   @@index([universityId])
 }
@@ -199,12 +201,12 @@ model User {
 // Beğeni (Like)
 // ----------------------------
 model Like {
-  id          Int      @id @default(autoincrement())
-  fromUser    User     @relation("LikesSent", fields: [fromUserId], references: [id], onDelete: Cascade)
-  fromUserId  Int
-  toUser      User     @relation("LikesReceived", fields: [toUserId], references: [id], onDelete: Cascade)
-  toUserId    Int
-  createdAt   DateTime @default(now())
+  id         Int      @id @default(autoincrement())
+  fromUser   User     @relation("LikesSent", fields: [fromUserId], references: [id], onDelete: Cascade)
+  fromUserId Int
+  toUser     User     @relation("LikesReceived", fields: [toUserId], references: [id], onDelete: Cascade)
+  toUserId   Int
+  createdAt  DateTime @default(now())
 
   @@unique([fromUserId, toUserId]) // bir kullanıcı aynı kişiyi sadece bir kez beğenebilir
   @@index([toUserId])
@@ -221,7 +223,7 @@ model Match {
   userBId   Int
   createdAt DateTime @default(now())
 
-  messages  Message[]
+  messages Message[]
 
   @@unique([userAId, userBId])
   @@index([userBId])
@@ -231,18 +233,18 @@ model Match {
 // Mesaj
 // ----------------------------
 model Message {
-  id         Int      @id @default(autoincrement())
-  match      Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
-  matchId    Int
-  sender     User     @relation("MessagesSent", fields: [senderId], references: [id], onDelete: Cascade)
-  senderId   Int
-  content    String?
-  photoUrl   String?
-  audioUrl   String?
-  fileUrl    String?
-  fileName   String?
-  isRead     Boolean  @default(false) // karşı taraf mesajı görüntüledi mi ("Görüldü")
-  createdAt  DateTime @default(now())
+  id        Int      @id @default(autoincrement())
+  match     Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  matchId   Int
+  sender    User     @relation("MessagesSent", fields: [senderId], references: [id], onDelete: Cascade)
+  senderId  Int
+  content   String?
+  photoUrl  String?
+  audioUrl  String?
+  fileUrl   String?
+  fileName  String?
+  isRead    Boolean  @default(false) // karşı taraf mesajı görüntüledi mi ("Görüldü")
+  createdAt DateTime @default(now())
 
   @@index([matchId])
 }
@@ -251,18 +253,18 @@ model Message {
 // Kulüp (öğrenciler kendi üniversitelerinde kulüp açabilir)
 // ----------------------------
 model Club {
-  id           Int      @id @default(autoincrement())
+  id           Int        @id @default(autoincrement())
   name         String
   description  String?
-  category     String   @default("Sosyal") // Teknoloji | Spor | Sanat | Akademik | Sosyal | Diğer
-  iconEmoji    String   @default("👥")
+  category     String     @default("Sosyal") // Teknoloji | Spor | Sanat | Akademik | Sosyal | Diğer
+  iconEmoji    String     @default("👥")
   university   University @relation(fields: [universityId], references: [id])
   universityId Int
   // Kasıtlı olarak Restrict: kurucu, kulübü silmeden/devretmeden hesabını
   // silemez - aksi halde tüm üyelerin ve mesaj geçmişinin sahibi kalmaz.
-  creator      User     @relation("ClubCreator", fields: [creatorId], references: [id])
+  creator      User       @relation("ClubCreator", fields: [creatorId], references: [id])
   creatorId    Int
-  createdAt    DateTime @default(now())
+  createdAt    DateTime   @default(now())
 
   memberships ClubMembership[]
   messages    ClubMessage[]
@@ -276,14 +278,14 @@ model Club {
 // Kulüp Üyeliği (rol ve durum burada tutulur)
 // ----------------------------
 model ClubMembership {
-  id        Int      @id @default(autoincrement())
-  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
-  clubId    Int
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    Int
-  role      String   @default("member") // owner | admin | member
-  status    String   @default("active") // active | banned
-  joinedAt  DateTime @default(now())
+  id       Int      @id @default(autoincrement())
+  club     Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  clubId   Int
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId   Int
+  role     String   @default("member") // owner | admin | member
+  status   String   @default("active") // active | banned
+  joinedAt DateTime @default(now())
 
   @@unique([clubId, userId])
   @@index([userId])
@@ -312,20 +314,20 @@ model ClubMessage {
 // Gönderi (Instagram tarzı akış)
 // ----------------------------
 model Post {
-  id        Int      @id @default(autoincrement())
-  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  authorId  Int
+  id         Int      @id @default(autoincrement())
+  author     User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId   Int
   // Metin-yalnızca gönderiler desteklenir; imageUrl bu yüzden opsiyoneldir.
   // (create route caption veya fotoğraftan en az birini zorunlu kılar)
-  imageUrl  String?
-  caption   String?
+  imageUrl   String?
+  caption    String?
   // Kimler görebilir: campus (kampüsteki herkes) | followers (takipçilerim) | mutual (karşılıklı takip)
-  visibility String  @default("campus")
-  createdAt DateTime @default(now())
+  visibility String   @default("campus")
+  createdAt  DateTime @default(now())
 
-  likes     PostLike[]
-  comments  Comment[]
-  savedBy   SavedPost[]
+  likes    PostLike[]
+  comments Comment[]
+  savedBy  SavedPost[]
 
   @@index([authorId])
 }
@@ -367,10 +369,10 @@ model Comment {
   createdAt DateTime @default(now())
 
   // Tek seviyeli yanıt sistemi (Instagram mantığı): bir yorum bir üst yoruma yanıt olabilir.
-  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
-  parentId  Int?
-  replies   Comment[] @relation("CommentReplies")
-  likes     CommentLike[]
+  parent   Comment?      @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  parentId Int?
+  replies  Comment[]     @relation("CommentReplies")
+  likes    CommentLike[]
 
   @@index([postId])
   @@index([parentId])
@@ -477,9 +479,9 @@ model Report {
   id          Int       @id @default(autoincrement())
   reporter    User      @relation("ReportsFiled", fields: [reporterId], references: [id], onDelete: Cascade)
   reporterId  Int
-  targetType  String    // "user" | "post" | "comment" | "message" | "club" | "club_message" | "story"
+  targetType  String // "user" | "post" | "comment" | "message" | "club" | "club_message" | "story"
   targetId    Int
-  reason      String    // "spam" | "harassment" | "inappropriate_content" | "fake_profile" | "other"
+  reason      String // "spam" | "harassment" | "inappropriate_content" | "fake_profile" | "other"
   description String?
   status      String    @default("pending") // pending | reviewed | resolved | dismissed
   reviewedAt  DateTime?
@@ -500,12 +502,12 @@ model Notification {
   id         Int      @id @default(autoincrement())
   user       User     @relation("NotificationsReceived", fields: [userId], references: [id], onDelete: Cascade)
   userId     Int
-  type       String   // follow | message | match | club_join | profile_view
+  type       String // follow | message | match | club_join | profile_view
   actor      User?    @relation("NotificationsActor", fields: [actorId], references: [id], onDelete: SetNull)
   actorId    Int?
-  targetType String?  // "club" | "match" | "user" vs. (bildirime tıklanınca nereye gidileceği)
+  targetType String? // "club" | "match" | "user" vs. (bildirime tıklanınca nereye gidileceği)
   targetId   Int?
-  message    String?  // actor'dan türetilemeyen ek metin (örn. kulüp adı)
+  message    String? // actor'dan türetilemeyen ek metin (örn. kulüp adı)
   isRead     Boolean  @default(false)
   createdAt  DateTime @default(now())
 
@@ -517,12 +519,12 @@ model Notification {
 // Engellenen Kullanıcılar
 // ----------------------------
 model Block {
-  id         Int      @id @default(autoincrement())
-  blocker    User     @relation("BlocksMade", fields: [blockerId], references: [id], onDelete: Cascade)
-  blockerId  Int
-  blocked    User     @relation("BlocksReceived", fields: [blockedId], references: [id], onDelete: Cascade)
-  blockedId  Int
-  createdAt  DateTime @default(now())
+  id        Int      @id @default(autoincrement())
+  blocker   User     @relation("BlocksMade", fields: [blockerId], references: [id], onDelete: Cascade)
+  blockerId Int
+  blocked   User     @relation("BlocksReceived", fields: [blockedId], references: [id], onDelete: Cascade)
+  blockedId Int
+  createdAt DateTime @default(now())
 
   @@unique([blockerId, blockedId])
   @@index([blockedId])
@@ -554,4 +556,28 @@ model EmailVerificationCode {
   attempts   Int      @default(0)
   lastSentAt DateTime @default(now())
   createdAt  DateTime @default(now())
+}
+
+// ----------------------------
+// Pazarlama kampanyası / duyuru (admin panelinden gönderilir)
+// ----------------------------
+// channels: virgülle ayrılmış "notification,banner,email"
+// audience: hedef kitle filtresi (JSON) - bkz. src/lib/audience.js
+// Bildirimler Notification tablosuna targetType="campaign", targetId=id ile
+// yazılır; okunma oranı oradan hesaplanır.
+model Campaign {
+  id             Int       @id @default(autoincrement())
+  title          String
+  body           String
+  link           String?
+  channels       String
+  audience       String    @default("{}")
+  recipientCount Int       @default(0)
+  emailCount     Int       @default(0)
+  bannerUntil    DateTime?
+  createdBy      User?     @relation("CampaignAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  createdById    Int?
+  createdAt      DateTime  @default(now())
+
+  @@index([bannerUntil])
 }

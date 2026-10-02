@@ -1,9 +1,10 @@
 import React, { Suspense, lazy } from 'react';
-import { Routes, Route, useLocation } from 'react-router-dom';
+import { Navigate, Routes, Route, useLocation } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import PublicRoute from './components/PublicRoute';
 import NavBar, { NAV_ITEMS } from './components/NavBar';
 import AppBackdrop from './components/AppBackdrop';
+import AnnouncementBanner from './components/AnnouncementBanner';
 import { useAuth } from './context/AuthContext';
 import AdminProtectedRoute from './admin/AdminProtectedRoute';
 import CubeLoader from './components/CubeLoader';
@@ -30,12 +31,12 @@ const UserProfileViewPage = lazy(() => import('./pages/UserProfileViewPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const WelcomePage = lazy(() => import('./pages/WelcomePage'));
 const AdminLayout = lazy(() => import('./admin/AdminLayout'));
-const AdminDashboard = lazy(() => import('./admin/pages/AdminDashboard'));
+const AdminOverview = lazy(() => import('./admin/pages/AdminOverview'));
+const AdminCampaigns = lazy(() => import('./admin/pages/AdminCampaigns'));
+const AdminCampuses = lazy(() => import('./admin/pages/AdminCampuses'));
+const AdminContent = lazy(() => import('./admin/pages/AdminContent'));
 const AdminUsers = lazy(() => import('./admin/pages/AdminUsers'));
 const AdminVerificationQueue = lazy(() => import('./admin/pages/AdminVerificationQueue'));
-const AdminUniversities = lazy(() => import('./admin/pages/AdminUniversities'));
-const AdminDepartments = lazy(() => import('./admin/pages/AdminDepartments'));
-const AdminPosts = lazy(() => import('./admin/pages/AdminPosts'));
 const AdminReports = lazy(() => import('./admin/pages/AdminReports'));
 const AdminSettings = lazy(() => import('./admin/pages/AdminSettings'));
 const LegalPage = lazy(() => import('./pages/LegalPage'));
@@ -55,6 +56,7 @@ export default function App() {
   return (
     <>
     {isAppRoute && <AppBackdrop />}
+    {isAppRoute && <AnnouncementBanner />}
     <PageMeta />
     <Suspense fallback={<CubeLoader mode="fullscreen" />}>
     <Routes>
@@ -198,14 +200,19 @@ export default function App() {
           </AdminProtectedRoute>
         }
       >
-        <Route index element={<AdminDashboard />} />
+        <Route index element={<AdminOverview />} />
+        <Route path="campaigns" element={<AdminCampaigns />} />
+        <Route path="campuses" element={<AdminCampuses />} />
         <Route path="users" element={<AdminUsers />} />
         <Route path="verification-queue" element={<AdminVerificationQueue />} />
-        <Route path="universities" element={<AdminUniversities />} />
-        <Route path="departments" element={<AdminDepartments />} />
-        <Route path="posts" element={<AdminPosts />} />
+        <Route path="content" element={<AdminContent />} />
         <Route path="reports" element={<AdminReports />} />
         <Route path="settings" element={<AdminSettings />} />
+        {/* Eski adresler yeni bölümlere yönlenir */}
+        <Route path="universities" element={<Navigate to="/admin/campuses" replace />} />
+        <Route path="departments" element={<Navigate to="/admin/campuses" replace />} />
+        <Route path="posts" element={<Navigate to="/admin/content" replace />} />
+        <Route path="*" element={<Navigate to="/admin" replace />} />
       </Route>
 
       <Route path="/gizlilik" element={<LegalPage doc="gizlilik" />} />

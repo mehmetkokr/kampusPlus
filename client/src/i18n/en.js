@@ -195,6 +195,8 @@ const en = {
   'Üniversiteni ara (örn. İTÜ, Boğaziçi)': 'Search your university (e.g. İTÜ, Boğaziçi)',
   'Aranıyor...': 'Searching...',
   'Lütfen üniversiteni seç.': 'Please select your university.',
+  'Duyuruyu kapat': 'Dismiss announcement',
+  'Duyuru': 'Announcement',
   'Üniversite listesi yüklenemedi. Sayfayı yenilemeyi dene.': 'Could not load universities. Try refreshing the page.',
   'Üniversite alan adı kontrol ediliyor…': 'Checking university domain…',
   'Bu adres @': 'This address ends with @',

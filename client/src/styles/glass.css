@@ -4844,3 +4844,91 @@ h1, h2, h3, .page-hero-title { letter-spacing: -0.02em; }
 /* Uygulama içi mod düğmesi: kenar çubuğunda "Hesap" başlığının yanında */
 .side-nav-label-row { display: flex; align-items: center; justify-content: space-between; }
 .side-nav-theme { width: 32px; height: 32px; margin-right: 6px; }
+
+/* ==========================================================================
+   Duyuru bandı (yönetim panelinden gönderilen kampanya) ve duyuru bildirimi
+   Telefonda alt menünün hemen üstünde, masaüstünde sağ altta durur.
+   ========================================================================== */
+.announcement-banner {
+  position: fixed;
+  left: 50%;
+  bottom: calc(96px + env(safe-area-inset-bottom));
+  z-index: 55;
+  width: min(560px, calc(100% - 32px));
+  display: flex;
+  align-items: stretch;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--surface) 86%, transparent);
+  border: 1px solid color-mix(in srgb, var(--amber-soft) 35%, var(--glass-border));
+  box-shadow: var(--glass-shadow-lg);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
+  transform: translateX(-50%);
+  animation: announcement-in 0.4s cubic-bezier(0.23, 1, 0.32, 1) both;
+}
+@keyframes announcement-in {
+  from { opacity: 0; transform: translate(-50%, 16px); }
+}
+.announcement-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 4px 12px 14px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+button.announcement-main { cursor: pointer; }
+.announcement-icon {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: linear-gradient(135deg, var(--amber-soft), var(--amber));
+}
+.announcement-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.announcement-text b { font-size: 0.9rem; font-weight: 650; }
+.announcement-text span {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.announcement-chev { flex-shrink: 0; color: var(--text-faint); }
+.announcement-close {
+  width: 44px;
+  flex-shrink: 0;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 0 20px 20px 0;
+  display: grid;
+  place-items: center;
+}
+.announcement-close:hover { color: var(--text); }
+@media (min-width: 1024px) {
+  .announcement-banner { left: auto; right: 24px; bottom: 24px; width: 400px; transform: none; }
+  @keyframes announcement-in { from { opacity: 0; transform: translateY(16px); } }
+}
+@media (prefers-reduced-motion: reduce) {
+  .announcement-banner { animation-name: announcement-fade; }
+  @keyframes announcement-fade { from { opacity: 0; } }
+}
+
+.notification-detail {
+  margin-top: 2px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}

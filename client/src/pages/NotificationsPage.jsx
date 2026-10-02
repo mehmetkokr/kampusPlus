@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Heart, MessageCircle, UserPlus, Users, Eye, Bell, Trash2, BadgeCheck, FileX, CalendarPlus } from 'lucide-react';
+import { Heart, MessageCircle, UserPlus, Users, Eye, Bell, Trash2, BadgeCheck, FileX, CalendarPlus, Megaphone } from 'lucide-react';
 import api from '../api';
 import { API_BASE_URL } from '../config';
 import { useToast } from '../context/ToastContext';
@@ -9,6 +9,7 @@ import PageHeader from '../components/PageHeader';
 import { useI18n } from '../i18n';
 
 const TYPE_ICON = {
+  announcement: Megaphone,
   follow: UserPlus,
   message: MessageCircle,
   match: Heart,
@@ -65,7 +66,10 @@ export default function NotificationsPage() {
       api.put(`/notifications/${n.id}/read`).catch(() => {});
     }
     const { link } = formatNotification(n);
-    if (link) navigate(link);
+    if (!link) return;
+    // Duyurularda dış bağlantı (https://) da olabilir
+    if (link.startsWith('https://')) window.open(link, '_blank', 'noopener,noreferrer');
+    else navigate(link);
   }
 
   async function handleDelete(e, id) {
@@ -101,7 +105,7 @@ export default function NotificationsPage() {
       {!loading && notifications.length > 0 && (
         <div className="notification-list">
           {notifications.map((n) => {
-            const { text } = formatNotification(n, t);
+            const { text, detail } = formatNotification(n, t);
             const Icon = TYPE_ICON[n.type] || Bell;
             return (
               <div
@@ -123,7 +127,8 @@ export default function NotificationsPage() {
                   )}
                 </div>
                 <div className="notification-body">
-                  <div className="notification-text">{text}</div>
+                  <div className="notification-text">{n.type === 'announcement' ? <strong>{text}</strong> : text}</div>
+                  {detail && <div className="notification-detail">{detail}</div>}
                   <div className="notification-time">{t(timeAgo(n.createdAt))}</div>
                 </div>
                 {!n.isRead && <span className="notification-dot" />}
