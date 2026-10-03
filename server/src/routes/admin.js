@@ -475,13 +475,13 @@ router.patch('/users/:id', async (req, res) => {
     if (verificationStatus === 'verified' && previous?.verificationStatus !== 'verified') {
       sendMail({
         to: updated.email,
-        subject: 'kampüs+ — Öğrenci belgen onaylandı ✅',
-        text: `Merhaba ${updated.fullName},\n\nÖğrenci belgen incelendi ve onaylandı. Artık hesabın tamamen doğrulanmış durumda, kampüs+'ı sınırsız kullanabilirsin.`,
+        subject: 'kampüs·: Öğrenci belgen onaylandı',
+        text: `Merhaba ${updated.fullName},\n\nÖğrenci belgen incelendi ve onaylandı. Artık hesabın tamamen doğrulanmış durumda, kampüs·'ü sınırsız kullanabilirsin.`,
       }).catch((err) => console.error('Onay e-postası gönderilemedi:', err));
     } else if (verificationStatus === 'rejected' && previous?.verificationStatus !== 'rejected') {
       sendMail({
         to: updated.email,
-        subject: 'kampüs+ — Öğrenci belgenle ilgili bir sorun var',
+        subject: 'kampüs·: Öğrenci belgenle ilgili bir sorun var',
         text: `Merhaba ${updated.fullName},\n\nYüklediğin öğrenci belgesi incelendi ve şu sebeple onaylanamadı: "${updated.rejectionReason}".\n\nProfilinden yeni bir belge yükleyerek tekrar deneyebilirsin.`,
       }).catch((err) => console.error('Red e-postası gönderilemedi:', err));
     }

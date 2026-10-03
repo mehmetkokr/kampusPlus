@@ -174,10 +174,10 @@ function UserDrawer({ id, onClose, onChanged }) {
 
           <dl className="adm-kv">
             <dt>Üniversite</dt><dd>{u.university?.name}</dd>
-            <dt>Bölüm / sınıf</dt><dd>{u.department || '—'} · {CLASS_LABELS[u.classYear] || '—'}</dd>
-            <dt>Yaş</dt><dd>{u.age || '—'}</dd>
-            <dt>Ne arıyor</dt><dd>{(u.intent || '').split(',').filter(Boolean).map((i) => INTENT_LABELS[i] || i).join(', ') || '—'}</dd>
-            <dt>İlgi alanları</dt><dd>{[u.interests, u.hobbies].filter(Boolean).join(', ') || '—'}</dd>
+            <dt>Bölüm / sınıf</dt><dd>{u.department || '-'} · {CLASS_LABELS[u.classYear] || '-'}</dd>
+            <dt>Yaş</dt><dd>{u.age || '-'}</dd>
+            <dt>Ne arıyor</dt><dd>{(u.intent || '').split(',').filter(Boolean).map((i) => INTENT_LABELS[i] || i).join(', ') || '-'}</dd>
+            <dt>İlgi alanları</dt><dd>{[u.interests, u.hobbies].filter(Boolean).join(', ') || '-'}</dd>
             <dt>Kayıt</dt><dd>{fmtDate(u.createdAt)}</dd>
             <dt>Son görülme</dt><dd>{timeAgo(u.lastSeenAt)}</dd>
             <dt>Premium</dt><dd>{u.premiumActive ? (u.premiumUntil ? `${fmtDate(u.premiumUntil)} tarihine kadar` : 'Süresiz') : 'Yok'}</dd>
@@ -258,7 +258,7 @@ function UserDrawer({ id, onClose, onChanged }) {
                     <tr key={p.id}>
                       <td>{fmtDate(p.createdAt)}</td>
                       <td>{p.provider === 'admin_gift' ? 'Hediye' : p.plan}</td>
-                      <td className="num">{p.amount ? fmtMoney(p.amount) : '—'}</td>
+                      <td className="num">{p.amount ? fmtMoney(p.amount) : '-'}</td>
                       <td><span className={`adm-badge ${p.status === 'success' ? 'green' : 'red'}`}>{p.status}</span></td>
                     </tr>
                   ))}

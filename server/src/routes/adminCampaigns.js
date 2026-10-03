@@ -44,7 +44,7 @@ function emailContent({ title, text, link, fullName }) {
   const url = link ? (link.startsWith('/') ? clientUrl + link : link) : clientUrl;
   const esc = (s) => String(s).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]);
   return {
-    subject: `kampüs· — ${title}`,
+    subject: `kampüs·: ${title}`,
     text: `Merhaba ${fullName},\n\n${text}\n\n${url}\n\nBu e-postayı kampüs· hesabın olduğu için aldın.`,
     html: `<p>Merhaba ${esc(fullName)},</p><p>${esc(text).replace(/\n/g, '<br>')}</p><p><a href="${esc(url)}">${link ? 'Göz at' : "kampüs·'ü aç"}</a></p><p style="color:#888;font-size:12px">Bu e-postayı kampüs· hesabın olduğu için aldın.</p>`,
   };

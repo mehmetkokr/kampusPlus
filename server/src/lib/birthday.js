@@ -34,8 +34,8 @@ async function checkBirthdaysToday(io) {
       sendMail({
         to: u.email,
         subject: 'İyi ki doğdun! 🎉',
-        text: `Merhaba ${u.fullName},\n\nkampüs+ ailesi olarak doğum günün kutlu olsun! Uygulamayı aç, kampüsteki arkadaşların seni tebrik etsin.\n\nkampüste gece 🌙`,
-        html: `<p>Merhaba ${u.fullName},</p><p><strong>kampüs+</strong> ailesi olarak doğum günün kutlu olsun! 🎉</p><p>Uygulamayı aç, kampüsteki arkadaşların seni tebrik etsin.</p>`,
+        text: `Merhaba ${u.fullName},\n\nkampüs· ailesi olarak doğum günün kutlu olsun. Uygulamayı aç, kampüsteki arkadaşların seni tebrik etsin.`,
+        html: `<p>Merhaba ${u.fullName},</p><p><strong>kampüs·</strong> ailesi olarak doğum günün kutlu olsun.</p><p>Uygulamayı aç, kampüsteki arkadaşların seni tebrik etsin.</p>`,
       }).catch((err) => console.error('Doğum günü e-postası gönderilemedi:', err));
     }
 

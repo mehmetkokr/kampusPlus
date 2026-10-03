@@ -27,7 +27,7 @@ export default function SuggestedPeopleRail({ users, followedIds, onToggleFollow
   // Paylaşım sayfası (telefonda yerel paylaşım menüsü); yoksa bağlantıyı kopyala
   async function invite() {
     const url = `${window.location.origin}/`;
-    const text = t('kampüs· — üniversitendeki öğrencilerle tanış. Okul e-postanla katıl:');
+    const text = t('kampüs·: üniversitendeki öğrencilerle tanış. Okul e-postanla katıl:');
     try {
       if (navigator.share) {
         await navigator.share({ title: 'kampüs·', text, url });

@@ -10,7 +10,7 @@ const DEFAULT_DESC =
   'kampüs·, yalnızca üniversite e-postanla doğruladığın, kendi okulundaki öğrencilerle seni buluşturan kapalı bir kampüs topluluğudur.';
 
 const PUBLIC = {
-  '/': { title: 'kampüs· — Doğrulanmış Üniversite Topluluğu', desc: DEFAULT_DESC, full: true },
+  '/': { title: 'kampüs· | Doğrulanmış Üniversite Topluluğu', desc: DEFAULT_DESC, full: true },
   '/register': { title: 'Kayıt Ol', desc: 'Üniversite e-postanla ücretsiz kayıt ol, kampüsündeki öğrencilerle tanış.' },
   '/login': { title: 'Giriş Yap', desc: 'kampüs· hesabına giriş yap.' },
   '/forgot-password': { title: 'Şifremi Unuttum', desc: 'kampüs· şifreni sıfırla.' },

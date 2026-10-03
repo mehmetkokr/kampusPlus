@@ -93,7 +93,7 @@ export default function AdminVerificationQueue() {
                       onKeyDown={(e) => e.key === 'Enter' && open(u.id)}
                     >
                       <td><Person user={u} meta={u.university?.name} /></td>
-                      <td className="hide-sm adm-muted">{u.department || '—'}</td>
+                      <td className="hide-sm adm-muted">{u.department || '-'}</td>
                       <td>
                         {u.ocrAutoCheckPassed === true && <span className="adm-badge green">Örtüşüyor</span>}
                         {u.ocrAutoCheckPassed === false && <span className="adm-badge red">Örtüşmüyor</span>}

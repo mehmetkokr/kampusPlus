@@ -100,7 +100,7 @@ const DOCS = {
         'Tekrarlayan mesajlar, izinsiz reklam ve dolandırıcılık girişimleri kaldırılır.',
       ]],
       ['Bir sorun mu var?', [
-        'Profildeki ya da gönderideki ⋯ menüsünden "Şikayet Et" ile bize bildir; ekibimiz 24 saat içinde inceler. "Engelle" ile o kişi seni bir daha göremez ve sana ulaşamaz.',
+        'Profildeki ya da gönderideki ⋯ menüsünden "Şikayet Et" ile bize bildir; ekibimiz inceler. "Engelle" ile o kişi seni bir daha göremez ve sana ulaşamaz.',
         `Acil bir durumda ${SITE.contactEmail} adresine yaz.`,
       ]],
     ],

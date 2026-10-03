@@ -135,9 +135,9 @@ router.post('/register/send-code', sendCodeLimiter, async (req, res) => {
 
     await sendMail({
       to: email,
-      subject: `kampüs+ doğrulama kodun: ${code}`,
-      text: `Merhaba,\n\nkampüs+ kaydını tamamlamak için doğrulama kodun: ${code}\n\nKod 10 dakika geçerlidir. Bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin.`,
-      html: `<p>Merhaba,</p><p>kampüs+ kaydını tamamlamak için doğrulama kodun:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px">${code}</p><p>Kod 10 dakika geçerlidir. Bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin.</p>`,
+      subject: `kampüs· doğrulama kodun: ${code}`,
+      text: `Merhaba,\n\nkampüs· kaydını tamamlamak için doğrulama kodun: ${code}\n\nKod 10 dakika geçerlidir. Bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin.`,
+      html: `<p>Merhaba,</p><p>kampüs· kaydını tamamlamak için doğrulama kodun:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px">${code}</p><p>Kod 10 dakika geçerlidir. Bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin.</p>`,
     });
 
     res.json({
@@ -347,7 +347,7 @@ router.post('/forgot-password', forgotPasswordLimiter, async (req, res) => {
 
       await sendMail({
         to: user.email,
-        subject: 'kampüs+ Şifre Sıfırlama',
+        subject: 'kampüs·: Şifre sıfırlama',
         text: `Şifreni sıfırlamak için bu bağlantıyı kullan (30 dakika geçerlidir): ${resetLink}`,
         html: `<p>Merhaba ${user.fullName},</p><p>Şifreni sıfırlamak için aşağıdaki bağlantıya tıkla. Bu bağlantı 30 dakika geçerlidir.</p><p><a href="${resetLink}">${resetLink}</a></p><p>Bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin.</p>`,
       });

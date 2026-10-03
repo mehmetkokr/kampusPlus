@@ -44,7 +44,7 @@ async function sendWeeklySummaries(io) {
       if (total > 0) {
         sendMail({
           to: u.email,
-          subject: 'kampüs+ Haftalık Özetin 📊',
+          subject: 'kampüs·: Haftalık özetin',
           text: `Merhaba ${u.fullName},\n\n${summaryText}\n\nGeri dön, neler olduğunu gör!`,
           html: `<p>Merhaba ${u.fullName},</p><p>${summaryText}</p><p>Geri dön, neler olduğunu gör!</p>`,
         }).catch((err) => console.error('Haftalık özet e-postası gönderilemedi:', err));

@@ -30,7 +30,7 @@ export default function PhotoCarousel({ photos, index, name, initials }) {
             <div key={p.id} className="photo-frame-slide" aria-hidden={i !== active}>
               <img
                 src={`${API_BASE_URL}${p.url}`}
-                alt={i === active ? t('{name} — fotoğraf {n}', { name, n: i + 1 }) : ''}
+                alt={i === active ? t('{name}, fotoğraf {n}', { name, n: i + 1 }) : ''}
                 draggable={false}
                 loading={near ? 'eager' : 'lazy'}
               />

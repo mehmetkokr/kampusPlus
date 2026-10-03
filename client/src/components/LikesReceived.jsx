@@ -45,7 +45,7 @@ export default function LikesReceived({ data, onChanged }) {
       <div className="card empty-state">
         <div className="empty-icon is-glyph"><Heart size={26} strokeWidth={1.8} /></div>
         <p className="muted">
-          {t("Henüz seni beğenen yeni biri yok. Kart Modu'nda gezinmeye devam et — beğeniler burada görünecek.")}
+          {t("Henüz seni beğenen yeni biri yok. Kart Modu'nda gezinmeye devam et, beğeniler burada görünecek.")}
         </p>
         <button className="btn" style={{ width: 'auto', marginTop: 6 }} onClick={() => navigate('/discover/swipe')}>
           {t("Kart Moduna Git")}

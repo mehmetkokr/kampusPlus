@@ -4,12 +4,12 @@ import { ArrowDownRight, ArrowUpRight, Minus, X } from 'lucide-react';
 import { buildFileUrl } from '../api';
 
 const nf = new Intl.NumberFormat('tr-TR');
-export const fmt = (n) => (n === null || n === undefined ? '—' : nf.format(n));
+export const fmt = (n) => (n === null || n === undefined ? '-' : nf.format(n));
 export const fmtMoney = (n) =>
   new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 }).format(n || 0);
-export const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
+export const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', year: 'numeric' }) : '-');
 export const fmtDateTime = (d) =>
-  d ? new Date(d).toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
+  d ? new Date(d).toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '-';
 
 export function timeAgo(d) {
   if (!d) return 'hiç';

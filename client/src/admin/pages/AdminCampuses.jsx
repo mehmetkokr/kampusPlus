@@ -105,7 +105,7 @@ function Performance() {
                         <span className="adm-person-meta">@{c.emailDomain}</span>
                       </td>
                       <td className="num">{fmt(c.users)}</td>
-                      <td className="num">{c.newUsers ? `+${fmt(c.newUsers)}` : '—'}</td>
+                      <td className="num">{c.newUsers ? `+${fmt(c.newUsers)}` : '-'}</td>
                       <td className="num">
                         <span className={`adm-badge ${c.activeRate >= 50 ? 'green' : c.activeRate >= 20 ? 'amber' : 'red'}`}>%{c.activeRate}</span>
                       </td>
@@ -258,7 +258,7 @@ function Universities() {
                 ) : (
                   <tr key={u.id}>
                     <td style={{ fontWeight: 600 }}>{u.name}</td>
-                    <td className="adm-muted">{u.emailDomain || '—'}</td>
+                    <td className="adm-muted">{u.emailDomain || '-'}</td>
                     <td className="num">{fmt(u._count.users)}</td>
                     <td className="num hide-sm">{fmt(u._count.clubs)}</td>
                     <td style={{ whiteSpace: 'nowrap', textAlign: 'right' }}>

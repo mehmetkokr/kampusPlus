@@ -13,12 +13,12 @@ const PILLARS = [
   {
     icon: UserX,
     title: 'Anında engelle ve şikayet et',
-    desc: 'Rahatsız edici bir profil mi var? Tek dokunuşla engelle, şikayet et — ekibimiz 24 saat içinde inceler.',
+    desc: 'Rahatsız edici bir profil mi var? Tek dokunuşla engelle ya da şikayet et. Şikayetleri ekibimiz tek tek inceler.',
   },
   {
     icon: FileCheck2,
     title: 'Verilerin yalnızca sana ait',
-    desc: 'Profilin kampüsün dışından hiç kimseye görünmez. Bilgilerini asla üçüncü taraflarla paylaşmayız.',
+    desc: 'Profilini kimin göreceğini sen seçersin: herkes, yalnızca kampüsün ya da kimse. Bilgilerini reklam için kimseyle paylaşmayız.',
   },
 ];
 

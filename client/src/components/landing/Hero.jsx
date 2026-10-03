@@ -56,7 +56,7 @@ function FloatingChip({ className, delay, icon: Icon, tone, title, subtitle }) {
       initial={{ opacity: 0, scale: 0.9, y: 12 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={{ duration: 0.7, delay, ease: EASE }}
-      className={`absolute z-20 hidden sm:block ${className}`}
+      className={`pointer-events-none absolute z-20 hidden lg:block ${className}`}
     >
       <div className="landing-float landing-chip flex items-center gap-2.5 rounded-2xl px-3.5 py-2.5" style={{ animationDelay: `${delay}s` }}>
         <span className={`flex h-8 w-8 items-center justify-center rounded-xl ${tone}`}>
@@ -113,7 +113,7 @@ export default function Hero() {
         </motion.h1>
 
         <motion.p {...fade(0.14)} className="mt-6 max-w-[32rem] text-[1.125rem] leading-relaxed text-paper-muted">
-          {t('Okul e-postanla doğrulanan, seni kendi kampüsündeki öğrencilerle buluşturan kapalı bir topluluk. Sahte hesap yok, reklam yok — sadece gerçek öğrenciler.')}
+          {t('Okul e-postanla doğrulanan, seni kendi kampüsündeki öğrencilerle buluşturan kapalı bir topluluk. Sahte hesap yok, reklam yok. Sadece gerçek öğrenciler.')}
         </motion.p>
 
         <motion.p {...fade(0.2)} className="mt-6 text-[0.9375rem] font-semibold text-paper">
@@ -147,43 +147,16 @@ export default function Hero() {
         </motion.p>
       </div>
 
-      {/* Uygulama görüntüsü: koyu telefon + yüzen bildirimler */}
-      <div className="relative mx-auto mt-14 h-[600px] w-full max-w-[26rem]">
-        <div className="landing-halo absolute left-1/2 top-1/2 h-[30rem] w-[30rem] -translate-x-1/2 -translate-y-1/2 rounded-full" />
-        <PhoneMockup className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2" />
+      {/* Uygulama önizlemesi: dokunulabilen telefon. Yüzen kartlar yalnızca geniş
+          ekranda ve telefonun dışında durur, ekranı kapatmaz. */}
+      <div className="relative mx-auto mt-14 w-full max-w-[60rem] px-4">
+        <div className="landing-halo pointer-events-none absolute left-1/2 top-[45%] h-[30rem] w-[30rem] -translate-x-1/2 -translate-y-1/2 rounded-full" />
+        <PhoneMockup />
 
-        <FloatingChip
-          className="left-0 top-10 sm:-left-16"
-          delay={0.6}
-          icon={ShieldCheck}
-          tone="bg-amber-dim text-amber"
-          title={t('Doğrulandı')}
-          subtitle="elif@itu.edu.tr"
-        />
-        <FloatingChip
-          className="right-0 top-28 sm:-right-16"
-          delay={0.8}
-          icon={Sparkles}
-          tone="bg-teal-dim text-teal"
-          title={t('Yeni eşleşme!')}
-          subtitle={t('Sohbet başlat')}
-        />
-        <FloatingChip
-          className="bottom-16 left-0 sm:-left-20"
-          delay={1}
-          icon={Heart}
-          tone="bg-[#c0533f]/12 text-[#c0533f]"
-          title={t('Ortak: Kahve +1')}
-          subtitle={t('Kart Modu')}
-        />
-        <FloatingChip
-          className="bottom-4 right-2 sm:-right-12"
-          delay={1.2}
-          icon={BadgeCheck}
-          tone="bg-[#5f7fa6]/12 text-[#5f7fa6]"
-          title={t('Satranç Kulübü')}
-          subtitle={t('Perşembe 18:00')}
-        />
+        <FloatingChip className="left-[4%] top-16" delay={0.6} icon={ShieldCheck} tone="bg-amber-dim text-amber" title={t('Doğrulandı')} subtitle="elif@itu.edu.tr" />
+        <FloatingChip className="right-[4%] top-36" delay={0.8} icon={Sparkles} tone="bg-teal-dim text-teal" title={t('Yeni eşleşme!')} subtitle={t('Sohbet başlat')} />
+        <FloatingChip className="bottom-40 left-[2%]" delay={1} icon={Heart} tone="bg-[#c0533f]/12 text-[#c0533f]" title={t('Ortak: Kahve +1')} subtitle={t('Kart Modu')} />
+        <FloatingChip className="bottom-24 right-[2%]" delay={1.2} icon={BadgeCheck} tone="bg-[#5f7fa6]/12 text-[#5f7fa6]" title={t('Satranç Kulübü')} subtitle={t('Perşembe 18:00')} />
       </div>
 
       <div className="relative mx-auto mt-6 max-w-6xl px-4 sm:px-6">

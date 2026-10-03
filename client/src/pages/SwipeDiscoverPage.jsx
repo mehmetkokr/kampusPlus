@@ -320,15 +320,15 @@ export default function SwipeDiscoverPage() {
             <dl className="swipe-info-facts">
               <div>
                 <dt>{t("Bölüm")}</dt>
-                <dd>{current.department || '—'}</dd>
+                <dd>{current.department || t('Belirtilmemiş')}</dd>
               </div>
               <div>
                 <dt>{t("Sınıf")}</dt>
-                <dd>{current.classYear ? (current.classYear >= 5 ? t("Yüksek Lisans") : t(`${current.classYear}. Sınıf`)) : '—'}</dd>
+                <dd>{current.classYear ? (current.classYear >= 5 ? t("Yüksek Lisans") : t(`${current.classYear}. Sınıf`)) : t('Belirtilmemiş')}</dd>
               </div>
               <div className="span-2">
                 <dt>{t("Üniversite")}</dt>
-                <dd>{current.university?.name || '—'}</dd>
+                <dd>{current.university?.name || t('Belirtilmemiş')}</dd>
               </div>
             </dl>
           </section>

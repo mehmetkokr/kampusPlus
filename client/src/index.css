@@ -400,7 +400,7 @@ textarea {
 
 .auth-back {
   position: fixed;
-  top: 22px;
+  top: calc(22px + env(safe-area-inset-top));
   left: 22px;
   z-index: 2;
   display: inline-flex;
@@ -447,57 +447,6 @@ textarea {
 
 /* ---------- Alt gezinme çubuğu ---------- */
 
-.nav-bar {
-  position: fixed;
-  bottom: 18px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  gap: 1px;
-  background: color-mix(in srgb, var(--surface) 70%, transparent);
-  border: 1px solid var(--border-soft);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
-  border-radius: 999px;
-  padding: 6px;
-  z-index: 50;
-  box-shadow: var(--shadow-float);
-  max-width: calc(100vw - 16px);
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.nav-bar::-webkit-scrollbar {
-  display: none;
-}
-
-.nav-bar a {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  color: var(--text-faint);
-  font-size: 9.5px;
-  font-weight: 700;
-  padding: 9px 11px;
-  border-radius: 999px;
-  transition: color 0.15s, background 0.15s;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.nav-bar a svg {
-  width: 18px;
-  height: 18px;
-}
-
-.nav-bar a.active {
-  color: var(--bg);
-  background: var(--amber);
-  box-shadow: 0 4px 14px rgba(199, 91, 48, 0.35);
-}
-
 /* ---------- Keşfet kartı (kompakt, bilgi odaklı) ---------- */
 
 .swipe-card {
@@ -510,44 +459,6 @@ textarea {
   backdrop-filter: blur(16px) saturate(150%);
   -webkit-backdrop-filter: blur(16px) saturate(150%);
   padding: 20px;
-}
-
-.swipe-card-top {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-}
-
-.swipe-card-avatar {
-  width: 68px;
-  height: 68px;
-  border-radius: 20px;
-  object-fit: cover;
-  background: var(--surface-2);
-  border: 2px solid var(--border-soft);
-  flex-shrink: 0;
-}
-
-.swipe-card-heading {
-  flex: 1;
-  min-width: 0;
-}
-
-.swipe-card-info h3 {
-  font-size: 18px;
-  color: var(--text);
-  margin-bottom: 2px;
-}
-
-.swipe-card-meta {
-  color: var(--text-muted);
-  font-size: 13px;
-}
-
-.swipe-card-university {
-  color: var(--text-faint);
-  font-size: 12px;
-  margin-top: 2px;
 }
 
 .intent-chip {
@@ -891,7 +802,7 @@ textarea {
   right: 0;
   display: flex;
   justify-content: center;
-  padding: 14px 16px 24px;
+  padding: 14px 16px calc(24px + env(safe-area-inset-bottom));
   background: linear-gradient(transparent, var(--bg) 40%);
   z-index: 10;
 }
@@ -910,15 +821,14 @@ textarea {
   -webkit-backdrop-filter: blur(16px) saturate(150%);
 }
 
-.chat-input-inner input {
+/* Yazı alanı cam çubuğun içinde ayrı bir kutu gibi görünmesin (odakta da) */
+.chat-input-inner input,
+.chat-input-inner input:focus {
   margin: 0;
   background: transparent;
   border: none;
-  padding: 11px 0;
-}
-
-.chat-input-inner input:focus {
   box-shadow: none;
+  padding: 11px 0;
 }
 
 .chat-send-btn {
@@ -1113,18 +1023,6 @@ textarea {
   transform: translateY(-2px);
 }
 
-.club-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 19px;
-  margin-bottom: 10px;
-  background: var(--amber-dim);
-}
-
 .club-card h4 {
   font-family: var(--font-display);
   font-size: 14px;
@@ -1234,31 +1132,7 @@ textarea {
   color: var(--text-faint);
 }
 
-.event-club-tag {
-  display: inline-block;
-  margin-top: 8px;
-  padding: 3px 9px;
-  border-radius: 999px;
-  background: var(--teal-dim);
-  color: var(--teal);
-  font-size: 10.5px;
-  font-weight: 700;
-}
-
 /* ---------- Kulüp Detay: header, katılma banner'ı ---------- */
-
-.club-header-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 19px;
-  flex-shrink: 0;
-}
 
 .club-tab-toggle {
   width: 38px;
@@ -1380,14 +1254,6 @@ textarea {
   color: var(--text);
 }
 
-.role-icon.owner {
-  color: var(--amber-soft);
-}
-
-.role-icon.admin {
-  color: var(--teal);
-}
-
 .member-dept {
   font-size: 12px;
   color: var(--text-faint);
@@ -1505,31 +1371,6 @@ textarea {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-}
-
-.emoji-picker {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-
-.emoji-option {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: var(--surface-2);
-  border: 1.5px solid var(--border);
-  font-size: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.emoji-option.active {
-  border-color: var(--amber);
-  background: var(--amber-dim);
 }
 
 /* ---------- Takip Et butonu (Keşfet kartı) ---------- */
@@ -1718,23 +1559,6 @@ textarea {
   object-fit: contain;
 }
 
-.story-viewer-close {
-  position: absolute;
-  top: 24px;
-  right: 14px;
-  z-index: 2;
-  background: rgba(0, 0, 0, 0.4);
-  border: none;
-  color: #fff;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
 /* ---------- Akış Düzeni (masaüstünde sağ panel) ---------- */
 
 .feed-shell {
@@ -1785,13 +1609,6 @@ textarea {
   letter-spacing: 0.05em;
   color: var(--text-muted);
   margin-bottom: 10px;
-}
-
-.sidebar-highlight {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--teal);
-  margin: 0;
 }
 
 .sidebar-user-row {
@@ -1850,65 +1667,6 @@ textarea {
 
 /* ---------- Gönderi Oluşturma Kutusu ---------- */
 
-.composer-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: color-mix(in srgb, var(--surface) 60%, transparent);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 12px 14px;
-  margin-bottom: 10px;
-}
-
-.composer-avatar {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  object-fit: cover;
-  background: var(--surface-2);
-  flex-shrink: 0;
-}
-
-.composer-input-fake {
-  flex: 1;
-  text-align: left;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 10px 16px;
-  color: var(--text-faint);
-  font-size: 13.5px;
-  cursor: pointer;
-}
-
-.composer-actions {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 18px;
-  flex-wrap: wrap;
-}
-
-.composer-action-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  border-radius: 999px;
-  padding: 8px 13px;
-  font-size: 12.5px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
-}
-
-.composer-action-btn:hover {
-  color: var(--amber);
-  border-color: var(--amber-dim);
-}
-
 .emoji-strip {
   display: flex;
   flex-wrap: wrap;
@@ -1950,32 +1708,6 @@ textarea {
   align-items: center;
   gap: 10px;
   margin-bottom: 10px;
-}
-
-.post-header-link {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  text-decoration: none;
-  color: inherit;
-  min-width: 0;
-}
-
-.post-header-text {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.post-header-meta {
-  font-size: 11.5px;
-  color: var(--text-faint);
-}
-
-.verified-badge {
-  color: var(--teal);
-  margin-left: 4px;
-  vertical-align: -2px;
 }
 
 .post-avatar {
@@ -2047,21 +1779,7 @@ textarea {
   line-height: 1.4;
 }
 
-.post-comment-link {
-  background: none;
-  border: none;
-  color: var(--text-faint);
-  font-size: 12.5px;
-  padding: 6px 2px 0;
-  cursor: pointer;
-}
-
 /* ---------- Gönderi Menüsü (⋮) ---------- */
-
-.post-menu-wrap {
-  position: relative;
-  margin-left: auto;
-}
 
 .post-menu-dropdown {
   position: absolute;
@@ -2146,26 +1864,6 @@ textarea {
 }
 
 /* ---------- Gönderi Paylaşma / Yorum Modalları ---------- */
-
-.photo-drop-zone {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 220px;
-  border: 1.5px dashed var(--border);
-  border-radius: var(--radius);
-  cursor: pointer;
-  margin-bottom: 14px;
-  overflow: hidden;
-  background: var(--surface-2);
-}
-
-.photo-drop-preview {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
 
 .comment-list {
   max-height: 40vh;
@@ -2618,17 +2316,6 @@ textarea {
 
 /* ---------- Ayarlar sayfası: menü satırları, tema seçici, tehlike bölgesi ---------- */
 
-.settings-section-title {
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-faint);
-  margin: 22px 2px 10px;
-}
-
-.settings-section-title:first-child { margin-top: 0; }
-
 .settings-link-row {
   display: flex;
   align-items: center;
@@ -2662,7 +2349,6 @@ textarea {
 }
 
 .settings-link-row-text { flex: 1; }
-.settings-link-row-chevron { color: var(--text-faint); flex-shrink: 0; }
 
 .theme-toggle-group {
   display: flex;
@@ -2902,19 +2588,6 @@ textarea {
   margin: 0 0 4px;
 }
 
-.discover-header-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-
-.discover-header-icons {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .discover-search-row {
   position: relative;
   display: flex;
@@ -2947,33 +2620,6 @@ textarea {
 }
 
 /* ---------- İstatistik mini kartlar (Bugün Kampüste) ---------- */
-
-.stat-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-}
-
-.stat-chip {
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 12px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.stat-chip-value {
-  font-size: 19px;
-  font-weight: 800;
-  font-family: var(--font-display);
-}
-
-.stat-chip-label {
-  font-size: 11.5px;
-  color: var(--text-muted);
-}
 
 /* ---------- Önerilen kişi kartı ---------- */
 
@@ -3031,128 +2677,7 @@ textarea {
   margin-top: 1px;
 }
 
-.suggest-card-mutual {
-  font-size: 11.5px;
-  color: var(--text-faint);
-  margin-top: 6px;
-}
-
-.suggest-card-menu-btn {
-  background: none;
-  border: none;
-  color: var(--text-faint);
-  cursor: pointer;
-  padding: 4px;
-  flex-shrink: 0;
-}
-
-.suggest-card-menu-dropdown {
-  position: absolute;
-  top: 40px;
-  right: 14px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-  z-index: 10;
-  overflow: hidden;
-  min-width: 150px;
-}
-
-.suggest-card-menu-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 11px 14px;
-  background: none;
-  border: none;
-  color: var(--text);
-  font-size: 13px;
-  cursor: pointer;
-  text-align: left;
-}
-
-.suggest-card-menu-item:hover { background: var(--surface-2); }
-.suggest-card-menu-item.danger { color: var(--coral); }
-
-.suggest-card-bottom {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 12px;
-}
-
-.suggest-card-last-active {
-  font-size: 11.5px;
-  color: var(--text-faint);
-}
-
-.btn-discover-accent {
-  padding: 8px 16px;
-  border-radius: 999px;
-  border: none;
-  background: var(--discover-accent);
-  color: #fff;
-  font-size: 12.5px;
-  font-weight: 700;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: background 0.15s;
-}
-
-.btn-discover-accent:hover { background: var(--discover-accent-hover); }
-
-.btn-discover-accent.following {
-  background: transparent;
-  border: 1.5px solid var(--border);
-  color: var(--text-muted);
-}
-
 /* ---------- Aktif kullanıcılar (yeşil noktalı avatarlar) ---------- */
-
-.active-user-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-  width: 60px;
-  cursor: pointer;
-}
-
-.active-user-avatar-wrap { position: relative; }
-
-.active-user-avatar {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  object-fit: cover;
-  background: var(--surface-2);
-  border: 2px solid var(--border);
-}
-
-.active-user-dot {
-  position: absolute;
-  bottom: 1px;
-  right: 1px;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: #8fb89a;
-  border: 2px solid var(--bg);
-}
-
-.active-user-name {
-  font-size: 10.5px;
-  color: var(--text-muted);
-  max-width: 60px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
 /* ---------- Trend kulüp çipleri ---------- */
 
@@ -3176,35 +2701,7 @@ textarea {
 
 /* ---------- Günün Önerisi kartı ---------- */
 
-.tip-card {
-  background: linear-gradient(135deg, var(--discover-accent), #4a6588);
-  border-radius: var(--radius-lg);
-  padding: 18px;
-  color: #fff;
-  margin-bottom: 20px;
-}
-
-.tip-card p { margin-bottom: 12px; font-size: 14px; line-height: 1.4; }
-
-.tip-card-btn {
-  padding: 8px 16px;
-  border-radius: 999px;
-  border: none;
-  background: #fff;
-  color: var(--discover-accent-hover);
-  font-weight: 700;
-  font-size: 12.5px;
-  cursor: pointer;
-}
-
 /* ---------- Filtre modalı ---------- */
-
-.filter-option-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 16px;
-}
 
 /* ---------- Sosyal medya bağlantıları (profil) ---------- */
 .social-links-row {
@@ -3233,13 +2730,6 @@ textarea {
 }
 
 /* ---------- Diğer Üniversiteler bölümü başlığı ---------- */
-
-.other-uni-toggle-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
 
 /* ---------- Kilitli kullanıcı kartı (blur önizleme) ---------- */
 
@@ -3353,25 +2843,6 @@ textarea {
   margin: 0 0 12px;
   line-height: 1.5;
 }
-
-.other-uni-chip-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  justify-content: center;
-  margin-bottom: 14px;
-}
-
-.other-uni-chip {
-  font-size: 11px;
-  padding: 5px 10px;
-  border-radius: 999px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-}
-
-.other-uni-chip b { color: var(--text); }
 
 .btn-premium-cta {
   padding: 10px 22px;
@@ -3513,3 +2984,36 @@ textarea {
 
 .spin { animation: spin-anim 0.8s linear infinite; }
 @keyframes spin-anim { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* ==========================================================================
+   Telefon uyumluluğu
+   ========================================================================== */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+body {
+  -webkit-tap-highlight-color: transparent;
+  /* Ana ekrandan açılınca (tam ekran) içerik saat/çentik altına girmesin */
+  padding-top: env(safe-area-inset-top);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Mobil tarayıcılarda adres çubuğu açılıp kapanınca boy değişir; dvh bunu izler */
+@supports (min-height: 100dvh) {
+  .container,
+  .auth-screen,
+  .chat-page { min-height: 100dvh; }
+}
+
+/* iPhone 16px'ten küçük yazı alanına dokununca sayfayı yakınlaştırır.
+   Dokunmatik ekranlarda tüm alanlar en az 16px (kod kutuları zaten daha büyük). */
+@media (hover: none) and (pointer: coarse) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+  .code-inputs input { font-size: 21px !important; }
+}

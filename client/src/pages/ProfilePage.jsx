@@ -187,19 +187,19 @@ export default function ProfilePage() {
             <dl>
               <div>
                 <dt>{t("Üniversite")}</dt>
-                <dd>{user.university?.name || '—'}</dd>
+                <dd>{user.university?.name || t('Belirtilmemiş')}</dd>
               </div>
               <div>
                 <dt>{t("Bölüm")}</dt>
-                <dd>{user.department || '—'}</dd>
+                <dd>{user.department || t('Belirtilmemiş')}</dd>
               </div>
               <div>
                 <dt>{t("Sınıf")}</dt>
-                <dd>{user.classYear ? (user.classYear >= 5 ? t("Yüksek Lisans / Diğer") : t(`${user.classYear}. Sınıf`)) : '—'}</dd>
+                <dd>{user.classYear ? (user.classYear >= 5 ? t("Yüksek Lisans / Diğer") : t(`${user.classYear}. Sınıf`)) : t('Belirtilmemiş')}</dd>
               </div>
               <div>
                 <dt>{t("Yaş")}</dt>
-                <dd>{user.age ?? '—'}</dd>
+                <dd>{user.age ?? t('Belirtilmemiş')}</dd>
               </div>
             </dl>
             <p>{t("Bu bilgiler kayıt sırasında belirlenir ve sonradan değiştirilemez. Hatalıysa destek ekibine yaz.")}</p>

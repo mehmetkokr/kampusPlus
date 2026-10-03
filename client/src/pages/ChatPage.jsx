@@ -366,7 +366,7 @@ export default function ChatPage() {
         <div ref={bottomRef} />
       </div>
 
-      <div className="chat-input-bar" style={{ position: 'relative' }}>
+      <div className="chat-input-bar">
         {showEmojiPicker && (
           <div className="emoji-picker-popover">
             {EMOJI_LIST.map((emoji) => (

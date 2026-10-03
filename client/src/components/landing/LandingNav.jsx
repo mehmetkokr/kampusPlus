@@ -48,7 +48,7 @@ export default function LandingNav() {
 
   return (
     <header
-      className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
+      className={`fixed inset-x-0 top-[env(safe-area-inset-top)] z-50 transition-all duration-300 ${
         scrolled ? 'py-2' : 'py-4'
       }`}
     >

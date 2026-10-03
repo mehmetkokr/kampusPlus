@@ -52,11 +52,6 @@
 
 /* ---------- Tipografi ---------- */
 
-.landing-serif {
-  font-family: var(--font-serif);
-  font-optical-sizing: auto;
-}
-
 .landing-h1 {
   font-family: var(--font-serif);
   font-size: clamp(2.75rem, 1.6rem + 5.2vw, 5.25rem);

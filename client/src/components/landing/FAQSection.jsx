@@ -7,7 +7,7 @@ import { useI18n } from '../../i18n';
 const FAQS = [
   {
     q: 'Kimler kampüs·\'e katılabilir?',
-    a: 'Yalnızca aktif üniversite öğrencileri. Kayıt sırasında üniversite e-postan veya öğrenci belgenle doğrulama yapman gerekir.',
+    a: 'Yalnızca aktif üniversite öğrencileri. Kayıt olurken okul e-postana gelen 6 haneli kodla hesabını doğrularsın.',
   },
   {
     q: 'Okul e-postam olmadan kayıt olabilir miyim?',
@@ -19,7 +19,7 @@ const FAQS = [
   },
   {
     q: 'Sadece romantik eşleşmeler için mi?',
-    a: 'Hayır. Profilinde ne aradığını seçersin: arkadaşlık, çalışma arkadaşı, etkinlik, kulüp ya da flört. Kart Modu seni aynı şeyi arayan öğrencilerle öne çıkarır.',
+    a: 'Hayır. Profilinde ne aradığını seçersin: arkadaşlık, çalışma arkadaşı, etkinlik, kulüp ya da flört. Kart Modu önce aynı şeyi arayan öğrencileri gösterir.',
   },
   {
     q: 'Kullanması ücretli mi?',

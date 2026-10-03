@@ -38,9 +38,9 @@ export default function WhySection() {
       <div className="mx-auto max-w-5xl px-4 sm:px-6">
         <Reveal className="mx-auto max-w-xl text-center">
           <p className="landing-eyebrow">{t('Neden kampüs·?')}</p>
-          <h2 className="landing-h2 mt-3">{t('Kampüs uygulamalarından biri değil.')}</h2>
+          <h2 className="landing-h2 mt-3">{t('Neden kampüs·?')}</h2>
           <p className="mx-auto mt-4 max-w-md text-[1.0625rem] leading-relaxed text-paper-muted">
-            {t('Güveni ve kontrolü öğrenciye veren küçük ama önemli farklar.')}
+            {t('Diğer sosyal uygulamalardan ayrıldığımız noktalar.')}
           </p>
         </Reveal>
 

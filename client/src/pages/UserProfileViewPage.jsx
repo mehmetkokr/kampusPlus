@@ -120,7 +120,7 @@ export default function UserProfileViewPage() {
           {profile.photos?.length > 1 && (
             <div className="profile-photo-strip" aria-label={t("Fotoğraflar")}>
               {profile.photos.map((ph, i) => (
-                <img key={ph.id} src={`${API_BASE_URL}${ph.url}`} alt={`${profile.fullName} — fotoğraf ${i + 1}`} loading="lazy" />
+                <img key={ph.id} src={`${API_BASE_URL}${ph.url}`} alt={`${profile.fullName}, fotoğraf ${i + 1}`} loading="lazy" />
               ))}
             </div>
           )}
