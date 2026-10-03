@@ -153,12 +153,21 @@ function noCacheHtml(res, filePath) {
 
 app.set('io', io);
 const { checkMailer } = require('./lib/mailer');
+const { bootstrapAccounts } = require('./lib/bootstrap');
 
 setupSocket(io);
 startCronJobs(io);
 
+// Giriş anahtarı yoksa hiçbir kullanıcı giriş yapamaz; açıkça belirt ve dur
+if (!process.env.JWT_SECRET) {
+  console.error('[hata] JWT_SECRET tanımlı değil. Railway > Variables ekranına uzun rastgele bir değer ekleyin.');
+  process.exit(1);
+}
+
 const PORT = process.env.PORT || 4000;
-server.listen(PORT, () => {
-  console.log(`Sunucu http://localhost:${PORT} adresinde çalışıyor`);
-  checkMailer();
+bootstrapAccounts().finally(() => {
+  server.listen(PORT, () => {
+    console.log(`Sunucu http://localhost:${PORT} adresinde çalışıyor`);
+    checkMailer();
+  });
 });
