@@ -13,7 +13,7 @@ const POINTS = [
   },
   {
     icon: Heart,
-    tone: 'text-[var(--coral)] bg-[var(--coral)]/10',
+    tone: 'text-[color:var(--coral)] bg-[color:var(--coral)]/10',
     title: 'Flört yalnızca isteyene',
     desc: 'Flört ve uzun süreli ilişki tercihlerini yalnızca aynı şeyi seçenler görür. Arkadaş ya da ders arkadaşı arayan kimse rahatsız olmaz.',
   },
@@ -25,7 +25,7 @@ const POINTS = [
   },
   {
     icon: ShieldOff,
-    tone: 'text-[var(--sky)] bg-[var(--sky)]/10',
+    tone: 'text-[color:var(--sky)] bg-[color:var(--sky)]/10',
     title: 'Reklam yok, verin satılmaz',
     desc: 'Tanışma, sohbet, kulüpler ve etkinlikler ücretsiz. Bilgilerini reklam için kimseyle paylaşmayız.',
   },

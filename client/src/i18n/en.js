@@ -1071,6 +1071,13 @@ const en = {
   'eşleşme': "matches",
   'kulüp': "clubs",
   'takipçi': "followers",
+  'Hikâyen': "Your story",
+  'Kampüs Satranç Turnuvası': "Campus Chess Tournament",
+  '{name} ve {n} kişi beğendi': "Liked by {name} and {n} others",
+  'Kahve, satranç ve uzun yürüyüşler. Proje arkadaşı arıyorum.': "Coffee, chess and long walks. Looking for a project partner.",
+  'Ne arıyorum': "Looking for",
+  'İlgi alanları': "Interests",
+  'Sıradaki adım: en az 3 fotoğraf ekle': "Next step: add at least 3 photos",
 };
 
 const ORDINAL = { 1: '1st', 2: '2nd', 3: '3rd', 4: '4th' };

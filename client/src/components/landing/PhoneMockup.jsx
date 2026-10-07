@@ -103,8 +103,8 @@ const TOUR = [
   { key: 'chat', label: 'Sohbet', ms: 5200 },
   { key: 'club', label: 'Kulüp anketi', ms: 5200 },
   { key: 'discover', label: 'Kimler aktif', ms: 4200 },
-  { key: 'feed', label: 'Akış', ms: 3600 },
-  { key: 'profile', label: 'Profil', ms: 3200 },
+  { key: 'feed', label: 'Akış', ms: 4600 },
+  { key: 'profile', label: 'Profil', ms: 4600 },
 ];
 
 function Avatar({ person, size = 40, ring = false, online = false }) {
@@ -425,34 +425,105 @@ function DiscoverScreen({ deck, likesCount, joined, goCards, railRef, followed, 
   );
 }
 
-function FeedScreen({ liked, onLike }) {
+function FeedScreen({ liked, onLike, scrollRef, going, onGo }) {
   const { t } = useI18n();
+  const stories = ['elif', 'mert', 'zeynep', 'baris', 'deniz'];
   const posts = [
-    { id: 1, who: byId('deniz'), meta: 'Psikoloji · 2 sa', text: 'Bu akşam kütüphanede final çalışması yapacak olan var mı? 2. kattayım, yer ayırabilirim.', likes: 12, comments: 4 },
-    { id: 2, who: byId('selin'), meta: 'Hukuk · 5 sa', text: 'Fotoğrafçılık kulübünün kampüs yürüyüşünden.', photo: '#ffd6a5', likes: 31, comments: 7 },
+    {
+      id: 1,
+      who: byId('deniz'),
+      meta: 'Psikoloji · 2 sa',
+      text: 'Bu akşam kütüphanede final çalışması yapacak olan var mı? 2. kattayım, yer ayırabilirim.',
+      likes: 12,
+      likedBy: 'Elif',
+      comments: 4,
+      comment: { who: 'Mert', text: 'Ben de geliyorum, 19:00 gibi oradayım.' },
+    },
+    {
+      id: 2,
+      who: byId('selin'),
+      meta: 'Hukuk · 5 sa',
+      text: 'Fotoğrafçılık kulübünün kampüs yürüyüşünden.',
+      photo: true,
+      likes: 31,
+      likedBy: 'Barış',
+      comments: 7,
+    },
   ];
   return (
-    <div className="space-y-2 px-3">
+    <div ref={scrollRef} className="h-[452px] space-y-2 overflow-y-auto scroll-smooth px-3 pb-16 [scrollbar-width:none]">
+      {/* Hikâyeler */}
+      <div className="flex gap-2.5">
+        <div className="flex w-10 shrink-0 flex-col items-center">
+          <span className="relative flex h-9 w-9 items-center justify-center rounded-full border-2 border-dashed border-line bg-surface text-[13px] font-bold text-amber-soft">+</span>
+          <span className="mt-0.5 text-[7px] text-paper-muted">{t('Hikâyen')}</span>
+        </div>
+        {stories.map((id, i) => {
+          const p = byId(id);
+          return (
+            <div key={id} className="flex w-10 shrink-0 flex-col items-center">
+              <span className="rounded-full p-[2px]" style={{ background: i < 3 ? 'var(--amber-soft)' : 'var(--border)' }}>
+                <span className="block rounded-full border-2 border-[var(--bg)]">
+                  <Avatar person={p} size={30} />
+                </span>
+              </span>
+              <span className="mt-0.5 w-full truncate text-center text-[7px] text-paper-muted">{p.name.split(' ')[0]}</span>
+            </div>
+          );
+        })}
+      </div>
+
       <div className="flex rounded-[0.8rem] bg-surface-2 p-0.5 text-[9px] font-semibold">
         <span className="flex-1 rounded-[0.65rem] bg-surface py-1 text-center text-paper shadow-sm">{t('Kampüs')}</span>
         <span className="flex-1 py-1 text-center text-paper-muted">{t('Takip')}</span>
+        <span className="flex-1 py-1 text-center text-paper-muted">{t('Paylaşımlarım')}</span>
       </div>
+
+      {/* Kulüp etkinliği */}
+      <div className="flex items-center gap-2 rounded-[1rem] border border-line bg-surface p-2">
+        <span className="flex w-9 shrink-0 flex-col items-center rounded-[0.6rem] bg-amber-soft/12 py-1 text-amber-soft">
+          <span className="text-[12px] font-bold leading-none">16</span>
+          <span className="text-[7px] font-bold uppercase">{t('Eki')}</span>
+        </span>
+        <span className="min-w-0 flex-1 leading-tight">
+          <span className="block text-[7.5px] font-semibold text-paper-muted">{t('Satranç Kulübü')} · {t('Etkinlik')}</span>
+          <span className="block truncate text-[10px] font-bold text-paper">{t('Kampüs Satranç Turnuvası')}</span>
+          <span className="mt-0.5 flex items-center gap-1">
+            <FaceStack ids={['elif', 'mert', 'baris']} size={13} />
+            <span className="text-[7.5px] text-paper-muted">{t('{n} katılımcı', { n: 24 + (going ? 1 : 0) })}</span>
+          </span>
+        </span>
+        <button type="button" onClick={onGo} aria-pressed={going} className={`min-h-[26px] rounded-full px-2.5 text-[8.5px] font-bold ${going ? 'bg-teal/15 text-teal' : 'bg-amber-soft text-white'}`}>
+          {going ? t('Katılıyorsun') : t('Katıl')}
+        </button>
+      </div>
+
       {posts.map((p) => {
         const on = liked.includes(p.id);
         return (
           <article key={p.id} className="rounded-[1rem] border border-line bg-surface p-2.5">
             <div className="flex items-center gap-2">
-              <Avatar person={p.who} size={24} />
-              <div className="leading-tight">
-                <p className="text-[9.5px] font-bold text-paper">{p.who.name}</p>
+              <Avatar person={p.who} size={26} />
+              <div className="min-w-0 flex-1 leading-tight">
+                <p className="flex items-center gap-1 text-[9.5px] font-bold text-paper">
+                  {p.who.name} <BadgeCheck size={10} className="text-amber-soft" />
+                </p>
                 <p className="text-[7.5px] text-paper-muted">{t(p.meta)}</p>
               </div>
+              <span className="text-[11px] leading-none text-paper-faint">···</span>
             </div>
             <p className="mt-1.5 text-[9.5px] leading-snug text-paper">{t(p.text)}</p>
-            {p.photo && <div className="mt-1.5 h-16 rounded-[0.7rem]" style={{ background: p.photo }} />}
+            {p.photo && (
+              <div className="relative mt-1.5 h-24 overflow-hidden rounded-[0.7rem] bg-[#b9d6f7]">
+                <span className="absolute -bottom-6 left-4 h-20 w-28 rounded-full bg-[#a7e3b5]" />
+                <span className="absolute -bottom-8 right-2 h-24 w-32 rounded-full bg-[#8fc9a0]" />
+                <span className="absolute right-6 top-3 h-6 w-6 rounded-full bg-[#ffd6a5]" />
+                <span className="absolute bottom-1.5 right-2 rounded-full bg-black/35 px-1.5 text-[7px] font-semibold text-white">1/3</span>
+              </div>
+            )}
             <div className="mt-1.5 flex items-center gap-3 text-[9px] text-paper-muted">
               <button type="button" onClick={() => onLike(p.id)} aria-pressed={on} className={`flex min-h-[26px] items-center gap-1 ${on ? 'text-coral' : ''}`}>
-                <motion.span key={on ? 'on' : 'off'} initial={{ scale: on ? 0.6 : 1 }} animate={{ scale: 1 }} transition={{ type: 'spring', duration: 0.35, bounce: 0.5 }}>
+                <motion.span key={on ? 'on' : 'off'} initial={{ scale: on ? 0.5 : 1 }} animate={{ scale: 1 }} transition={{ type: 'spring', duration: 0.35, bounce: 0.55 }}>
                   <Heart size={12} fill={on ? 'currentColor' : 'none'} />
                 </motion.span>
                 {p.likes + (on ? 1 : 0)}
@@ -460,7 +531,16 @@ function FeedScreen({ liked, onLike }) {
               <span className="flex items-center gap-1">
                 <MessageCircle size={12} /> {p.comments}
               </span>
+              <Send size={11} className="ml-auto" />
             </div>
+            <p className="text-[8px] text-paper-muted">
+              {t('{name} ve {n} kişi beğendi', { name: p.likedBy, n: p.likes - 1 + (on ? 1 : 0) })}
+            </p>
+            {p.comment && (
+              <p className="mt-1 rounded-[0.6rem] bg-surface-2 px-2 py-1 text-[8.5px] text-paper">
+                <b className="font-bold">{p.comment.who}</b> {t(p.comment.text)}
+              </p>
+            )}
           </article>
         );
       })}
@@ -619,44 +699,92 @@ function ChatScreen({ chats, active, typing, onOpen, onSend }) {
   );
 }
 
-function ProfileScreen({ likes, joined, matches }) {
+function ProfileScreen({ likes, joined, matches, scrollRef }) {
   const { t } = useI18n();
   const me = { initials: 'SN', tone: '#ffd6a5' };
-  const r = 18;
+  const r = 16;
   const c = 2 * Math.PI * r;
   const score = Math.min(100, 70 + likes * 5 + joined * 5);
+  const myClubs = [CLUBS[0], CLUBS[1], ...CLUBS.slice(2).filter((cl) => joined > 0 && cl.id === 3)];
   return (
-    <div className="space-y-2 px-3">
-      <div className="flex flex-col items-center rounded-[1.2rem] border border-line bg-surface px-4 py-3 text-center">
-        <Avatar person={me} size={54} ring />
-        <p className="mt-1.5 text-[12.5px] font-bold text-paper">{t('Sen, 20')}</p>
-        <p className="text-[8.5px] text-paper-muted">{t('Hatay Mustafa Kemal Üniversitesi')}</p>
-        <div className="mt-2 grid w-full grid-cols-3 gap-1.5">
+    <div ref={scrollRef} className="h-[452px] space-y-2 overflow-y-auto scroll-smooth px-3 pb-16 [scrollbar-width:none]">
+      <div className="rounded-[1.2rem] border border-line bg-surface px-3 pb-3 pt-3">
+        <div className="flex items-center gap-3">
+          <Avatar person={me} size={52} ring />
+          <div className="min-w-0 leading-tight">
+            <p className="flex items-center gap-1 text-[12.5px] font-bold text-paper">
+              {t('Sen, 20')} <BadgeCheck size={12} className="text-amber-soft" />
+            </p>
+            <p className="truncate text-[8.5px] text-paper-muted">{t('Hatay Mustafa Kemal Üniversitesi')}</p>
+            <p className="text-[8.5px] text-paper-muted">{t('Bilgisayar Müh.')} · {t('2. Sınıf')}</p>
+          </div>
+        </div>
+        <p className="mt-2 text-[9px] leading-snug text-paper">{t('Kahve, satranç ve uzun yürüyüşler. Proje arkadaşı arıyorum.')}</p>
+        <div className="mt-2 grid grid-cols-4 gap-1">
           {[
             [matches, 'eşleşme'],
-            [joined, 'kulüp'],
+            [2 + joined, 'kulüp'],
             [128, 'takipçi'],
+            [96, 'takip'],
           ].map(([n, l]) => (
-            <div key={l} className="rounded-[0.7rem] bg-surface-2 py-1">
-              <p className="text-[12px] font-bold leading-tight text-paper">{n}</p>
-              <p className="text-[7px] text-paper-muted">{t(l)}</p>
+            <div key={l} className="rounded-[0.6rem] bg-surface-2 py-1 text-center">
+              <p className="text-[11px] font-bold leading-tight text-paper">{n}</p>
+              <p className="text-[6.5px] text-paper-muted">{t(l)}</p>
             </div>
           ))}
         </div>
       </div>
+
+      <div className="rounded-[1rem] border border-line bg-surface p-2.5">
+        <p className="text-[8px] font-bold uppercase tracking-wider text-paper-faint">{t('Ne arıyorum')}</p>
+        <div className="mt-1 flex flex-wrap gap-1">
+          {['Arkadaşlık', 'Çalışma Arkadaşı', 'Proje Ortağı'].map((i) => (
+            <span key={i} className={`rounded-full px-2 py-0.5 text-[8px] font-semibold ${INTENT_TONE[i] || 'bg-[color:var(--sky)]/15 text-[color:var(--sky)]'}`}>
+              {t(i)}
+            </span>
+          ))}
+        </div>
+        <p className="mt-2 text-[8px] font-bold uppercase tracking-wider text-paper-faint">{t('İlgi alanları')}</p>
+        <div className="mt-1 flex flex-wrap gap-1">
+          {['Satranç', 'Fotoğraf', 'Koşu', 'Kahve', 'Müzik'].map((i) => (
+            <span key={i} className="rounded-full bg-surface-2 px-2 py-0.5 text-[8px] font-semibold text-paper">
+              {t(i)}
+            </span>
+          ))}
+        </div>
+      </div>
+
       <div className="grid grid-cols-3 gap-1.5">
-        {['#ffd6a5', '#b9d6f7', '#a7e3b5'].map((c2) => (
-          <div key={c2} className="aspect-[3/4] rounded-[0.7rem]" style={{ background: c2 }} />
+        {['#ffd6a5', '#b9d6f7', '#a7e3b5'].map((c2, i) => (
+          <div key={c2} className="relative aspect-[3/4] overflow-hidden rounded-[0.7rem]" style={{ background: c2 }}>
+            {i === 0 && <span className="absolute left-1 top-1 rounded-full bg-black/35 px-1 text-[6.5px] font-bold text-white">{t('Ana')}</span>}
+          </div>
         ))}
       </div>
+
+      <div className="rounded-[1rem] border border-line bg-surface p-2.5">
+        <p className="mb-1.5 text-[8px] font-bold uppercase tracking-wider text-paper-faint">{t('Kulüplerim')}</p>
+        <div className="space-y-1.5">
+          {myClubs.map((cl, i) => (
+            <div key={cl.id} className="flex items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-[0.5rem] text-white" style={{ background: cl.tone }}>
+                <Users size={11} />
+              </span>
+              <span className="min-w-0 flex-1 truncate text-[9.5px] font-semibold text-paper">{t(cl.name)}</span>
+              {i === 0 && <span className="rounded-full bg-[color:var(--sky)]/15 px-1.5 py-0.5 text-[7px] font-bold text-[color:var(--sky)]">{t('Yönetici')}</span>}
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="flex items-center gap-2.5 rounded-[1rem] border border-line bg-surface p-2.5">
-        <svg width="44" height="44" viewBox="0 0 44 44" className="-rotate-90" aria-hidden="true">
-          <circle cx="22" cy="22" r={r} fill="none" strokeWidth="4.5" className="stroke-surface-3" />
-          <motion.circle cx="22" cy="22" r={r} fill="none" strokeWidth="4.5" strokeLinecap="round" stroke="var(--amber-soft)" strokeDasharray={c} animate={{ strokeDashoffset: c - (score / 100) * c }} transition={{ duration: 0.6, ease: EASE_OUT }} />
+        <svg width="40" height="40" viewBox="0 0 40 40" className="-rotate-90" aria-hidden="true">
+          <circle cx="20" cy="20" r={r} fill="none" strokeWidth="4" className="stroke-surface-3" />
+          <motion.circle cx="20" cy="20" r={r} fill="none" strokeWidth="4" strokeLinecap="round" stroke="var(--amber-soft)" strokeDasharray={c} animate={{ strokeDashoffset: c - (score / 100) * c }} transition={{ duration: 0.6, ease: EASE_OUT }} />
         </svg>
         <div>
-          <p className="text-[11px] font-bold text-paper">{t('Profilini tamamla')}</p>
-          <p className="text-[8.5px] text-paper-muted">%{score} · {t('beğendikçe ve kulübe katıldıkça artar')}</p>
+          <p className="text-[10.5px] font-bold text-paper">{t('Profil gücün')} %{score}</p>
+          <p className="text-[8px] text-paper-muted">{t('Sıradaki adım: en az 3 fotoğraf ekle')}</p>
         </div>
       </div>
     </div>
@@ -668,6 +796,8 @@ export default function PhoneMockup({ className = '' }) {
   const reduce = useReducedMotion();
   const rootRef = useRef(null);
   const railRef = useRef(null);
+  const feedRef = useRef(null);
+  const profileRef = useRef(null);
   // Telefon ilk ekranda; görünür kabul edilir, kaydırılıp gözden çıkınca tur bekler
   const inView = useInView(rootRef, { amount: 0.45, initial: true });
 
@@ -679,6 +809,7 @@ export default function PhoneMockup({ className = '' }) {
   const [joined, setJoined] = useState([]);
   const [followed, setFollowed] = useState([]);
   const [liked, setLiked] = useState([]);
+  const [going, setGoing] = useState(false);
   const [chats, setChats] = useState(SEED_CHATS);
   const [chatWith, setChatWith] = useState(null);
   const [typing, setTyping] = useState(null);
@@ -756,6 +887,7 @@ export default function PhoneMockup({ className = '' }) {
     setVotes([4, 9, 3]);
     setMyVote(null);
     setLiked([]);
+    setGoing(false);
     setFollowed([]);
     setCommand(null);
   }
@@ -787,9 +919,13 @@ export default function PhoneMockup({ className = '' }) {
       after(3200, () => railRef.current?.scrollTo({ left: 0, behavior: 'smooth' }));
     } else if (key === 'feed') {
       setTab('feed');
-      after(1400, () => setLiked((l) => (l.includes(2) ? l : [...l, 2])));
+      after(1100, () => setGoing(true));
+      after(1900, () => feedRef.current?.scrollTo({ top: 200, behavior: 'smooth' }));
+      after(2900, () => setLiked((l) => (l.includes(2) ? l : [...l, 2])));
     } else if (key === 'profile') {
       setTab('profile');
+      after(1500, () => profileRef.current?.scrollTo({ top: 170, behavior: 'smooth' }));
+      after(3100, () => profileRef.current?.scrollTo({ top: 330, behavior: 'smooth' }));
     }
   }
 
@@ -888,11 +1024,11 @@ export default function PhoneMockup({ className = '' }) {
                       nudge={!touring && !reduce}
                     />
                   )}
-                  {tab === 'feed' && <FeedScreen liked={liked} onLike={(id) => setLiked((l) => (l.includes(id) ? l.filter((x) => x !== id) : [...l, id]))} />}
+                  {tab === 'feed' && <FeedScreen scrollRef={feedRef} going={going} onGo={() => setGoing((g) => !g)} liked={liked} onLike={(id) => setLiked((l) => (l.includes(id) ? l.filter((x) => x !== id) : [...l, id]))} />}
                   {tab === 'clubs' && !openClub && <ClubsScreen joined={joined} onOpen={setOpenClub} onToggle={(id) => setJoined((j) => (j.includes(id) ? j.filter((x) => x !== id) : [...j, id]))} />}
                   {tab === 'clubs' && openClub && <ClubChatScreen club={openClub} votes={votes} myVote={myVote} onVote={vote} />}
                   {tab === 'chat' && <ChatScreen chats={chats} active={chatWith} typing={typing} onOpen={openChat} onSend={(text) => send(text)} />}
-                  {tab === 'profile' && <ProfileScreen likes={likes} joined={joined.length} matches={matches.length} />}
+                  {tab === 'profile' && <ProfileScreen scrollRef={profileRef} likes={likes} joined={joined.length} matches={matches.length} />}
                 </motion.div>
               </div>
 
