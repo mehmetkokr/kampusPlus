@@ -39,10 +39,10 @@ function Tile({ className = '', eyebrow, title, desc, children, tone = 'amber', 
 /* ---------------- Kart Modu demosu ---------------- */
 
 const PROFILES = [
-  { initials: 'EY', name: 'Elif, 21', dept: 'Bilgisayar Müh.', grad: 'from-[#a9bfd8] to-[#5f7fa6]', tag: 'Arkadaşlık' },
-  { initials: 'KA', name: 'Kerem, 22', dept: 'Mimarlık', grad: 'from-[#f0c9a8] to-[#c75b30]', tag: 'Çalışma' },
-  { initials: 'ZD', name: 'Zeynep, 20', dept: 'Psikoloji', grad: 'from-[#eaa07e] to-[#c75b30]', tag: 'Etkinlik' },
-  { initials: 'MT', name: 'Mert, 23', dept: 'Endüstri Müh.', grad: 'from-[#c3dcc9] to-[#5f8a6c]', tag: 'Kulüp' },
+  { initials: 'EY', name: 'Elif, 21', dept: 'Bilgisayar Müh.', grad: 'from-[#b9d6f7] to-[#b9d6f7]', tag: 'Arkadaşlık' },
+  { initials: 'KA', name: 'Kerem, 22', dept: 'Mimarlık', grad: 'from-[#9ec9f5] to-[#9ec9f5]', tag: 'Çalışma' },
+  { initials: 'ZD', name: 'Zeynep, 20', dept: 'Psikoloji', grad: 'from-[var(--amber-soft)] to-[var(--amber-soft)]', tag: 'Etkinlik' },
+  { initials: 'MT', name: 'Mert, 23', dept: 'Endüstri Müh.', grad: 'from-[#a7e3b5] to-[#a7e3b5]', tag: 'Kulüp' },
 ];
 
 function SwipeDemo() {
@@ -78,7 +78,7 @@ function SwipeDemo() {
           transition={{ duration: 0.55, ease: EASE }}
         >
           <div className="relative h-[200px] bg-[linear-gradient(160deg,var(--color-surface-3)_0%,var(--color-surface-2)_55%,var(--color-surface-3)_100%)]">
-            <div className={`absolute left-1/2 top-1/2 flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-gradient-to-br ${PROFILES[index].grad} text-2xl font-bold text-[#0d0f14] ring-4 ring-surface`}>
+            <div className={`absolute left-1/2 top-1/2 flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-gradient-to-br ${PROFILES[index].grad} text-2xl font-bold text-[#1d1d1f] ring-4 ring-surface`}>
               {PROFILES[index].initials}
             </div>
             <span className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-surface/80 px-2.5 py-1 text-[0.625rem] font-semibold text-teal backdrop-blur">
@@ -104,7 +104,7 @@ function SwipeDemo() {
           initial={{ scale: 1 }}
           animate={{ scale: [1, 1.18, 1] }}
           transition={{ duration: 0.45 }}
-          className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-[#e0835a] to-[#b04d24] text-[#fffaf5]"
+          className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--amber-soft)] text-[#ffffff]"
         >
           <Heart size={17} fill="currentColor" />
         </motion.span>
@@ -158,7 +158,7 @@ function VerifyDemo() {
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: 'spring', stiffness: 500, damping: 22 }}
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal text-[#0d0f14]"
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal text-white"
           >
             <Check size={14} strokeWidth={3} />
           </motion.span>
@@ -180,12 +180,12 @@ function VerifyDemo() {
 /* ---------------- Seni Beğenenler demosu ---------------- */
 
 const LIKE_GRADS = [
-  'from-[#eaa07e] to-[#b04d24]',
-  'from-[#a9bfd8] to-[#4a6488]',
-  'from-[#f0c9a8] to-[#c75b30]',
-  'from-[#c3dcc9] to-[#5f8a6c]',
-  'from-[#c9c0d8] to-[#7d7390]',
-  'from-[#c4d4e6] to-[#5f7fa6]',
+  'from-[var(--amber-soft)] to-[var(--amber-soft)]',
+  'from-[#b9d6f7] to-[#b9d6f7]',
+  'from-[#9ec9f5] to-[#9ec9f5]',
+  'from-[#a7e3b5] to-[#a7e3b5]',
+  'from-[#c6c5f2] to-[#c6c5f2]',
+  'from-[#ffd6a5] to-[#ffd6a5]',
 ];
 
 function LikesDemo() {
@@ -204,7 +204,7 @@ function LikesDemo() {
               <motion.span
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
-                className="absolute bottom-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#c75b30] text-white"
+                className="absolute bottom-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--amber-soft)] text-white"
               >
                 <Heart size={10} fill="currentColor" />
               </motion.span>
@@ -219,7 +219,7 @@ function LikesDemo() {
           </motion.span>{' '}
           {tx("kişi seni beğendi")}
         </span>
-        <span className="flex items-center gap-1 rounded-full bg-gradient-to-br from-[#e0835a] to-[#b04d24] px-2.5 py-1 text-[0.6875rem] font-bold text-[#fffaf5]">
+        <span className="flex items-center gap-1 rounded-full bg-[var(--amber-soft)] px-2.5 py-1 text-[0.6875rem] font-bold text-[#ffffff]">
           <Crown size={11} /> {tx("Premium")}
         </span>
       </div>
@@ -258,7 +258,7 @@ function ChatDemo() {
             transition={{ duration: 0.35, ease: EASE }}
             className={`max-w-[80%] rounded-2xl px-3.5 py-2 text-[0.8125rem] leading-snug ${
               m.mine
-                ? 'self-end rounded-br-md bg-gradient-to-br from-[#e0835a] to-[#b04d24] text-[#fffaf5]'
+                ? 'self-end rounded-br-md bg-[var(--amber-soft)] text-[#ffffff]'
                 : 'self-start rounded-bl-md border border-line bg-surface/75 text-paper'
             }`}
           >

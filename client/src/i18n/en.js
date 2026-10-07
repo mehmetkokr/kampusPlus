@@ -1040,6 +1040,12 @@ const en = {
   'Kulübe gelsene': "Come to the club",
   '"{q}" ile eşleşen üniversite yok': "No university matches \"{q}\"",
   '{n} kişi seni beğendi': "{n} people liked you",
+  'Şu an gösterilecek kimse kalmadı.': "No one left to show right now.",
+  'Bu akşam kütüphanede final çalışması yapacak olan var mı? 2. kattayım, yer ayırabilirim.': "Anyone studying for finals at the library tonight? I am on the 2nd floor and can save a seat.",
+  'Hatay Mustafa Kemal Üniversitesi': "Hatay Mustafa Kemal University",
+  'Hatay Mustafa Kemal Üni.': "Hatay Mustafa Kemal Uni.",
+  'beğendikçe ve kulübe katıldıkça artar': "grows as you like people and join clubs",
+  'Eşleşmelerin': "Your matches",
 };
 
 const ORDINAL = { 1: '1st', 2: '2nd', 3: '3rd', 4: '4th' };

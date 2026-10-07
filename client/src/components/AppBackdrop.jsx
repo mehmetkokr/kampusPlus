@@ -3,7 +3,7 @@ import CampusSky from './CampusSky';
 
 // Uygulama içi sayfaların arkasındaki canlı ortam: kampüs gökyüzünün sakin
 // sürümü (renk moduna göre gece ya da sabah). Vurgu rengi tüm sayfalarda aynı.
-const PAGE_ACCENT = '#e0835a';
+const PAGE_ACCENT = 'var(--amber-soft)';
 
 export default function AppBackdrop() {
   useEffect(() => {

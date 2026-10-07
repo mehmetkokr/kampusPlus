@@ -155,7 +155,7 @@ export default function Hero() {
 
         <FloatingChip className="left-[4%] top-16" delay={0.6} icon={ShieldCheck} tone="bg-amber-dim text-amber" title={t('Doğrulandı')} subtitle="elif@itu.edu.tr" />
         <FloatingChip className="right-[4%] top-36" delay={0.8} icon={Sparkles} tone="bg-teal-dim text-teal" title={t('Yeni eşleşme!')} subtitle={t('Sohbet başlat')} />
-        <FloatingChip className="bottom-40 left-[2%]" delay={1} icon={Heart} tone="bg-[#c0533f]/12 text-[#c0533f]" title={t('Ortak: Kahve +1')} subtitle={t('Kart Modu')} />
+        <FloatingChip className="bottom-40 left-[2%]" delay={1} icon={Heart} tone="bg-[var(--coral)]/12 text-[var(--coral)]" title={t('Ortak: Kahve +1')} subtitle={t('Kart Modu')} />
         <FloatingChip className="bottom-24 right-[2%]" delay={1.2} icon={BadgeCheck} tone="bg-[#5f7fa6]/12 text-[#5f7fa6]" title={t('Satranç Kulübü')} subtitle={t('Perşembe 18:00')} />
       </div>
 

@@ -56,7 +56,7 @@ export default function LandingNav() {
         <div
           className={`flex items-center justify-between rounded-2xl border px-4 py-2.5 backdrop-blur-xl transition-all duration-300 sm:px-5 ${
             scrolled
-              ? 'border-line-soft bg-surface/80 shadow-[0_10px_40px_-20px_rgba(40,28,15,0.35)]'
+              ? 'border-line-soft bg-surface/80 shadow-[0_10px_40px_-20px_rgba(0,0,0,0.3)]'
               : 'border-transparent bg-transparent'
           }`}
         >

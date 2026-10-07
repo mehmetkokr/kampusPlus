@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken');
 const prisma = require('./lib/prisma');
 const { createNotification } = require('./lib/notifications');
 const { isBlockedEitherWay } = require('./lib/block');
+const { checkCanPost, markPosted } = require('./lib/clubChat');
 
 // O anda bağlı olan kullanıcıların id seti (çevrimiçi durumu için).
 // Not: Tek sunucu instance'ı için yeterlidir; çoklu instance'da Redis gibi
@@ -225,12 +226,10 @@ function setupSocket(io) {
           return socket.emit('error_message', 'Çok hızlı mesaj gönderiyorsun, biraz yavaşla.');
         }
 
-        const membership = await prisma.clubMembership.findUnique({
-          where: { clubId_userId: { clubId: Number(clubId), userId: socket.userId } },
-        });
-        if (!membership || membership.status !== 'active') {
-          return socket.emit('error_message', 'Bu sohbete mesaj gönderme yetkiniz yok.');
-        }
+        // Üyelik, duyuru modu, susturma ve yavaş mod kuralları (lib/clubChat.js)
+        const allowed = await checkCanPost(Number(clubId), socket.userId);
+        if (!allowed.ok) return socket.emit('error_message', allowed.error);
+        markPosted(Number(clubId), socket.userId);
 
         const message = await prisma.clubMessage.create({
           data: {

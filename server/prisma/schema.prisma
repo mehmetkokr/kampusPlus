@@ -194,6 +194,9 @@ model User {
 
   campaignsCreated Campaign[] @relation("CampaignAuthor")
 
+  clubPollsCreated ClubPoll[]     @relation("ClubPollCreator")
+  clubPollVotes    ClubPollVote[] @relation("ClubPollVotes")
+
   @@index([universityId])
 }
 
@@ -266,9 +269,15 @@ model Club {
   creatorId    Int
   createdAt    DateTime   @default(now())
 
+  // Sohbet kuralları (başkan/yöneticiler belirler)
+  chatMode        String @default("everyone") // everyone | admins (duyuru modu)
+  slowModeSeconds Int    @default(0) // 0 = kapalı
+  pinnedMessageId Int?
+
   memberships ClubMembership[]
   messages    ClubMessage[]
   events      Event[]
+  polls       ClubPoll[]
 
   @@unique([universityId, name]) // aynı üniversitede aynı isimde iki kulüp olamaz
   @@index([universityId])
@@ -278,14 +287,15 @@ model Club {
 // Kulüp Üyeliği (rol ve durum burada tutulur)
 // ----------------------------
 model ClubMembership {
-  id       Int      @id @default(autoincrement())
-  club     Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
-  clubId   Int
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId   Int
-  role     String   @default("member") // owner | admin | member
-  status   String   @default("active") // active | banned
-  joinedAt DateTime @default(now())
+  id         Int       @id @default(autoincrement())
+  club       Club      @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  clubId     Int
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     Int
+  role       String    @default("member") // owner | admin | member
+  status     String    @default("active") // active | banned
+  mutedUntil DateTime? // bu tarihe kadar sohbete yazamaz
+  joinedAt   DateTime  @default(now())
 
   @@unique([clubId, userId])
   @@index([userId])
@@ -295,17 +305,18 @@ model ClubMembership {
 // Kulüp Grup Sohbeti
 // ----------------------------
 model ClubMessage {
-  id        Int      @id @default(autoincrement())
-  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  id        Int       @id @default(autoincrement())
+  club      Club      @relation(fields: [clubId], references: [id], onDelete: Cascade)
   clubId    Int
-  sender    User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  sender    User      @relation(fields: [senderId], references: [id], onDelete: Cascade)
   senderId  Int
   content   String?
   photoUrl  String?
   audioUrl  String?
   fileUrl   String?
   fileName  String?
-  createdAt DateTime @default(now())
+  poll      ClubPoll?
+  createdAt DateTime  @default(now())
 
   @@index([clubId])
 }
@@ -580,4 +591,52 @@ model Campaign {
   createdAt      DateTime  @default(now())
 
   @@index([bannerUntil])
+}
+
+// ----------------------------
+// Kulüp sohbetindeki anketler (başkan ve yöneticiler oluşturur)
+// ----------------------------
+model ClubPoll {
+  id        Int         @id @default(autoincrement())
+  club      Club        @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  clubId    Int
+  message   ClubMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  messageId Int         @unique
+  creator   User        @relation("ClubPollCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  creatorId Int
+  question  String
+  multiple  Boolean     @default(false) // birden fazla seçenek işaretlenebilir mi
+  closed    Boolean     @default(false)
+  createdAt DateTime    @default(now())
+
+  options ClubPollOption[]
+  votes   ClubPollVote[]
+
+  @@index([clubId])
+}
+
+model ClubPollOption {
+  id       Int      @id @default(autoincrement())
+  poll     ClubPoll @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  pollId   Int
+  text     String
+  position Int      @default(0)
+
+  votes ClubPollVote[]
+
+  @@index([pollId])
+}
+
+model ClubPollVote {
+  id        Int            @id @default(autoincrement())
+  poll      ClubPoll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  pollId    Int
+  option    ClubPollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  optionId  Int
+  user      User           @relation("ClubPollVotes", fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int
+  createdAt DateTime       @default(now())
+
+  @@unique([optionId, userId])
+  @@index([pollId, userId])
 }

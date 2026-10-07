@@ -10,7 +10,7 @@ export default function CTASection() {
     <section className="relative px-4 py-20 sm:px-6">
       <Reveal className="landing-dark relative mx-auto max-w-5xl overflow-hidden rounded-[2rem] bg-surface px-6 py-20 text-center shadow-[0_40px_90px_-45px_rgba(22,18,14,0.8)] sm:px-10 sm:py-24">
         <div
-          className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_80%_at_50%_0%,rgba(224,131,90,0.22)_0%,transparent_70%)]"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_80%_at_50%_0%,rgba(10,132,255,0.18)_0%,transparent_70%)]"
           aria-hidden="true"
         />
         <h2 className="landing-h2 relative mx-auto max-w-2xl">

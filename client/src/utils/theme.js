@@ -4,7 +4,7 @@
 // Öncelik: oturum açıksa hesabın tercihi (user.theme) → tarayıcıda
 // hatırlanan seçim (kp-theme) → cihazın açık/koyu ayarı.
 const KEY = 'kp-theme';
-const META_COLOR = { light: '#faf8f4', dark: '#100f0d' };
+const META_COLOR = { light: '#f5f5f7', dark: '#000000' };
 
 export function getStoredTheme() {
   try {

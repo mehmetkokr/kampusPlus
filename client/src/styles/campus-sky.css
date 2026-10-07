@@ -13,7 +13,7 @@
   overflow: hidden;
   pointer-events: none;
   contain: strict;
-  background: radial-gradient(120% 85% at 50% -12%, color-mix(in srgb, var(--amber-soft) 9%, var(--bg)) 0%, var(--bg) 62%);
+  background: var(--bg);
 }
 .campus-sky--auth { z-index: 0; }
 .campus-sky--landing {
@@ -40,7 +40,7 @@
   will-change: transform;
 }
 .sky-glow-1 {
-  --glow: #c75b30;
+  --glow: var(--amber-soft);
   width: 70vmax;
   height: 55vmax;
   left: -22vmax;
@@ -49,7 +49,7 @@
   animation: sky-drift-1 34s ease-in-out infinite alternate;
 }
 .sky-glow-2 {
-  --glow: #8fb89a;
+  --glow: #30b0c7;
   width: 52vmax;
   height: 46vmax;
   right: -20vmax;
@@ -58,7 +58,7 @@
   animation: sky-drift-2 42s ease-in-out infinite alternate;
 }
 .sky-glow-3 {
-  --glow: #5f7fa6;
+  --glow: #5e5ce6;
   width: 64vmax;
   height: 44vmax;
   left: -10vmax;
@@ -67,7 +67,7 @@
   animation: sky-drift-3 48s ease-in-out infinite alternate;
 }
 .sky-glow-4 {
-  --glow: #e0835a;
+  --glow: #64d2ff;
   width: 40vmax;
   height: 30vmax;
   right: 6vw;
@@ -101,7 +101,7 @@
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  background: #f3ece1;
+  background: #f5f5f7;
   box-shadow: 0 0 calc(var(--s) * 3px) rgba(243, 236, 225, 0.55);
   opacity: 0.5;
   animation: sky-twinkle var(--tw) ease-in-out var(--dl) infinite alternate;
@@ -111,8 +111,8 @@
   height: calc(var(--s) * 1.7px);
 }
 .sky-star.is-node i {
-  background: #f6c9ad;
-  box-shadow: 0 0 calc(var(--s) * 5px) rgba(224, 131, 90, 0.7);
+  background: var(--amber-soft);
+  box-shadow: 0 0 calc(var(--s) * 5px) color-mix(in srgb, var(--amber-soft) 70%, transparent);
 }
 
 @keyframes sky-twinkle {
@@ -129,7 +129,7 @@
   overflow: visible;
 }
 .sky-links line {
-  stroke: #f3ece1;
+  stroke: #f5f5f7;
   stroke-width: 1;
   stroke-linecap: round;
   opacity: 0;
@@ -148,7 +148,7 @@
   width: 140px;
   height: 1px;
   border-radius: 1px;
-  background: linear-gradient(90deg, rgba(243, 236, 225, 0), rgba(243, 236, 225, 0.9));
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.9));
   opacity: 0;
   transform: rotate(-24deg) translate3d(0, 0, 0);
   animation: sky-meteor 17s cubic-bezier(0.23, 1, 0.32, 1) 4s infinite;
@@ -167,7 +167,7 @@
   left: 10%;
   width: 26vmax;
   height: 160%;
-  background: linear-gradient(90deg, transparent, rgba(255, 236, 205, 0.55) 50%, transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5) 50%, transparent);
   transform: rotate(24deg) translate3d(-30vw, 0, 0);
   animation: sky-ray 26s ease-in-out infinite alternate;
 }
@@ -203,12 +203,12 @@
    Açık mod: kampüste sabah
    ========================================================================== */
 [data-theme='light'] .campus-sky:not(.campus-sky--landing) {
-  background: radial-gradient(120% 85% at 50% -12%, #fff3e3 0%, var(--bg) 62%);
+  background: var(--bg);
 }
-[data-theme='light'] .sky-glow-1 { --glow: #f2a57f; opacity: 0.42; }
-[data-theme='light'] .sky-glow-2 { --glow: #a9c7a8; opacity: 0.38; }
-[data-theme='light'] .sky-glow-3 { --glow: #b4cbe6; opacity: 0.4; }
-[data-theme='light'] .sky-glow-4 { --glow: #f6d58c; opacity: 0.4; }
+[data-theme='light'] .sky-glow-1 { --glow: #a8cdf8; opacity: 0.45; }
+[data-theme='light'] .sky-glow-2 { --glow: #b8e6f0; opacity: 0.4; }
+[data-theme='light'] .sky-glow-3 { --glow: #c9c8f6; opacity: 0.4; }
+[data-theme='light'] .sky-glow-4 { --glow: #dbe9ff; opacity: 0.45; }
 [data-theme='light'] .campus-sky--app .sky-glow-1 { --o: 0.42; }
 [data-theme='light'] .campus-sky--app .sky-glow-2 { --o: 0.38; }
 [data-theme='light'] .campus-sky--app .sky-glow-3 { --o: 0.4; }
@@ -222,18 +222,18 @@
   animation: sky-float var(--fl) ease-in-out var(--dl) infinite alternate;
 }
 [data-theme='light'] .sky-star i {
-  background: radial-gradient(circle, rgba(199, 91, 48, 0.55), rgba(199, 91, 48, 0) 70%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--amber-soft) 55%, transparent), color-mix(in srgb, var(--amber-soft) 0%, transparent) 70%);
   box-shadow: none;
 }
 [data-theme='light'] .sky-star.is-node i {
-  background: radial-gradient(circle, rgba(79, 125, 93, 0.6), rgba(79, 125, 93, 0) 70%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--sky) 55%, transparent), color-mix(in srgb, var(--sky) 0%, transparent) 70%);
   box-shadow: none;
 }
 @keyframes sky-float {
   from { transform: translate3d(0, 0, 0); }
   to { transform: translate3d(14px, -46px, 0); }
 }
-[data-theme='light'] .sky-links line { stroke: #b4501f; }
+[data-theme='light'] .sky-links line { stroke: var(--amber-soft); }
 [data-theme='light'] .sky-links line { animation-name: sky-link-light; }
 @keyframes sky-link-light {
   0%, 100% { opacity: 0; }

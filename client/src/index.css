@@ -4,27 +4,27 @@
   --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI Variable Display', system-ui, sans-serif;
   --font-body: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', 'Segoe UI Variable Text', system-ui, sans-serif;
 
-  --color-ink: #0a0d12;
-  --color-ink-2: #0d1118;
-  --color-surface: #141822;
-  --color-surface-2: #1c212c;
-  --color-surface-3: #232938;
-  --color-line: #272e3a;
+  --color-ink: #000000;
+  --color-ink-2: #0a0a0a;
+  --color-surface: #1c1c1e;
+  --color-surface-2: #2c2c2e;
+  --color-surface-3: #3a3a3c;
+  --color-line: #38383a;
   --color-line-soft: rgba(255, 255, 255, 0.08);
 
-  --color-amber: #e8a33d;
-  --color-amber-soft: #f0b25c;
-  --color-amber-dim: rgba(232, 163, 61, 0.14);
+  --color-amber: var(--amber-soft);
+  --color-amber-soft: var(--amber-soft);
+  --color-amber-dim: color-mix(in srgb, var(--amber-soft) 14%, transparent);
 
-  --color-teal: #45d8c0;
-  --color-teal-dim: rgba(69, 216, 192, 0.14);
+  --color-teal: var(--teal);
+  --color-teal-dim: rgba(48, 209, 88, 0.14);
 
-  --color-coral: #e2596b;
-  --color-coral-dim: rgba(226, 89, 107, 0.14);
+  --color-coral: var(--coral);
+  --color-coral-dim: color-mix(in srgb, var(--coral) 14%, transparent);
 
-  --color-paper: #f1efea;
-  --color-paper-muted: #8b92a3;
-  --color-paper-faint: #5a6273;
+  --color-paper: #f5f5f7;
+  --color-paper-muted: #a1a1a6;
+  --color-paper-faint: #6e6e73;
 
   --animate-rise: auth-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
@@ -40,37 +40,40 @@
    ============================================ */
 
 :root {
-  --bg: #100f0d;
-  --surface: #191714;
-  --surface-2: #211f1b;
-  --surface-3: #2b2823;
-  --border: #302c26;
-  --border-soft: rgba(255, 244, 228, 0.08);
+  /* Apple sistem renkleri. Koyu mod: saf siyah zemin, gruplanmış yüzeyler */
+  --bg: #000000;
+  --surface: #1c1c1e;
+  --surface-2: #2c2c2e;
+  --surface-3: #3a3a3c;
+  --border: #38383a;
+  --border-soft: rgba(255, 255, 255, 0.08);
 
-  --text: #f3ece1;
-  --text-muted: #a69e91;
-  --text-faint: #716a5f;
+  --text: #f5f5f7;
+  --text-muted: #a1a1a6;
+  --text-faint: #6e6e73;
 
   /* Ana renk: kiremit (değişken adı geriye dönük uyumluluk için "amber") */
-  --amber: #c75b30;
-  --amber-soft: #e0835a;
-  --amber-dim: rgba(199, 91, 48, 0.16);
+  /* Değişken adları eski kalsa da anlamları: amber = vurgu mavisi,
+     teal = onay yeşili, coral = uyarı kırmızısı, sky = çivit */
+  --amber: #0a84ff;
+  --amber-soft: #0a84ff;
+  --amber-dim: rgba(10, 132, 255, 0.16);
 
   /* Yardımcı: adaçayı yeşili (doğrulama, çevrimiçi, başarı) */
-  --teal: #8fb89a;
-  --teal-dim: rgba(143, 184, 154, 0.14);
+  --teal: #30d158;
+  --teal-dim: rgba(48, 209, 88, 0.15);
 
-  --coral: #d9534f;
-  --coral-dim: rgba(217, 83, 79, 0.14);
+  --coral: #ff453a;
+  --coral-dim: rgba(255, 69, 58, 0.15);
 
   /* Yardımcı: mürekkep mavisi */
-  --sky: #8fa3bd;
-  --sky-dim: rgba(143, 163, 189, 0.14);
+  --sky: #5e5ce6;
+  --sky-dim: rgba(94, 92, 230, 0.16);
 
-  --violet: #a39bb0;
-  --violet-dim: rgba(163, 155, 176, 0.14);
+  --violet: #bf5af2;
+  --violet-dim: rgba(191, 90, 242, 0.15);
 
-  --gold: #c9a24a;
+  --gold: #ffd60a;
 
   --radius-sm: 10px;
   --radius: 16px;
@@ -82,9 +85,9 @@
   --font-display: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI Variable Display', system-ui, sans-serif;
   --font-body: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', 'Segoe UI Variable Text', system-ui, sans-serif;
 
-  --input-bg: rgba(255, 244, 228, 0.04);
-  --input-bg-focus: rgba(255, 244, 228, 0.07);
-  --input-border: rgba(255, 244, 228, 0.1);
+  --input-bg: rgba(118, 118, 128, 0.18);
+  --input-bg-focus: rgba(118, 118, 128, 0.26);
+  --input-border: rgba(255, 255, 255, 0.08);
 }
 
 * {
@@ -157,7 +160,7 @@ p {
   height: 38px;
   border-radius: 12px;
   background: var(--amber);
-  color: #fffaf5;
+  color: #ffffff;
   border: none;
   display: flex;
   align-items: center;
@@ -262,8 +265,8 @@ textarea {
   gap: 8px;
   width: 100%;
   padding: 14px 20px;
-  background: linear-gradient(135deg, #e0835a 0%, #c75b30 50%, #a94a22 100%);
-  color: #fffaf5;
+  background: var(--amber-soft);
+  color: #ffffff;
   border: none;
   border-radius: 14px;
   font-family: var(--font-body);
@@ -487,7 +490,7 @@ textarea {
 }
 
 .intent-chip.dating {
-  background: rgba(217, 83, 79, 0.14);
+  background: color-mix(in srgb, var(--coral) 14%, transparent);
   color: var(--coral);
 }
 
@@ -530,7 +533,7 @@ textarea {
 .intent-toggle.active {
   background: var(--amber);
   border-color: var(--amber);
-  color: #fffaf5;
+  color: #ffffff;
 }
 
 .swipe-card-details {
@@ -569,8 +572,8 @@ textarea {
 }
 
 .btn-pass {
-  background: rgba(217, 83, 79, 0.06);
-  border: 1.5px solid rgba(217, 83, 79, 0.7);
+  background: color-mix(in srgb, var(--coral) 6%, transparent);
+  border: 1.5px solid color-mix(in srgb, var(--coral) 70%, transparent);
   color: var(--coral);
   box-shadow: none;
 }
@@ -580,8 +583,8 @@ textarea {
 }
 
 .btn-like {
-  background: linear-gradient(135deg, #e0835a 0%, #c75b30 50%, #a94a22 100%);
-  color: #fffaf5;
+  background: var(--amber-soft);
+  color: #ffffff;
 }
 
 .empty-state {
@@ -596,7 +599,7 @@ textarea {
 
 .match-banner {
   background: var(--teal-dim);
-  border: 1px solid rgba(143, 184, 154, 0.35);
+  border: 1px solid color-mix(in srgb, var(--teal) 35%, transparent);
   color: var(--teal);
   font-weight: 700;
   border-radius: var(--radius);
@@ -704,6 +707,12 @@ textarea {
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 15px;
+  line-height: 1.25;
+  /* uzun kulüp adları en fazla iki satır */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .chat-header-status {
@@ -725,9 +734,9 @@ textarea {
 }
 
 @keyframes pulse-dot {
-  0% { box-shadow: 0 0 0 0 rgba(143, 184, 154, 0.55); }
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--teal) 55%, transparent); }
   70% { box-shadow: 0 0 0 6px transparent; }
-  100% { box-shadow: 0 0 0 0 rgba(143, 184, 154, 0); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--teal) 0%, transparent); }
 }
 
 .chat-messages {
@@ -768,9 +777,9 @@ textarea {
 }
 
 .message-mine {
-  background: linear-gradient(135deg, #3a2c13, #2a2010);
-  border: 1px solid rgba(199, 91, 48, 0.35);
-  color: #f6e8cc;
+  background: var(--amber-soft);
+  border: 0;
+  color: #ffffff;
   border-bottom-right-radius: 6px;
 }
 
@@ -848,7 +857,7 @@ textarea {
 
 .chat-send-btn.has-text {
   background: var(--amber);
-  color: #fffaf5;
+  color: #ffffff;
   transform: scale(1.04);
 }
 
@@ -894,7 +903,7 @@ textarea {
   width: 220px;
   height: 220px;
   transform: translateX(-50%);
-  background: radial-gradient(circle, rgba(199, 91, 48, 0.18), transparent 70%);
+  background: color-mix(in srgb, var(--amber-soft) 18%, transparent);
   pointer-events: none;
 }
 
@@ -923,7 +932,7 @@ textarea {
   height: 32px;
   border-radius: 50%;
   background: var(--amber);
-  color: #fffaf5;
+  color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -997,7 +1006,7 @@ textarea {
 .category-pill.active {
   background: var(--amber);
   border-color: var(--amber);
-  color: #fffaf5;
+  color: #ffffff;
 }
 
 .club-grid {
@@ -1154,7 +1163,7 @@ textarea {
   justify-content: space-between;
   gap: 12px;
   background: var(--amber-dim);
-  border: 1px solid rgba(199, 91, 48, 0.3);
+  border: 1px solid color-mix(in srgb, var(--amber-soft) 30%, transparent);
   border-radius: var(--radius);
   padding: 14px 16px;
   margin: 0 18px 12px;
@@ -1174,7 +1183,7 @@ textarea {
 
 .club-join-banner.banned {
   background: var(--coral-dim);
-  border-color: rgba(217, 83, 79, 0.3);
+  border-color: color-mix(in srgb, var(--coral) 30%, transparent);
 }
 
 /* ---------- Kulüp sohbetinde fotoğraf mesajı + gönderen adı ---------- */
@@ -1326,7 +1335,7 @@ textarea {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(6, 8, 12, 0.7);
+  background: rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   display: flex;
@@ -1433,7 +1442,7 @@ textarea {
   height: 60px;
   border-radius: 50%;
   padding: 2.5px;
-  background: linear-gradient(135deg, var(--amber), var(--coral));
+  background: var(--amber);
   border: none;
   cursor: pointer;
   flex-shrink: 0;
@@ -1465,7 +1474,7 @@ textarea {
   height: 19px;
   border-radius: 50%;
   background: var(--amber);
-  color: #fffaf5;
+  color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1641,7 +1650,7 @@ textarea {
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: #8fb89a;
+  background: var(--teal);
   border: 2px solid var(--surface);
 }
 
@@ -1933,7 +1942,7 @@ textarea {
   height: 32px;
   border-radius: 50%;
   background: var(--amber);
-  color: #fffaf5;
+  color: #ffffff;
   border: none;
   display: flex;
   align-items: center;
@@ -1957,7 +1966,7 @@ textarea {
 .voice-bubble.message-mine {
   margin-left: auto;
   background: var(--amber);
-  color: #fffaf5;
+  color: #ffffff;
   border-bottom-right-radius: 4px;
 }
 
@@ -2035,7 +2044,7 @@ textarea {
 .file-bubble.message-mine {
   margin-left: auto;
   background: var(--amber);
-  color: #fffaf5;
+  color: #ffffff;
   border-bottom-right-radius: 4px;
 }
 
@@ -2068,7 +2077,7 @@ textarea {
   gap: 10px;
   padding: 12px 14px;
   border-radius: 14px;
-  background: rgba(24, 28, 40, 0.92);
+  background: rgba(0, 0, 0, 0.92);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-float);
   backdrop-filter: blur(16px) saturate(160%);
@@ -2099,8 +2108,8 @@ textarea {
 
 .toast-error { border-left: 3px solid var(--coral); }
 .toast-error .toast-icon { color: var(--coral); }
-.toast-success { border-left: 3px solid #8fb89a; }
-.toast-success .toast-icon { color: #8fb89a; }
+.toast-success { border-left: 3px solid var(--teal); }
+.toast-success .toast-icon { color: var(--teal); }
 .toast-info { border-left: 3px solid var(--amber); }
 .toast-info .toast-icon { color: var(--amber); }
 
@@ -2163,7 +2172,7 @@ textarea {
 .forgot-password-link:hover { text-decoration: underline; }
 
 /* ---------- Mesajlaşma: yazıyor / çevrimiçi / görüldü / emoji ---------- */
-.chat-header-status.online { color: #8fb89a; }
+.chat-header-status.online { color: var(--teal); }
 .chat-header-status.typing { color: var(--amber); font-style: italic; }
 
 .message-seen {
@@ -2204,7 +2213,7 @@ textarea {
   right: 8px;
   max-height: 200px;
   overflow-y: auto;
-  background: rgba(24, 28, 40, 0.97);
+  background: rgba(0, 0, 0, 0.97);
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 10px;
@@ -2254,8 +2263,8 @@ textarea {
 
 .swipe-stamp.like {
   left: 20px;
-  color: #8fb89a;
-  border-color: #8fb89a;
+  color: var(--teal);
+  border-color: var(--teal);
   transform: rotate(-12deg);
 }
 
@@ -2532,25 +2541,34 @@ textarea {
    bileşenler ek değişiklik gerekmeden açık temada da doğru görünür. */
 [data-theme='light'] {
   /* Tek palet: tanıtım sayfası, giriş/kayıt ve uygulama açık modda aynı tonları kullanır */
-  --bg: #faf8f4;
+  /* Açık mod: Apple gri zemin, beyaz kartlar; yazı renkleri beyaz üstünde
+     okunur kontrastta (erişilebilir yeşil ve kırmızı tonları) */
+  --bg: #f5f5f7;
   --surface: #ffffff;
-  --surface-2: #f3efe8;
-  --surface-3: #e9e3d9;
-  --border: #e3dcd1;
-  --border-soft: rgba(40, 28, 15, 0.09);
+  --surface-2: #f2f2f7;
+  --surface-3: #e5e5ea;
+  --border: #d2d2d7;
+  --border-soft: rgba(0, 0, 0, 0.08);
 
-  --text: #16120e;
-  --text-muted: #5c5144;
-  --text-faint: #7a6e60;
+  --text: #1d1d1f;
+  --text-muted: #6e6e73;
+  --text-faint: #86868b;
 
-  --amber: #b4501f;
-  --amber-soft: #c75b30;
-  --teal: #4f7d5d;
-  --sky: #4a6588;
+  --amber: #0066cc;
+  --amber-soft: #0071e3;
+  --amber-dim: rgba(0, 113, 227, 0.12);
+  --teal: #248a3d;
+  --teal-dim: rgba(52, 199, 89, 0.14);
+  --coral: #d70015;
+  --coral-dim: rgba(255, 59, 48, 0.12);
+  --sky: #5856d6;
+  --sky-dim: rgba(88, 86, 214, 0.12);
+  --violet: #af52de;
+  --gold: #b25000;
 
-  --input-bg: rgba(255, 255, 255, 0.7);
+  --input-bg: rgba(118, 118, 128, 0.1);
   --input-bg-focus: #ffffff;
-  --input-border: rgba(40, 28, 15, 0.12);
+  --input-border: rgba(0, 0, 0, 0.1);
 
   color-scheme: light;
 }
@@ -2564,7 +2582,7 @@ textarea {
 }
 
 [data-theme='light'] .icon-btn-amber {
-  color: #fffaf5;
+  color: #ffffff;
 }
 
 /* ==========================================================
@@ -2575,8 +2593,8 @@ textarea {
    Uygulamanın geri kalanı amber/coral paletini kullanmaya devam eder;
    bu değişkenler yalnızca Keşfet sayfasındaki aksiyon butonları içindir. */
 :root {
-  --discover-accent: #c75b30;
-  --discover-accent-hover: #b0501f;
+  --discover-accent: var(--amber-soft);
+  --discover-accent-hover: #0066cc;
 }
 
 .discover-sticky-header {
@@ -2721,7 +2739,7 @@ textarea {
   gap: 4px;
   padding: 2px 8px;
   border-radius: 999px;
-  background: linear-gradient(135deg, var(--amber), var(--amber-soft));
+  background: var(--amber);
   color: var(--bg);
   font-size: 10.5px;
   font-weight: 800;
@@ -2759,7 +2777,7 @@ textarea {
   height: 54px;
   border-radius: 50%;
   flex-shrink: 0;
-  background: linear-gradient(135deg, var(--amber-dim), var(--teal-dim));
+  background: var(--amber-dim);
 }
 
 .locked-card-line {
@@ -2811,7 +2829,7 @@ textarea {
 /* ---------- Diğer üniversiteler kilit banner'ı ---------- */
 
 .other-uni-locked-banner {
-  background: linear-gradient(135deg, var(--surface-2), var(--surface-3));
+  background: var(--surface-2);
   border: 1px solid var(--amber-dim);
   border-radius: var(--radius-lg);
   padding: 18px;
@@ -2848,7 +2866,7 @@ textarea {
   padding: 10px 22px;
   border-radius: 999px;
   border: none;
-  background: linear-gradient(135deg, var(--amber), var(--amber-soft));
+  background: var(--amber);
   color: var(--bg);
   font-weight: 800;
   font-size: 13px;
@@ -2870,7 +2888,7 @@ textarea {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--amber), var(--amber-soft));
+  background: var(--amber);
   color: var(--bg);
   display: flex;
   align-items: center;
@@ -2953,12 +2971,12 @@ textarea {
   border-radius: var(--radius-lg);
   padding: 18px;
   margin-bottom: 20px;
-  background: linear-gradient(135deg, var(--surface-2), var(--surface-3));
+  background: var(--surface-2);
   border: 1px solid var(--amber-dim);
 }
 
 .settings-premium-card.is-active {
-  background: linear-gradient(135deg, var(--amber-dim), rgba(224, 131, 90, 0.08));
+  background: var(--amber-dim);
   border-color: var(--amber);
 }
 

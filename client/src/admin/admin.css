@@ -10,11 +10,12 @@
   --adm-card: var(--surface);
   --adm-line: var(--border);
   --adm-soft: var(--surface-2);
-  --adm-up: #3f9b62;
-  --adm-down: #d9534f;
+  /* Grafik ve durum renkleri: uygulamanın Apple paletiyle aynı */
+  --adm-up: var(--teal);
+  --adm-down: var(--coral);
   --adm-c1: var(--amber-soft);
-  --adm-c2: #4f9a7a;
-  --adm-c3: #5f7fa6;
+  --adm-c2: #30b0c7;
+  --adm-c3: var(--sky);
   display: grid;
   grid-template-columns: 248px minmax(0, 1fr);
   min-height: 100dvh;
@@ -23,7 +24,7 @@
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
 }
-[data-theme='light'] .adm { --adm-up: #2f7d4f; --adm-down: #c0392b; }
+[data-theme='light'] .adm { --adm-c2: #0e8aa3; }
 
 /* ---------- Kenar çubuğu ---------- */
 .adm-side {

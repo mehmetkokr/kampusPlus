@@ -10,8 +10,8 @@
   --cl-right: #d4d4d4;
   --cl-edge: rgba(0, 0, 0, 0.18);
   --cl-shadow: rgba(255, 255, 255, 0.13);
-  --cl-bg: #100f0d;
-  --cl-text: rgba(243, 236, 225, 0.6);
+  --cl-bg: #000000;
+  --cl-text: rgba(245, 245, 247, 0.6);
   display: grid;
   place-items: center;
   gap: 28px;
@@ -28,7 +28,7 @@
 }
 
 .cube-loader.is-overlay {
-  background: rgba(16, 15, 13, 0.9);
+  background: rgba(28, 28, 30, 0.9);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   animation: cl-fade 0.25s ease both;
@@ -211,12 +211,12 @@
 
 /* Açık tema: koyu zemin yerine açık zemin, küplere ince kenar */
 [data-theme='light'] .cube-loader {
-  --cl-edge: rgba(60, 40, 20, 0.35);
-  --cl-left: #b9b2a7;
-  --cl-right: #ddd7cd;
-  --cl-shadow: rgba(60, 40, 20, 0.14);
-  --cl-bg: #f5f0e8;
-  --cl-text: rgba(34, 28, 22, 0.6);
+  --cl-edge: rgba(0, 0, 0, 0.22);
+  --cl-left: #aeaeb2;
+  --cl-right: #d1d1d6;
+  --cl-shadow: rgba(0, 0, 0, 0.12);
+  --cl-bg: #f5f5f7;
+  --cl-text: rgba(29, 29, 31, 0.6);
 }
 
-[data-theme='light'] .cube-loader.is-overlay { background: rgba(245, 240, 232, 0.92); }
+[data-theme='light'] .cube-loader.is-overlay { background: rgba(245, 245, 247, 0.92); }

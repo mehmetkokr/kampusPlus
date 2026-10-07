@@ -105,12 +105,12 @@ export const CLUB_ICONS = {
 
 // Kategori renkleri ve her kategori için önerilen simgeler
 export const CLUB_CATEGORY_STYLE = {
-  Teknoloji: { tone: '#6f8db3', icons: ['cpu', 'code', 'bot', 'gamepad', 'rocket', 'terminal', 'satellite', 'brain'] },
-  Spor: { tone: '#7fa88a', icons: ['trophy', 'dumbbell', 'volleyball', 'bike', 'mountain', 'footprints', 'waves', 'medal'] },
-  Sanat: { tone: '#d97757', icons: ['palette', 'camera', 'music', 'guitar', 'film', 'drama', 'pen', 'headphones'] },
-  Akademik: { tone: '#c9a24a', icons: ['book', 'flask', 'microscope', 'calculator', 'lightbulb', 'globe', 'languages', 'graduation'] },
-  Sosyal: { tone: '#b08968', icons: ['coffee', 'mic', 'pizza', 'dice', 'party', 'heart', 'leaf', 'users'] },
-  Diğer: { tone: '#8e8499', icons: ['sparkles', 'target', 'puzzle', 'telescope', 'moon', 'flame', 'plane', 'feather'] },
+  Teknoloji: { tone: '#007aff', icons: ['cpu', 'code', 'bot', 'gamepad', 'rocket', 'terminal', 'satellite', 'brain'] },
+  Spor: { tone: '#34c759', icons: ['trophy', 'dumbbell', 'volleyball', 'bike', 'mountain', 'footprints', 'waves', 'medal'] },
+  Sanat: { tone: '#ff375f', icons: ['palette', 'camera', 'music', 'guitar', 'film', 'drama', 'pen', 'headphones'] },
+  Akademik: { tone: '#5856d6', icons: ['book', 'flask', 'microscope', 'calculator', 'lightbulb', 'globe', 'languages', 'graduation'] },
+  Sosyal: { tone: '#ff9500', icons: ['coffee', 'mic', 'pizza', 'dice', 'party', 'heart', 'leaf', 'users'] },
+  Diğer: { tone: '#8e8e93', icons: ['sparkles', 'target', 'puzzle', 'telescope', 'moon', 'flame', 'plane', 'feather'] },
 };
 
 export const ICON_PREFIX = 'icon:';

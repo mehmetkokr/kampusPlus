@@ -7,6 +7,7 @@ const chatUpload = require('../middleware/chatUpload');
 const { verifyFileSignature } = require('../lib/fileValidation');
 const { getBlockedUserIds } = require('../lib/block');
 const { createNotification } = require('../lib/notifications');
+const { checkCanPost, markPosted, serializePoll, loadPoll, broadcastPoll, POLL_INCLUDE, SENDER_SELECT } = require('../lib/clubChat');
 
 const router = express.Router();
 
@@ -14,6 +15,7 @@ const MEMBER_SELECT = {
   id: true,
   role: true,
   status: true,
+  mutedUntil: true,
   joinedAt: true,
   user: { select: { id: true, fullName: true, photoUrl: true, department: true } },
 };
@@ -139,7 +141,18 @@ router.get('/:id', requireAuth, async (req, res) => {
       return res.status(404).json({ error: 'Kulüp bulunamadı.' });
     }
 
-    const myMembership = club.memberships.find((m) => m.user.id === req.userId) || null;
+    // Engellenen üye kendi durumunu da görebilsin (aktif listede değil)
+    const myMembership =
+      club.memberships.find((m) => m.user.id === req.userId) ||
+      (await prisma.clubMembership.findUnique({ where: { clubId_userId: { clubId, userId: req.userId } }, select: MEMBER_SELECT }));
+    const manager = myMembership?.status === 'active' && canManage(myMembership.role);
+
+    const [pinned, banned] = await Promise.all([
+      club.pinnedMessageId && myMembership?.status === 'active'
+        ? prisma.clubMessage.findUnique({ where: { id: club.pinnedMessageId }, include: { sender: { select: SENDER_SELECT } } })
+        : null,
+      manager ? prisma.clubMembership.findMany({ where: { clubId, status: 'banned' }, select: MEMBER_SELECT }) : [],
+    ]);
 
     res.json({
       id: club.id,
@@ -147,7 +160,11 @@ router.get('/:id', requireAuth, async (req, res) => {
       description: club.description,
       category: club.category,
       iconEmoji: club.iconEmoji,
+      chatMode: club.chatMode,
+      slowModeSeconds: club.slowModeSeconds,
+      pinnedMessage: pinned,
       members: club.memberships,
+      banned,
       myMembership,
     });
   } catch (err) {
@@ -233,6 +250,8 @@ router.delete('/:id', requireAuth, async (req, res) => {
     await prisma.clubMembership.deleteMany({ where: { clubId } });
     await prisma.club.delete({ where: { id: clubId } });
 
+    // Sohbette olanlar kulübün kapandığını anında görsün
+    req.app.get('io')?.to(`club_${clubId}`).emit('club_closed', { clubId });
     res.json({ success: true });
   } catch (err) {
     console.error(err);
@@ -361,12 +380,15 @@ router.get('/:id/messages', requireAuth, async (req, res) => {
       },
       orderBy: { createdAt: 'desc' },
       take: limit,
-      include: { sender: { select: { id: true, fullName: true, photoUrl: true } } },
+      include: { sender: { select: SENDER_SELECT }, poll: { include: POLL_INCLUDE } },
     });
 
     messages.reverse();
 
-    res.json({ messages, hasMore: messages.length === limit });
+    res.json({
+      messages: messages.map((m) => ({ ...m, poll: serializePoll(m.poll, req.userId) })),
+      hasMore: messages.length === limit,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Mesajlar alınamadı.' });
@@ -379,12 +401,10 @@ router.get('/:id/messages', requireAuth, async (req, res) => {
 router.post('/:id/messages/photo', requireAuth, chatUpload.private.single('photo'), verifyFileSignature, async (req, res) => {
   try {
     const clubId = Number(req.params.id);
-    const membership = await getMembership(clubId, req.userId);
-
-    if (!membership || membership.status !== 'active') {
-      return res.status(403).json({ error: 'Fotoğraf göndermek için kulübe üye olmalısın.' });
-    }
+    const allowed = await checkCanPost(clubId, req.userId);
+    if (!allowed.ok) return res.status(403).json({ error: allowed.error });
     if (!req.file) return res.status(400).json({ error: 'Fotoğraf gerekli.' });
+    markPosted(clubId, req.userId);
 
     const message = await prisma.clubMessage.create({
       data: {
@@ -558,6 +578,237 @@ router.post('/:id/events/:eventId/rsvp', requireAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'İşlem başarısız.' });
+  }
+});
+
+// =========================================================
+// KULÜP YÖNETİMİ (başkan ve yöneticiler)
+// =========================================================
+
+// Bu istek için yönetici üyeliği döner; yetkisizse yanıtı gönderip null döner
+async function requireManager(req, res, clubId, { ownerOnly = false } = {}) {
+  const membership = await getMembership(clubId, req.userId);
+  const ok = membership && membership.status === 'active' && (ownerOnly ? membership.role === 'owner' : canManage(membership.role));
+  if (!ok) {
+    res.status(403).json({ error: ownerOnly ? 'Bu işlemi yalnızca kulüp başkanı yapabilir.' : 'Bu işlem için kulüp yöneticisi olmalısın.' });
+    return null;
+  }
+  return membership;
+}
+
+// PATCH /api/clubs/:id/settings — sohbet modu, yavaş mod; ad ve açıklama (yalnızca başkan)
+router.patch('/:id/settings', requireAuth, async (req, res) => {
+  try {
+    const clubId = Number(req.params.id);
+    const me = await requireManager(req, res, clubId);
+    if (!me) return;
+
+    const data = {};
+    const { chatMode, slowModeSeconds, name, description } = req.body;
+    if (chatMode !== undefined) {
+      if (!['everyone', 'admins'].includes(chatMode)) return res.status(400).json({ error: 'Geçersiz sohbet modu.' });
+      data.chatMode = chatMode;
+    }
+    if (slowModeSeconds !== undefined) {
+      const sec = Number(slowModeSeconds);
+      if (![0, 10, 30, 60, 300].includes(sec)) return res.status(400).json({ error: 'Geçersiz yavaş mod süresi.' });
+      data.slowModeSeconds = sec;
+    }
+    if (name !== undefined || description !== undefined) {
+      if (me.role !== 'owner') return res.status(403).json({ error: 'Kulüp adını ve açıklamasını yalnızca başkan değiştirebilir.' });
+      if (name !== undefined) {
+        const clean = String(name).trim();
+        if (clean.length < 3 || clean.length > 40) return res.status(400).json({ error: 'Kulüp adı 3–40 karakter olmalı.' });
+        data.name = clean;
+      }
+      if (description !== undefined) data.description = String(description).trim().slice(0, 500) || null;
+    }
+
+    const club = await prisma.club.update({ where: { id: clubId }, data });
+    req.app.get('io')?.to(`club_${clubId}`).emit('club_updated', {
+      clubId,
+      chatMode: club.chatMode,
+      slowModeSeconds: club.slowModeSeconds,
+      name: club.name,
+      description: club.description,
+    });
+    res.json({ chatMode: club.chatMode, slowModeSeconds: club.slowModeSeconds, name: club.name, description: club.description });
+  } catch (err) {
+    if (err.code === 'P2002') return res.status(409).json({ error: 'Üniversitende bu isimde başka bir kulüp var.' });
+    console.error(err);
+    res.status(500).json({ error: 'Ayarlar kaydedilemedi.' });
+  }
+});
+
+// POST /api/clubs/:id/members/:userId/mute { minutes } — sustur (0 = susturmayı kaldır)
+router.post('/:id/members/:userId/mute', requireAuth, async (req, res) => {
+  try {
+    const clubId = Number(req.params.id);
+    const targetUserId = Number(req.params.userId);
+    const me = await requireManager(req, res, clubId);
+    if (!me) return;
+
+    const minutes = Number(req.body.minutes);
+    if (![0, 60, 1440, 10080].includes(minutes)) return res.status(400).json({ error: 'Geçersiz süre.' });
+
+    const target = await getMembership(clubId, targetUserId);
+    if (!target || target.status !== 'active') return res.status(404).json({ error: 'Üye bulunamadı.' });
+    if (target.role === 'owner') return res.status(400).json({ error: 'Kulüp başkanı susturulamaz.' });
+    if (target.role === 'admin' && me.role !== 'owner') return res.status(403).json({ error: 'Yöneticileri yalnızca başkan susturabilir.' });
+
+    const mutedUntil = minutes ? new Date(Date.now() + minutes * 60 * 1000) : null;
+    await prisma.clubMembership.update({ where: { id: target.id }, data: { mutedUntil } });
+    req.app.get('io')?.in(`user_${targetUserId}`).emit('club_muted', { clubId, mutedUntil });
+    res.json({ mutedUntil });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'İşlem yapılamadı.' });
+  }
+});
+
+// POST /api/clubs/:id/members/:userId/unban — engeli kaldır (tekrar katılabilir)
+router.post('/:id/members/:userId/unban', requireAuth, async (req, res) => {
+  try {
+    const clubId = Number(req.params.id);
+    if (!(await requireManager(req, res, clubId))) return;
+    const target = await getMembership(clubId, Number(req.params.userId));
+    if (!target || target.status !== 'banned') return res.status(404).json({ error: 'Engellenmiş üye bulunamadı.' });
+    // Kayıt silinir: kişi isterse yeniden katılır
+    await prisma.clubMembership.delete({ where: { id: target.id } });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Engel kaldırılamadı.' });
+  }
+});
+
+// DELETE /api/clubs/:id/messages/:messageId — kendi mesajını ya da (yönetici) herhangi bir mesajı sil
+router.delete('/:id/messages/:messageId', requireAuth, async (req, res) => {
+  try {
+    const clubId = Number(req.params.id);
+    const messageId = Number(req.params.messageId);
+    const [membership, message] = await Promise.all([
+      getMembership(clubId, req.userId),
+      prisma.clubMessage.findUnique({ where: { id: messageId } }),
+    ]);
+    if (!message || message.clubId !== clubId) return res.status(404).json({ error: 'Mesaj bulunamadı.' });
+    const own = message.senderId === req.userId;
+    if (!membership || membership.status !== 'active' || (!own && !canManage(membership.role))) {
+      return res.status(403).json({ error: 'Bu mesajı silemezsin.' });
+    }
+    await prisma.clubMessage.delete({ where: { id: messageId } });
+    const club = await prisma.club.findUnique({ where: { id: clubId }, select: { pinnedMessageId: true } });
+    if (club?.pinnedMessageId === messageId) await prisma.club.update({ where: { id: clubId }, data: { pinnedMessageId: null } });
+    req.app.get('io')?.to(`club_${clubId}`).emit('club_message_deleted', { clubId, messageId, unpinned: club?.pinnedMessageId === messageId });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Mesaj silinemedi.' });
+  }
+});
+
+// POST /api/clubs/:id/pin { messageId | null } — sohbetin üstüne duyuru sabitle / kaldır
+router.post('/:id/pin', requireAuth, async (req, res) => {
+  try {
+    const clubId = Number(req.params.id);
+    if (!(await requireManager(req, res, clubId))) return;
+    const messageId = req.body.messageId ? Number(req.body.messageId) : null;
+    let message = null;
+    if (messageId) {
+      message = await prisma.clubMessage.findUnique({ where: { id: messageId }, include: { sender: { select: SENDER_SELECT } } });
+      if (!message || message.clubId !== clubId) return res.status(404).json({ error: 'Mesaj bulunamadı.' });
+    }
+    await prisma.club.update({ where: { id: clubId }, data: { pinnedMessageId: messageId } });
+    req.app.get('io')?.to(`club_${clubId}`).emit('club_pinned', { clubId, message });
+    res.json({ pinnedMessage: message });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Sabitleme yapılamadı.' });
+  }
+});
+
+// POST /api/clubs/:id/polls { question, options[], multiple } — sohbete anket gönder
+router.post('/:id/polls', requireAuth, async (req, res) => {
+  try {
+    const clubId = Number(req.params.id);
+    if (!(await requireManager(req, res, clubId))) return;
+
+    const question = String(req.body.question || '').trim();
+    const options = [...new Set((req.body.options || []).map((o) => String(o).trim()).filter(Boolean))];
+    if (question.length < 3 || question.length > 200) return res.status(400).json({ error: 'Soru 3–200 karakter olmalı.' });
+    if (options.length < 2 || options.length > 6) return res.status(400).json({ error: 'En az 2, en fazla 6 farklı seçenek gir.' });
+    if (options.some((o) => o.length > 80)) return res.status(400).json({ error: 'Seçenekler en fazla 80 karakter olabilir.' });
+
+    const message = await prisma.clubMessage.create({
+      data: {
+        clubId,
+        senderId: req.userId,
+        content: question,
+        poll: {
+          create: {
+            clubId,
+            creatorId: req.userId,
+            question,
+            multiple: req.body.multiple === true,
+            options: { create: options.map((text, position) => ({ text, position })) },
+          },
+        },
+      },
+      include: { sender: { select: SENDER_SELECT }, poll: { include: POLL_INCLUDE } },
+    });
+
+    const payload = { ...message, poll: serializePoll(message.poll, null) };
+    req.app.get('io')?.to(`club_${clubId}`).emit('new_club_message', payload);
+    res.status(201).json({ ...message, poll: serializePoll(message.poll, req.userId) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Anket oluşturulamadı.' });
+  }
+});
+
+// POST /api/clubs/:id/polls/:pollId/vote { optionIds: [] } — oy ver / oyu değiştir (boş dizi = geri çek)
+router.post('/:id/polls/:pollId/vote', requireAuth, async (req, res) => {
+  try {
+    const clubId = Number(req.params.id);
+    const pollId = Number(req.params.pollId);
+    const membership = await getMembership(clubId, req.userId);
+    if (!membership || membership.status !== 'active') return res.status(403).json({ error: 'Oy vermek için kulübe üye olmalısın.' });
+
+    const poll = await loadPoll(pollId);
+    if (!poll || poll.clubId !== clubId) return res.status(404).json({ error: 'Anket bulunamadı.' });
+    if (poll.closed) return res.status(400).json({ error: 'Bu anket kapandı.' });
+
+    const validIds = new Set(poll.options.map((o) => o.id));
+    let optionIds = [...new Set((req.body.optionIds || []).map(Number))].filter((id) => validIds.has(id));
+    if (!poll.multiple) optionIds = optionIds.slice(0, 1);
+
+    await prisma.$transaction([
+      prisma.clubPollVote.deleteMany({ where: { pollId, userId: req.userId } }),
+      ...optionIds.map((optionId) => prisma.clubPollVote.create({ data: { pollId, optionId, userId: req.userId } })),
+    ]);
+
+    await broadcastPoll(req.app.get('io'), clubId, pollId);
+    res.json({ poll: serializePoll(await loadPoll(pollId), req.userId) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Oy kaydedilemedi.' });
+  }
+});
+
+// POST /api/clubs/:id/polls/:pollId/close — anketi bitir (sonuçlar kalır)
+router.post('/:id/polls/:pollId/close', requireAuth, async (req, res) => {
+  try {
+    const clubId = Number(req.params.id);
+    const pollId = Number(req.params.pollId);
+    if (!(await requireManager(req, res, clubId))) return;
+    const poll = await prisma.clubPoll.findUnique({ where: { id: pollId } });
+    if (!poll || poll.clubId !== clubId) return res.status(404).json({ error: 'Anket bulunamadı.' });
+    await prisma.clubPoll.update({ where: { id: pollId }, data: { closed: true } });
+    await broadcastPoll(req.app.get('io'), clubId, pollId);
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Anket kapatılamadı.' });
   }
 });
 

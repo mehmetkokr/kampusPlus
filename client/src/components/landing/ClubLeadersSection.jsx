@@ -46,14 +46,14 @@ export default function ClubLeadersSection() {
         <Reveal delay={0.15} className="relative mx-auto w-full max-w-md">
           <div className="landing-card p-5">
             <div className="flex items-center gap-3">
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#8e8499]/15 text-[#7d7390]">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#8e8e93]/15 text-[#7d7390]">
                 <Crown size={22} />
               </span>
               <div>
                 <p className="font-bold text-paper">{t('Satranç Kulübü')}</p>
                 <p className="text-[0.8125rem] text-paper-muted">{t('Akademik')} · 42 {t('üye')}</p>
               </div>
-              <span className="ml-auto rounded-full bg-[#c9a24a]/15 px-2.5 py-1 text-[0.6875rem] font-bold text-[#9a7a2c]">
+              <span className="ml-auto rounded-full bg-[#ff9500]/15 px-2.5 py-1 text-[0.6875rem] font-bold text-[#9a7a2c]">
                 {t('Başkan')}
               </span>
             </div>
@@ -71,7 +71,7 @@ export default function ClubLeadersSection() {
               <div className="mt-4 grid grid-cols-2 gap-2">
                 <span className="flex h-9 items-center justify-center gap-1.5 rounded-full border border-line bg-surface text-[0.8125rem] font-bold text-paper">
                   <span className="flex -space-x-1.5">
-                    {['#d0653a', '#5f8a6c', '#5f7fa6'].map((c) => (
+                    {['#007aff', '#34c759', '#5856d6'].map((c) => (
                       <span key={c} className="h-5 w-5 rounded-full border-2 border-surface" style={{ background: c }} />
                     ))}
                   </span>
