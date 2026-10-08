@@ -6,6 +6,8 @@ import { API_BASE_URL } from '../config';
 import { useToast } from '../context/ToastContext';
 import LockedUserCard from './LockedUserCard';
 import PaywallModal from './PaywallModal';
+import MatchCelebration from './MatchCelebration';
+import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../i18n';
 
 // Kaç tane kilitli önizleme kartı gösterileceği (gerçek sayıdan bağımsız üst sınır)
@@ -20,6 +22,8 @@ export default function LikesReceived({ data, onChanged }) {
   const toast = useToast();
   const [showPaywall, setShowPaywall] = useState(false);
   const [busyId, setBusyId] = useState(null);
+  const [celebration, setCelebration] = useState(null);
+  const { user: me } = useAuth();
 
   if (!data) return null;
   const { isPremium, count, users } = data;
@@ -29,9 +33,7 @@ export default function LikesReceived({ data, onChanged }) {
     try {
       const res = await api.post(`/matches/like/${user.id}`);
       if (res.data.matched) {
-        toast.success(t('{name} ile eşleştin!', { name: user.fullName }), 4000);
-        onChanged?.();
-        if (res.data.match?.id) navigate(`/chat/${res.data.match.id}`);
+        setCelebration({ other: user, matchId: res.data.match?.id });
       }
     } catch (err) {
       toast.error(err.response?.data?.error || 'Beğeni gönderilemedi.');
@@ -132,6 +134,19 @@ export default function LikesReceived({ data, onChanged }) {
           </div>
         ))}
       </div>
+
+      {celebration && (
+        <MatchCelebration
+          me={me}
+          other={celebration.other}
+          matchId={celebration.matchId}
+          onMessage={(id) => navigate(`/chat/${id}`)}
+          onClose={() => {
+            setCelebration(null);
+            onChanged?.();
+          }}
+        />
+      )}
     </>
   );
 }

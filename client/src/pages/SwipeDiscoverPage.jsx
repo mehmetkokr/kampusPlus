@@ -7,6 +7,7 @@ import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import ReportModal from '../components/ReportModal';
+import MatchCelebration from '../components/MatchCelebration';
 import { INTENT_LABEL, INTENT_CHIP_CLASS, parseIntents } from '../constants/intents';
 import { UserPlus as UserPlusIcon, UserCheck as UserCheckIcon } from 'lucide-react';
 import { useI18n } from '../i18n';
@@ -24,6 +25,7 @@ export default function SwipeDiscoverPage() {
   const [followedIds, setFollowedIds] = useState(new Set());
   const [reportingUserId, setReportingUserId] = useState(null);
   const [likesCount, setLikesCount] = useState(0);
+  const [celebration, setCelebration] = useState(null); // { other, matchId }
   const navigate = useNavigate();
 
   // Kaydırma (swipe) hareketi için durum
@@ -85,12 +87,13 @@ export default function SwipeDiscoverPage() {
   }
 
   async function handleLike(targetUserId) {
+    const target = candidates.find((c) => c.id === targetUserId);
     // Kartı hemen ilerlet (akıcı his), isteği arkada gönder
     advanceCard();
     try {
       const res = await api.post(`/matches/like/${targetUserId}`);
       if (res.data.matched) {
-        toast.success('Eşleştiniz! Sohbet sekmesinden mesajlaşabilirsiniz.', 4500);
+        setCelebration({ other: target, matchId: res.data.match?.id });
         // Seni beğenen biriyle eşleştin: "seni beğendi" sayacı artık bir eksik
         loadLikesCount();
       }
@@ -389,6 +392,16 @@ export default function SwipeDiscoverPage() {
           targetType="user"
           targetId={reportingUserId}
           onClose={() => setReportingUserId(null)}
+        />
+      )}
+
+      {celebration && (
+        <MatchCelebration
+          me={user}
+          other={celebration.other}
+          matchId={celebration.matchId}
+          onMessage={(id) => navigate(`/chat/${id}`)}
+          onClose={() => setCelebration(null)}
         />
       )}
     </div>

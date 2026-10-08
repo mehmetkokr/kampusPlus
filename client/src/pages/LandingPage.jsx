@@ -1,6 +1,7 @@
 import LandingNav from '../components/landing/LandingNav';
 import Hero from '../components/landing/Hero';
 import HowItWorks from '../components/landing/HowItWorks';
+import CampusMapSection from '../components/landing/CampusMapSection';
 import Bento from '../components/landing/Bento';
 import SafetySection from '../components/landing/SafetySection';
 import WhySection from '../components/landing/WhySection';
@@ -17,6 +18,7 @@ export default function LandingPage() {
       <LandingNav />
       <main>
         <Hero />
+        <CampusMapSection />
         <HowItWorks />
         <Bento />
         <WhySection />

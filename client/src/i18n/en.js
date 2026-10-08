@@ -1139,6 +1139,18 @@ const en = {
   'Stüdyo gecelerinde kahve ve iyi müzik şart.': 'Studio nights need coffee and good music.',
   'Sabah koşusu, akşam anatomi.': 'Morning runs, anatomy at night.',
   'Girişimcilik kulübünde etkinlik sorumlusu.': 'Runs events at the entrepreneurship club.',
+  // Türkiye haritası ve eşleşme anı
+  'Türkiye genelinde': 'Across Türkiye',
+  '81 ilin hepsinde bir kampüs var.': 'There is a campus in all 81 provinces.',
+  "Türkiye'nin her ilinde en az bir üniversite bulunuyor. Hangi şehirde okursan oku, okul e-postanla kendi kampüsündeki öğrencilerle tanışırsın.": 'Every province in Türkiye has at least one university. Wherever you study, your school email connects you with students on your own campus.',
+  'il': 'provinces',
+  'üniversite': 'universities',
+  'doğrulama': 'to verify',
+  'Bir ilin üzerine gel ya da dokun.': 'Hover over or tap a province.',
+  'Türkiye haritası: 81 ilin tamamında üniversite var': 'Map of Türkiye: there is a university in all 81 provinces',
+  '{name} ile birbirinizi beğendiniz. İlk mesajı sen at.': 'You and {name} liked each other. Send the first message.',
+  'Mesaj gönder': 'Send a message',
+  'Kaydırmaya devam et': 'Keep swiping',
 };
 
 const ORDINAL = { 1: '1st', 2: '2nd', 3: '3rd', 4: '4th' };
