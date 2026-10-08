@@ -36,6 +36,7 @@ import {
   Wifi,
 } from 'lucide-react';
 import { useI18n } from '../../i18n';
+import { demoPhoto } from './demoPhotos';
 
 // Ana sayfadaki telefon: uygulamanın gerçek ekranlarının küçük, dokunulabilen
 // bir kopyası. Ekranda görününce kendi kendine bir tur atar (Kart Modu →
@@ -46,18 +47,20 @@ const EASE_OUT = [0.23, 1, 0.32, 1];
 const UNI = 'Hatay Mustafa Kemal Üni.';
 
 const PEOPLE = [
-  { id: 'can', name: 'Can Aydın', age: 22, dept: 'Mimarlık', year: '4. Sınıf', initials: 'CA', tone: '#ffd6a5', intents: ['Spor Arkadaşı'], likesYou: false },
-  { id: 'elif', name: 'Elif Yıldız', age: 21, dept: 'Bilgisayar Müh.', year: '3. Sınıf', initials: 'EY', tone: '#b9d6f7', intents: ['Arkadaşlık', 'Çalışma Arkadaşı'], likesYou: true },
-  { id: 'deniz', name: 'Deniz Kara', age: 20, dept: 'Psikoloji', year: '2. Sınıf', initials: 'DK', tone: '#a7e3b5', intents: ['Arkadaşlık', 'Bir Kahve'], likesYou: true },
-  { id: 'mert', name: 'Mert Tunç', age: 23, dept: 'Endüstri Müh.', year: '4. Sınıf', initials: 'MT', tone: '#c6c5f2', intents: ['Proje Ortağı'], likesYou: false },
-  { id: 'zeynep', name: 'Zeynep Ak', age: 21, dept: 'Tıp', year: '3. Sınıf', initials: 'ZA', tone: '#ffc8d4', intents: ['Çalışma Arkadaşı'], likesYou: true },
-  { id: 'emre', name: 'Emre Şen', age: 22, dept: 'İşletme', year: '3. Sınıf', initials: 'EŞ', tone: '#d7f0b5', intents: ['Etkinlik Arkadaşı'], likesYou: false },
+  { id: 'can', name: 'Can Aydın', age: 22, dept: 'Mimarlık', year: '4. Sınıf', initials: 'CA', tone: '#ffd6a5', intents: ['Spor Arkadaşı', 'Proje Ortağı'], interests: ['Basketbol', 'Eskiz', 'Kamp'], bio: 'Hafta sonu basketbol, hafta içi maket. Bitirme projesi için ekip arıyorum.', likesYou: false },
+  { id: 'elif', name: 'Elif Yıldız', age: 21, dept: 'Bilgisayar Müh.', year: '3. Sınıf', initials: 'EY', tone: '#b9d6f7', intents: ['Arkadaşlık', 'Çalışma Arkadaşı'], interests: ['Yazılım', 'Satranç', 'Kahve'], bio: 'Hackathon bağımlısı, satranç kulübü yöneticisi. Kahvesiz kod yazmam.', likesYou: true },
+  { id: 'deniz', name: 'Deniz Kara', age: 20, dept: 'Psikoloji', year: '2. Sınıf', initials: 'DK', tone: '#a7e3b5', intents: ['Arkadaşlık', 'Bir Kahve'], interests: ['Kitap', 'Yoga', 'Podcast'], bio: 'Kütüphanenin 2. katındaki cam kenarı masa benim. Kitap önerisine açığım.', likesYou: true },
+  { id: 'mert', name: 'Mert Tunç', age: 23, dept: 'Endüstri Müh.', year: '4. Sınıf', initials: 'MT', tone: '#c6c5f2', intents: ['Proje Ortağı', 'Etkinlik Arkadaşı'], interests: ['Girişimcilik', 'Satranç', 'Koşu'], bio: 'Girişimcilik kulübünde etkinlik sorumlusuyum. Fikrin varsa konuşalım.', likesYou: false },
+  { id: 'zeynep', name: 'Zeynep Ak', age: 21, dept: 'Tıp', year: '3. Sınıf', initials: 'ZA', tone: '#ffc8d4', intents: ['Çalışma Arkadaşı', 'Bir Kahve'], interests: ['Koşu', 'Piyano', 'Seyahat'], bio: 'Sabah 7 koşusu, akşam anatomi. Sınav haftası çalışma grubu kuruyorum.', likesYou: true },
+  { id: 'emre', name: 'Emre Şen', age: 22, dept: 'İşletme', year: '3. Sınıf', initials: 'EŞ', tone: '#d7f0b5', intents: ['Etkinlik Arkadaşı', 'Arkadaşlık'], interests: ['Futbol', 'Konser', 'Fotoğraf'], bio: 'Konser ve maç arkadaşı aranıyor. Kampüs futbol turnuvasında kaleciyim.', likesYou: false },
 ];
 // Akış, sohbet listesi ve aktif şerit için ek kişiler (kart destesinde yok)
 const OTHERS = [
-  { id: 'selin', name: 'Selin Uçar', dept: 'Hukuk', initials: 'SU', tone: '#ffe39f' },
-  { id: 'baris', name: 'Barış Öz', dept: 'Fizik', initials: 'BÖ', tone: '#b5e3f0' },
+  { id: 'selin', name: 'Selin Uçar', age: 21, dept: 'Hukuk', initials: 'SU', tone: '#ffe39f' },
+  { id: 'baris', name: 'Barış Öz', age: 22, dept: 'Fizik', initials: 'BÖ', tone: '#b5e3f0' },
 ];
+// Profil sekmesindeki "sen"
+const ME = { id: 'ece', name: 'Ece Arslan', age: 20, initials: 'EA', tone: '#ffd6a5' };
 const EVERYONE = [...PEOPLE, ...OTHERS];
 const byId = (id) => EVERYONE.find((p) => p.id === id);
 
@@ -107,16 +110,25 @@ const TOUR = [
   { key: 'profile', label: 'Profil', ms: 4600 },
 ];
 
+// Fotoğraf yüklenene kadar (ya da yüklenemezse) baş harfler görünür
+function Face({ person, size, className = '', style }) {
+  const src = demoPhoto(person.id, size);
+  return (
+    <span
+      className={`relative flex items-center justify-center overflow-hidden rounded-full font-bold text-[#1d1d1f] ${className}`}
+      style={{ width: size, height: size, fontSize: size * 0.34, background: person.tone, ...style }}
+      aria-hidden="true"
+    >
+      {person.initials}
+      {src && <img src={src} alt="" decoding="async" draggable={false} className="absolute inset-0 h-full w-full object-cover" onError={(e) => e.currentTarget.remove()} />}
+    </span>
+  );
+}
+
 function Avatar({ person, size = 40, ring = false, online = false }) {
   return (
     <span className="relative inline-flex shrink-0">
-      <span
-        className="flex items-center justify-center rounded-full font-bold text-[#1d1d1f]"
-        style={{ width: size, height: size, fontSize: size * 0.34, background: person.tone, boxShadow: ring ? '0 0 0 2px var(--surface), 0 0 0 4px var(--amber-soft)' : undefined }}
-        aria-hidden="true"
-      >
-        {person.initials}
-      </span>
+      <Face person={person} size={size} style={{ boxShadow: ring ? '0 0 0 2px var(--surface), 0 0 0 4px var(--amber-soft)' : undefined }} />
       {online && <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-[var(--surface)] bg-[#30d158]" />}
     </span>
   );
@@ -127,15 +139,7 @@ function FaceStack({ ids, size = 18 }) {
     <span className="flex -space-x-1.5">
       {ids.map((id) => {
         const p = byId(id);
-        return (
-          <span
-            key={id}
-            className="flex items-center justify-center rounded-full border-2 border-[var(--surface)] font-bold text-[#1d1d1f]"
-            style={{ width: size, height: size, fontSize: size * 0.36, background: p.tone }}
-          >
-            {p.initials}
-          </span>
-        );
+        return <Face key={id} person={p} size={size} className="border-2 border-[var(--surface)]" />;
       })}
     </span>
   );
@@ -253,13 +257,15 @@ function SwipeCard({ person, isTop, depth, command, onDecide, nudge }) {
       }}
       aria-hidden={!isTop}
     >
-      <div className="relative h-[160px]" style={{ background: person.tone }}>
+      <div className="relative h-[134px]" style={{ background: person.tone }}>
+        <span className="absolute inset-0 flex items-center justify-center text-[44px] font-bold text-[#1d1d1f]/70">{person.initials}</span>
+        <img src={demoPhoto(person.id, 260, 134)} alt="" draggable={false} decoding="async" className="absolute inset-0 h-full w-full object-cover" onError={(e) => e.currentTarget.remove()} />
+        <span className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-black/35 to-transparent" />
         <div className="absolute inset-x-2.5 top-2 flex gap-1">
           <span className="h-[3px] flex-1 rounded-full bg-white" />
           <span className="h-[3px] flex-1 rounded-full bg-white/45" />
         </div>
         <span className="absolute right-2.5 top-3.5 rounded-full bg-black/35 px-1.5 text-[8px] font-semibold text-white">1/2</span>
-        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-[44px] font-bold text-[#1d1d1f]/70">{person.initials}</span>
         {isTop && (
           <>
             <motion.span style={{ opacity: likeOpacity }} className="absolute left-3 top-8 rounded-lg border-2 border-teal bg-white/85 px-2 py-0.5 text-[10px] font-extrabold tracking-wider text-teal [transform:rotate(-10deg)]">
@@ -271,7 +277,7 @@ function SwipeCard({ person, isTop, depth, command, onDecide, nudge }) {
           </>
         )}
       </div>
-      <div className="px-3 pb-3 pt-2.5">
+      <div className="px-3 pb-3 pt-2">
         <div className="flex items-start gap-1.5">
           <p className="flex items-center gap-1 text-[14px] font-bold leading-tight text-paper">
             {person.name} <BadgeCheck size={13} className="text-amber-soft" aria-label={t('Onaylı öğrenci')} />
@@ -284,7 +290,8 @@ function SwipeCard({ person, isTop, depth, command, onDecide, nudge }) {
             <Flag size={8} />
           </span>
         </div>
-        <dl className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1 rounded-[0.8rem] bg-surface-2 px-2.5 py-2">
+        {person.bio && <p className="mt-1 line-clamp-2 text-[9px] leading-snug text-paper-muted">{t(person.bio)}</p>}
+        <dl className="mt-1.5 grid grid-cols-2 gap-x-2 gap-y-1 rounded-[0.8rem] bg-surface-2 px-2.5 py-1.5">
           <div>
             <dt className="text-[7px] font-bold uppercase tracking-wider text-paper-faint">{t('Bölüm')}</dt>
             <dd className="text-[9.5px] font-semibold text-paper">{t(person.dept)}</dd>
@@ -294,9 +301,14 @@ function SwipeCard({ person, isTop, depth, command, onDecide, nudge }) {
             <dd className="text-[9.5px] font-semibold text-paper">{t(person.year)}</dd>
           </div>
         </dl>
-        <div className="mt-2 flex flex-wrap gap-1">
+        <div className="mt-1.5 flex gap-1 overflow-hidden">
           {person.intents.map((i) => (
-            <span key={i} className={`rounded-full px-2 py-0.5 text-[8.5px] font-semibold ${INTENT_TONE[i] || 'bg-surface-2 text-paper'}`}>
+            <span key={i} className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[8.5px] font-semibold ${INTENT_TONE[i] || 'bg-[color:var(--sky)]/15 text-[color:var(--sky)]'}`}>
+              {t(i)}
+            </span>
+          ))}
+          {person.interests?.map((i) => (
+            <span key={i} className="shrink-0 whitespace-nowrap rounded-full bg-surface-2 px-2 py-0.5 text-[8.5px] font-semibold text-paper">
               {t(i)}
             </span>
           ))}
@@ -443,8 +455,8 @@ function FeedScreen({ liked, onLike, scrollRef, going, onGo }) {
       id: 2,
       who: byId('selin'),
       meta: 'Hukuk · 5 sa',
-      text: 'Fotoğrafçılık kulübünün kampüs yürüyüşünden.',
-      photo: true,
+      text: 'Fotoğrafçılık kulübünün kampüs yürüyüşünden. Sonbahar ışığı bu hafta harika.',
+      photo: 'campus',
       likes: 31,
       likedBy: 'Barış',
       comments: 7,
@@ -514,11 +526,9 @@ function FeedScreen({ liked, onLike, scrollRef, going, onGo }) {
             </div>
             <p className="mt-1.5 text-[9.5px] leading-snug text-paper">{t(p.text)}</p>
             {p.photo && (
-              <div className="relative mt-1.5 h-24 overflow-hidden rounded-[0.7rem] bg-[#b9d6f7]">
-                <span className="absolute -bottom-6 left-4 h-20 w-28 rounded-full bg-[#a7e3b5]" />
-                <span className="absolute -bottom-8 right-2 h-24 w-32 rounded-full bg-[#8fc9a0]" />
-                <span className="absolute right-6 top-3 h-6 w-6 rounded-full bg-[#ffd6a5]" />
-                <span className="absolute bottom-1.5 right-2 rounded-full bg-black/35 px-1.5 text-[7px] font-semibold text-white">1/3</span>
+              <div className="relative mt-1.5 h-32 overflow-hidden rounded-[0.7rem] bg-[#b9d6f7]">
+                <img src={demoPhoto(p.photo, 260, 128)} alt="" decoding="async" className="absolute inset-0 h-full w-full object-cover" onError={(e) => e.currentTarget.remove()} />
+                <span className="absolute bottom-1.5 right-2 rounded-full bg-black/45 px-1.5 text-[7px] font-semibold text-white">1/3</span>
               </div>
             )}
             <div className="mt-1.5 flex items-center gap-3 text-[9px] text-paper-muted">
@@ -701,7 +711,7 @@ function ChatScreen({ chats, active, typing, onOpen, onSend }) {
 
 function ProfileScreen({ likes, joined, matches, scrollRef }) {
   const { t } = useI18n();
-  const me = { initials: 'SN', tone: '#ffd6a5' };
+  const me = ME;
   const r = 16;
   const c = 2 * Math.PI * r;
   const score = Math.min(100, 70 + likes * 5 + joined * 5);
@@ -713,7 +723,7 @@ function ProfileScreen({ likes, joined, matches, scrollRef }) {
           <Avatar person={me} size={52} ring />
           <div className="min-w-0 leading-tight">
             <p className="flex items-center gap-1 text-[12.5px] font-bold text-paper">
-              {t('Sen, 20')} <BadgeCheck size={12} className="text-amber-soft" />
+              {me.name}, {me.age} <BadgeCheck size={12} className="text-amber-soft" />
             </p>
             <p className="truncate text-[8.5px] text-paper-muted">{t('Hatay Mustafa Kemal Üniversitesi')}</p>
             <p className="text-[8.5px] text-paper-muted">{t('Bilgisayar Müh.')} · {t('2. Sınıf')}</p>
@@ -755,9 +765,14 @@ function ProfileScreen({ likes, joined, matches, scrollRef }) {
       </div>
 
       <div className="grid grid-cols-3 gap-1.5">
-        {['#ffd6a5', '#b9d6f7', '#a7e3b5'].map((c2, i) => (
-          <div key={c2} className="relative aspect-[3/4] overflow-hidden rounded-[0.7rem]" style={{ background: c2 }}>
-            {i === 0 && <span className="absolute left-1 top-1 rounded-full bg-black/35 px-1 text-[6.5px] font-bold text-white">{t('Ana')}</span>}
+        {[
+          ['ece', '#ffd6a5'],
+          ['coffee', '#e8d5c0'],
+          ['chess', '#b9d6f7'],
+        ].map(([key, bg], i) => (
+          <div key={key} className="relative aspect-[3/4] overflow-hidden rounded-[0.7rem]" style={{ background: bg }}>
+            <img src={demoPhoto(key, 90, 120)} alt="" decoding="async" className="absolute inset-0 h-full w-full object-cover" onError={(e) => e.currentTarget.remove()} />
+            {i === 0 && <span className="absolute left-1 top-1 rounded-full bg-black/45 px-1 text-[6.5px] font-bold text-white">{t('Ana')}</span>}
           </div>
         ))}
       </div>
@@ -784,7 +799,7 @@ function ProfileScreen({ likes, joined, matches, scrollRef }) {
         </svg>
         <div>
           <p className="text-[10.5px] font-bold text-paper">{t('Profil gücün')} %{score}</p>
-          <p className="text-[8px] text-paper-muted">{t('Sıradaki adım: en az 3 fotoğraf ekle')}</p>
+          <p className="text-[8px] text-paper-muted">{score >= 100 ? t('Profilin eksiksiz') : t('Sıradaki adım: Instagram hesabını bağla')}</p>
         </div>
       </div>
     </div>
@@ -1044,7 +1059,7 @@ export default function PhoneMockup({ className = '' }) {
                     className="absolute inset-x-3 top-[52px] z-40 flex items-center gap-2.5 rounded-[1rem] border border-line bg-surface p-2.5 text-left shadow-xl"
                   >
                     <span className="relative flex">
-                      <Avatar person={{ initials: 'SN', tone: '#ffd6a5' }} size={28} />
+                      <Avatar person={ME} size={28} />
                       <span className="-ml-2">
                         <Avatar person={toast} size={28} />
                       </span>

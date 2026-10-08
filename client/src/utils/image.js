@@ -39,7 +39,7 @@ export async function compressImage(file, { maxSide = 1600, quality = 0.82 } = {
 }
 
 // EXIF yönünü dikkate alarak çizilebilir görüntü (dik çekilmiş fotoğraf yan dönmesin)
-async function loadBitmap(file) {
+export async function loadBitmap(file) {
   if ('createImageBitmap' in window) {
     try {
       return await createImageBitmap(file, { imageOrientation: 'from-image' });

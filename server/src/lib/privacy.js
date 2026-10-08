@@ -12,6 +12,9 @@
 //    dondurulmuş veya askıya alınmış hesaplar hiçbir listede görünmez
 //  isAdmin
 //    yönetici hesapları öğrenci listelerinde (keşif, arama, Kart Modu) görünmez
+//  department
+//    başlangıç adımını (bölüm, sınıf, doğum tarihi) bitirmemiş yeni hesaplar
+//    yarım profille listelerde görünmez
 
 // Prisma "where" koşulu: izleyicinin keşif listelerinde görebileceği kullanıcılar
 function discoverableUserWhere(viewerUniversityId) {
@@ -19,6 +22,7 @@ function discoverableUserWhere(viewerUniversityId) {
     isFrozen: false,
     isBanned: false,
     isAdmin: false,
+    department: { not: null },
     profileVisibility: { not: 'nobody' },
     OR: [{ profileVisibility: 'everyone' }, { universityId: viewerUniversityId }],
   };

@@ -11,6 +11,7 @@ const fsp = require('fs/promises');
 const path = require('path');
 const { PUBLIC_UPLOADS, PRIVATE_UPLOADS } = require('../lib/paths');
 const { parseBirthDate, withLiveAge } = require('../lib/age');
+const { toTitleCaseTR } = require('../lib/text');
 const { discoverableUserWhere } = require('../lib/privacy');
 const { ALLOWED_INTENTS, wantsDating, visibleIntentFor } = require('../lib/intents');
 
@@ -186,6 +187,50 @@ router.put('/me', requireAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Profil güncellenemedi.' });
+  }
+});
+
+// Kayıttan hemen sonraki başlangıç adımı: doğum tarihi, bölüm, sınıf ve
+// "ne arıyorsun". Doğum tarihi, bölüm ve sınıf yalnızca boşken bir kez
+// girilebilir (sonradan değiştirilemez); intent her zaman güncellenebilir.
+router.put('/me/basics', requireAuth, async (req, res) => {
+  try {
+    const current = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: { birthDate: true, department: true, classYear: true },
+    });
+    const data = {};
+
+    if (!current.birthDate) {
+      const birth = parseBirthDate(req.body.birthDate);
+      if (birth.error) return res.status(400).json({ error: birth.error, field: 'birthDate' });
+      data.birthDate = birth.date;
+      data.age = birth.age;
+    }
+    if (!current.department) {
+      const department = toTitleCaseTR(String(req.body.department || '').trim()).slice(0, 80);
+      if (department.length < 2) return res.status(400).json({ error: 'Bölümünü yaz.', field: 'department' });
+      data.department = department;
+    }
+    if (!current.classYear) {
+      const classYear = Number(req.body.classYear);
+      if (![1, 2, 3, 4, 5].includes(classYear)) return res.status(400).json({ error: 'Sınıfını seç.', field: 'classYear' });
+      data.classYear = classYear;
+    }
+    if (req.body.intent !== undefined) {
+      const selected = String(req.body.intent || '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s) => ALLOWED_INTENTS.includes(s));
+      if (selected.length === 0) return res.status(400).json({ error: 'En az bir seçenek seç.', field: 'intent' });
+      data.intent = selected.join(',');
+    }
+
+    const updated = await prisma.user.update({ where: { id: req.userId }, data, select: PROFILE_SELECT });
+    res.json({ user: withLiveAge(updated) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Bilgiler kaydedilemedi.' });
   }
 });
 

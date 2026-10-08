@@ -38,6 +38,7 @@ import { useConfirm } from '../context/ConfirmContext';
 import { useI18n } from '../i18n';
 import { PenLine, Sprout, UsersRound } from 'lucide-react';
 import { compressImage } from '../utils/image';
+import { usePhotoEditor } from '../context/PhotoEditorContext';
 
 const PAGE_SIZE = 10;
 const CAPTION_MAX = 280;
@@ -87,6 +88,7 @@ export default function FeedPage() {
   const { t: tx } = useI18n();
   const { user } = useAuth();
   const toast = useToast();
+  const editPhoto = usePhotoEditor();
   const confirm = useConfirm();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -233,9 +235,12 @@ export default function FeedPage() {
 
   async function handleStoryPhotoSelect(e) {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
+    const edited = await editPhoto(file, { aspects: ['9:16', '4:5', '1:1'], title: 'Hikâye', doneLabel: 'Paylaş' });
+    if (!edited) return;
     const formData = new FormData();
-    formData.append('photo', await compressImage(file));
+    formData.append('photo', await compressImage(edited));
     try {
       await api.post('/stories', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       toast.success('Hikayen 12 saat boyunca karşılıklı takipleştiklerine görünür.');
@@ -405,6 +410,7 @@ export default function FeedPage() {
 function Composer({ user, onCreated }) {
   const { t: tx } = useI18n();
   const toast = useToast();
+  const editPhoto = usePhotoEditor();
   const [text, setText] = useState('');
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
@@ -433,9 +439,11 @@ function Composer({ user, onCreated }) {
 
   useEffect(() => () => preview && URL.revokeObjectURL(preview), [preview]);
 
-  function pickFile(e) {
-    const f = e.target.files?.[0];
+  async function pickFile(e) {
+    const picked = e.target.files?.[0];
     e.target.value = '';
+    if (!picked) return;
+    const f = await editPhoto(picked, { aspects: ['original', '1:1', '4:5'], title: 'Gönderi fotoğrafı' });
     if (!f) return;
     setFile(f);
     setPreview(URL.createObjectURL(f));

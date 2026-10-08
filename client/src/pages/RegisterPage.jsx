@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, ShieldCheck, Eye, EyeOff, Check, X, Mail, RotateCw } from 'lucide-react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { ArrowLeft, ShieldCheck, Eye, EyeOff, Check, Mail, RotateCw } from 'lucide-react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -8,11 +8,10 @@ import AuthBackdrop from '../components/AuthBackdrop';
 import CubeLoader from '../components/CubeLoader';
 import UniversitySelect from '../components/UniversitySelect';
 import { minDuration } from '../utils/wait';
-import { INTENT_OPTIONS } from '../constants/intents';
 import { toTitleCaseTR, normalizeEmail } from '../utils/text';
 import { useI18n } from '../i18n';
-import BirthDateInput from '../components/BirthDateInput';
 import ThemeToggle from '../components/ThemeToggle';
+import SocialLogin from '../components/SocialLogin';
 
 const PASSWORD_MIN = 8;
 const CODE_LENGTH = 6;
@@ -35,20 +34,17 @@ export default function RegisterPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
   const toast = useToast();
+  // Apple/Google ile gelindiyse: ad hazır, kayıt bitince hesap bağlanır
+  const { oauthTicket, oauthName, oauthProvider } = useLocation().state || {};
 
   const [step, setStep] = useState('details'); // details | code
   const [universities, setUniversities] = useState([]);
   const [form, setForm] = useState({
-    fullName: '',
+    fullName: oauthName || '',
     email: '',
     password: '',
-    passwordConfirm: '',
     universityId: '',
-    department: '',
-    classYear: '',
-    birthDate: '',
   });
-  const [intents, setIntents] = useState(['friendship']);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false); // hesap oluşturuluyor
   const [sending, setSending] = useState(false); // kod gönderiliyor
@@ -76,24 +72,18 @@ export default function RegisterPage() {
     return () => clearTimeout(t);
   }, [resendIn]);
 
-  function toggleIntent(value) {
-    setIntents((prev) => (prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]));
-  }
-
   function handleChange(e) {
     setForm({ ...form, [e.target.name]: e.target.value });
   }
 
-  // Alandan çıkınca ad/bölümü Türkçe harf kurallarıyla, e-postayı küçük harfle düzelt
+  // Alandan çıkınca adı Türkçe harf kurallarıyla, e-postayı küçük harfle düzelt
   function handleBlur(e) {
     const { name, value } = e.target;
-    if (name === 'fullName' || name === 'department') setForm((f) => ({ ...f, [name]: toTitleCaseTR(value) }));
+    if (name === 'fullName') setForm((f) => ({ ...f, fullName: toTitleCaseTR(value) }));
     if (name === 'email') setForm((f) => ({ ...f, email: normalizeEmail(value) }));
   }
 
   const strength = passwordStrength(form.password);
-  const passwordsMatch = form.passwordConfirm.length > 0 && form.password === form.passwordConfirm;
-  const confirmMismatch = form.passwordConfirm.length > 0 && form.password !== form.passwordConfirm;
   const selectedUni = universities.find((u) => String(u.id) === String(form.universityId));
   const emailDomain = normalizeEmail(form.email).split('@')[1] || '';
   const uniDomain = selectedUni?.emailDomain?.toLowerCase();
@@ -108,9 +98,7 @@ export default function RegisterPage() {
       document.getElementById('reg-email')?.focus();
       return toast.error(tx('Doğrulama kodu yalnızca okul e-postana gönderilir. @{domain} ile biten adresini gir.', { domain: selectedUni.emailDomain }));
     }
-    if (!form.birthDate) return toast.error('Doğum tarihini kontrol et.');
     if (form.password.length < PASSWORD_MIN) return toast.error(tx('Şifre en az {n} karakter olmalı.', { n: PASSWORD_MIN }));
-    if (form.password !== form.passwordConfirm) return toast.error('Şifreler birbiriyle eşleşmiyor.');
 
     setSending(true);
     try {
@@ -181,21 +169,16 @@ export default function RegisterPage() {
     const waitSuccess = minDuration(1400);
     const waitError = minDuration(600);
     try {
-      const formData = new FormData();
-      const clean = {
+      const res = await api.post('/auth/register', {
         ...form,
         fullName: toTitleCaseTR(form.fullName),
-        department: toTitleCaseTR(form.department),
         email: normalizeEmail(form.email),
         code: joined,
-      };
-      Object.entries(clean).forEach(([key, value]) => formData.append(key, value));
-      formData.append('intent', (intents.length ? intents : ['friendship']).join(','));
-
-      const res = await api.post('/auth/register', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+        oauthTicket,
+      });
       await waitSuccess();
       login(res.data.token, res.data.user, true);
-      // Yeni hesap: önce 3 adımlık başlangıç (fotoğraf, ilgi alanları, takip)
+      // Yeni hesap: başlangıç adımları (seni tanıyalım, fotoğraf, ilgi alanları, takip)
       navigate('/welcome');
     } catch (err) {
       await waitError();
@@ -239,6 +222,9 @@ export default function RegisterPage() {
           <li className={step === 'code' ? 'is-current' : ''}>
             <span>2</span> {tx("E-posta doğrulama")}
           </li>
+          <li>
+            <span>3</span> {tx("Profilin")}
+          </li>
         </ol>
 
         <div className="auth-card">
@@ -246,6 +232,14 @@ export default function RegisterPage() {
             <>
               <h2>{tx("Hesap oluştur")}</h2>
               <p className="muted">{tx("Üniversite e-postanla katıl")}</p>
+
+              {oauthProvider ? (
+                <p className="field-hint register-oauth-note">
+                  {tx('{provider} hesabın, okul e-postanla kaydolduğunda bu hesaba bağlanır.', { provider: oauthProvider === 'apple' ? 'Apple' : 'Google' })}
+                </p>
+              ) : (
+                <SocialLogin />
+              )}
 
               <form onSubmit={sendCode}>
                 <label htmlFor="reg-name">{tx("Ad Soyad")}</label>
@@ -320,64 +314,7 @@ export default function RegisterPage() {
                   </div>
                 )}
 
-                <label htmlFor="reg-pass2">{tx("Şifre (tekrar)")}</label>
-                <div className="password-field-wrap">
-                  <input
-                    id="reg-pass2"
-                    type={showPassword ? 'text' : 'password'}
-                    name="passwordConfirm"
-                    value={form.passwordConfirm}
-                    onChange={handleChange}
-                    autoComplete="new-password"
-                    aria-invalid={confirmMismatch}
-                    className={confirmMismatch ? 'is-invalid' : passwordsMatch ? 'is-valid' : ''}
-                    required
-                  />
-                  {(passwordsMatch || confirmMismatch) && (
-                    <span className={`pw-match ${passwordsMatch ? 'ok' : 'no'}`} aria-hidden="true">
-                      {passwordsMatch ? <Check size={16} /> : <X size={16} />}
-                    </span>
-                  )}
-                </div>
-                {confirmMismatch && <p className="field-hint field-hint-warn">{tx("Şifreler birbiriyle eşleşmiyor.")}</p>}
-
-                <label htmlFor="register-birth">{tx("Doğum Tarihi")}</label>
-                <BirthDateInput
-                  id="register-birth"
-                  value={form.birthDate}
-                  onChange={(v) => setForm((f) => ({ ...f, birthDate: v }))}
-                  required
-                />
-                <p className="field-hint">{tx("Yaşın profilinde görünür, doğum tarihin görünmez. Kayıttan sonra değiştirilemez.")}</p>
-
-                <label htmlFor="reg-dept">{tx("Bölüm")}</label>
-                <input id="reg-dept" name="department" value={form.department} onChange={handleChange} onBlur={handleBlur} placeholder={tx("örn. Bilgisayar Mühendisliği")} required />
-
-                <label htmlFor="reg-class">{tx("Sınıf")}</label>
-                <select id="reg-class" name="classYear" value={form.classYear} onChange={handleChange} required>
-                  <option value="">{tx("Seçiniz...")}</option>
-                  <option value="1">{tx("1. Sınıf")}</option>
-                  <option value="2">{tx("2. Sınıf")}</option>
-                  <option value="3">{tx("3. Sınıf")}</option>
-                  <option value="4">{tx("4. Sınıf")}</option>
-                  <option value="5">{tx("Yüksek Lisans / Diğer")}</option>
-                </select>
-                <p className="field-hint">{tx("Üniversite, bölüm ve sınıf bilgin kayıttan sonra değiştirilemez; lütfen doğru seç.")}</p>
-
-                <label>{tx("Ne arıyorsun? (en az bir tane seç)")}</label>
-                <div className="intent-select-grid">
-                  {INTENT_OPTIONS.map((opt) => (
-                    <button
-                      type="button"
-                      key={opt.value}
-                      className={`intent-toggle ${intents.includes(opt.value) ? 'active' : ''}`}
-                      onClick={() => toggleIntent(opt.value)}
-                    >
-                      {tx(opt.label)}
-                    </button>
-                  ))}
-                </div>
-                <p className="field-hint intent-dating-note">{tx("Flört ve Uzun Süreli İlişki seçimini yalnızca bunları seçen öğrenciler görür.")}</p>
+                <p className="field-hint register-next-note">{tx("Doğum tarihi, bölüm ve ne aradığın gibi bilgileri e-postanı doğruladıktan sonra soracağız.")}</p>
 
                 <button className="btn" type="submit" disabled={sending}>
                   {sending ? tx("Kod gönderiliyor…") : tx("Devam et")}

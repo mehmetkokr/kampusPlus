@@ -8,6 +8,7 @@ const { verifyFileSignature } = require('../lib/fileValidation');
 const { getBlockedUserIds } = require('../lib/block');
 const { createNotification } = require('../lib/notifications');
 const { checkCanPost, markPosted, serializePoll, loadPoll, broadcastPoll, POLL_INCLUDE, SENDER_SELECT } = require('../lib/clubChat');
+const { canUnsend } = require('../lib/unsend');
 
 const router = express.Router();
 
@@ -682,7 +683,7 @@ router.post('/:id/members/:userId/unban', requireAuth, async (req, res) => {
   }
 });
 
-// DELETE /api/clubs/:id/messages/:messageId — kendi mesajını ya da (yönetici) herhangi bir mesajı sil
+// DELETE /api/clubs/:id/messages/:messageId — kendi mesajını (ilk 1 dk) ya da (yönetici) herhangi bir mesajı sil
 router.delete('/:id/messages/:messageId', requireAuth, async (req, res) => {
   try {
     const clubId = Number(req.params.id);
@@ -693,8 +694,13 @@ router.delete('/:id/messages/:messageId', requireAuth, async (req, res) => {
     ]);
     if (!message || message.clubId !== clubId) return res.status(404).json({ error: 'Mesaj bulunamadı.' });
     const own = message.senderId === req.userId;
-    if (!membership || membership.status !== 'active' || (!own && !canManage(membership.role))) {
+    const manager = membership && canManage(membership.role);
+    if (!membership || membership.status !== 'active' || (!own && !manager)) {
       return res.status(403).json({ error: 'Bu mesajı silemezsin.' });
+    }
+    // Üye kendi mesajını yalnızca ilk 1 dakika içinde geri alabilir
+    if (!manager && !canUnsend(message.createdAt)) {
+      return res.status(400).json({ error: 'Mesajlar yalnızca gönderildikten sonraki 1 dakika içinde silinebilir.' });
     }
     await prisma.clubMessage.delete({ where: { id: messageId } });
     const club = await prisma.club.findUnique({ where: { id: clubId }, select: { pinnedMessageId: true } });

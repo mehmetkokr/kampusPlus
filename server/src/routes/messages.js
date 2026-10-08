@@ -8,6 +8,9 @@ const chatUpload = require('../middleware/chatUpload');
 const { verifyFileSignature } = require('../lib/fileValidation');
 const { createNotification } = require('../lib/notifications');
 const { isBlockedEitherWay } = require('../lib/block');
+const { PRIVATE_UPLOADS } = require('../lib/paths');
+const { canUnsend } = require('../lib/unsend');
+const path = require('path');
 
 const router = express.Router();
 
@@ -175,6 +178,36 @@ router.post('/:matchId/file', requireAuth, chatUpload.private.single('file'), ve
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Dosya gönderilemedi.' });
+  }
+});
+
+// DELETE /api/messages/:matchId/:messageId — kendi mesajını gönderdikten sonraki
+// 1 dakika içinde geri al. Mesaj iki taraftan da kalkar, eki de silinir.
+router.delete('/:matchId/:messageId', requireAuth, async (req, res) => {
+  try {
+    const matchId = Number(req.params.matchId);
+    const messageId = Number(req.params.messageId);
+    const match = await assertMatchAccess(matchId, req.userId);
+    if (!match) return res.status(403).json({ error: 'Bu sohbete erişim yetkiniz yok.' });
+
+    const message = await prisma.message.findUnique({ where: { id: messageId } });
+    if (!message || message.matchId !== matchId) return res.status(404).json({ error: 'Mesaj bulunamadı.' });
+    if (message.senderId !== req.userId) return res.status(403).json({ error: 'Yalnızca kendi mesajını silebilirsin.' });
+    if (!canUnsend(message.createdAt)) {
+      return res.status(400).json({ error: 'Mesajlar yalnızca gönderildikten sonraki 1 dakika içinde silinebilir.' });
+    }
+
+    await prisma.message.delete({ where: { id: messageId } });
+    for (const url of [message.photoUrl, message.audioUrl, message.fileUrl]) {
+      if (url?.startsWith('/api/files/')) {
+        fs.unlink(path.join(PRIVATE_UPLOADS, path.basename(url)), () => {});
+      }
+    }
+    req.app.get('io')?.to(`match_${matchId}`).emit('message_deleted', { matchId, messageId });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Mesaj silinemedi.' });
   }
 });
 

@@ -16,6 +16,7 @@ import { INTEREST_OPTIONS, HOBBY_OPTIONS, parseTags } from '../constants/tags';
 import TagPicker from '../components/TagPicker';
 import { useI18n } from '../i18n';
 import { compressImage } from '../utils/image';
+import { usePhotoEditor } from '../context/PhotoEditorContext';
 import BirthDateInput from '../components/BirthDateInput';
 import ThemeToggle from '../components/ThemeToggle';
 
@@ -23,6 +24,7 @@ export default function ProfilePage() {
   const { t } = useI18n();
   const { user, setUser, logout } = useAuth();
   const toast = useToast();
+  const editPhoto = usePhotoEditor();
 
   const [bio, setBio] = useState('');
   const [interests, setInterests] = useState('');
@@ -75,10 +77,13 @@ export default function ProfilePage() {
 
   async function handlePhotoUpload(e) {
     const file = e.target.files[0];
+    e.target.value = '';
     if (!file) return;
+    const edited = await editPhoto(file, { aspects: ['1:1'], title: 'Profil fotoğrafı' });
+    if (!edited) return;
 
     const formData = new FormData();
-    formData.append('photo', await compressImage(file));
+    formData.append('photo', await compressImage(edited));
 
     try {
       const res = await api.post('/profile/me/photo', formData, {

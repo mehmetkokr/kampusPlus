@@ -4893,3 +4893,47 @@ button.announcement-main { cursor: pointer; }
 .club-manage .danger-zone h4 { color: var(--coral); }
 .role-tag.muted { background: color-mix(in srgb, var(--coral) 14%, transparent); color: var(--coral); }
 .club-manage-section .segmented-item { white-space: nowrap; padding: 0 10px; min-width: 0; }
+
+/* Başlangıç: "Seni tanıyalım" formu */
+.welcome-about { display: grid; gap: 6px; }
+.welcome-about label { margin-top: 10px; }
+.welcome-about label:first-child { margin-top: 0; }
+.welcome-about .intent-select-grid { margin-top: 4px; }
+.welcome-about-actions { margin-top: 16px; }
+.register-next-note { margin-top: 14px; }
+
+/* Apple / Google ile devam et */
+.social-login { display: grid; gap: 10px; margin: 18px 0 14px; }
+.social-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.12s ease, opacity 0.15s ease;
+}
+.social-btn:active { transform: scale(0.98); }
+.social-btn:disabled { opacity: 0.6; cursor: default; }
+.social-btn:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+/* Apple kuralları: koyu zeminde beyaz, açık zeminde siyah düğme */
+.social-apple { border: 0; background: #fff; color: #000; }
+[data-theme='light'] .social-apple { background: #000; color: #fff; }
+.social-google { border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+.social-google-slot { display: flex; justify-content: center; min-height: 44px; }
+.social-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+  color: var(--text-faint);
+  font-size: 12.5px;
+}
+.social-divider::before,
+.social-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }

@@ -34,6 +34,8 @@ import { useConfirm } from '../context/ConfirmContext';
 import { useI18n } from '../i18n';
 import { useToast } from '../context/ToastContext';
 import { compressImage } from '../utils/image';
+import { usePhotoEditor } from '../context/PhotoEditorContext';
+import { unsendSecondsLeft, useUnsendClock } from '../utils/unsend';
 
 const TABS = { CHAT: 'chat', EVENTS: 'events', MEMBERS: 'members' };
 
@@ -59,6 +61,7 @@ export default function ClubDetailPage() {
   const { clubId } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
+  const editPhoto = usePhotoEditor();
 
   const [club, setClub] = useState(null);
   const [error, setError] = useState('');
@@ -199,7 +202,10 @@ export default function ClubDetailPage() {
   }
 
   async function handlePhotoSelect(e) {
-    const file = e.target.files?.[0];
+    const picked = e.target.files?.[0];
+    e.target.value = '';
+    if (!picked) return;
+    const file = await editPhoto(picked, { aspects: ['original', '1:1', '4:5'], doneLabel: 'Gönder' });
     if (!file) return;
     const formData = new FormData();
     formData.append('photo', await compressImage(file));
@@ -247,9 +253,9 @@ export default function ClubDetailPage() {
     }
   }
 
-  async function deleteMessage(m) {
+  async function deleteMessage(m, quick = false) {
     setMsgMenuFor(null);
-    if (!(await confirm({ title: 'Mesaj silinsin mi?', message: 'Mesaj herkes için silinir.', confirmLabel: 'Sil', danger: true }))) return;
+    if (!quick && !(await confirm({ title: 'Mesaj silinsin mi?', message: 'Mesaj herkes için silinir.', confirmLabel: 'Sil', danger: true }))) return;
     try {
       await api.delete(`/clubs/${clubId}/messages/${m.id}`);
     } catch (err) {
@@ -293,6 +299,8 @@ export default function ClubDetailPage() {
     if (!iso) return '';
     return new Date(iso).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
   }
+
+  const now = useUnsendClock(messages, myUserId);
 
   if (error) {
     return (
@@ -396,7 +404,9 @@ export default function ClubDetailPage() {
             {messages.length === 0 && <p className="chat-empty">{t('Henüz mesaj yok. Kulübe ilk mesajı sen at.')}</p>}
             {messages.map((m) => {
               const mine = m.senderId === myUserId;
-              const canDelete = mine || canManage;
+              const unsendLeft = mine ? unsendSecondsLeft(m.createdAt, now) : 0;
+              // Üye kendi mesajını ilk 1 dk geri alabilir; yönetici her mesajı siler
+              const canDelete = canManage || unsendLeft > 0;
               return (
                 <div key={m.id} className={`msg-row ${mine ? 'mine' : 'theirs'}`}>
                   {!mine && <div className="msg-sender-name">{m.sender?.fullName}</div>}
@@ -430,7 +440,14 @@ export default function ClubDetailPage() {
                       </div>
                     )}
                   </div>
-                  <div className="message-time">{formatTime(m.createdAt)}</div>
+                  <div className="message-meta">
+                    {unsendLeft > 0 && !canManage && (
+                      <button type="button" className="unsend-btn" onClick={() => deleteMessage(m, true)} aria-label={t('Mesajı geri al, {n} saniye kaldı', { n: unsendLeft })}>
+                        {t('Geri al')} · {unsendLeft} {t('sn')}
+                      </button>
+                    )}
+                    <div className="message-time">{formatTime(m.createdAt)}</div>
+                  </div>
                 </div>
               );
             })}

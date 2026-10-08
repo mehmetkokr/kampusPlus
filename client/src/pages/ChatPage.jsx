@@ -9,6 +9,8 @@ import { ArrowLeft as ArrowLeftIcon, Send as SendIcon, Image as ImageIcon, Mic a
 import VoiceMessagePlayer from '../components/VoiceMessagePlayer';
 import { useI18n } from '../i18n';
 import { compressImage } from '../utils/image';
+import { usePhotoEditor } from '../context/PhotoEditorContext';
+import { unsendSecondsLeft, useUnsendClock } from '../utils/unsend';
 
 const EMOJI_LIST = [
   '😀', '😂', '🥰', '😍', '😘', '😎', '🤔', '😅', '😢', '😭',
@@ -23,6 +25,7 @@ export default function ChatPage() {
   const { matchId } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
+  const editPhoto = usePhotoEditor();
 
   const [messages, setMessages] = useState([]);
   const [hasMoreMessages, setHasMoreMessages] = useState(false);
@@ -35,6 +38,7 @@ export default function ChatPage() {
   const [presence, setPresence] = useState({ online: false, lastSeenAt: null });
   const [isOtherTyping, setIsOtherTyping] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [unsending, setUnsending] = useState(null);
 
   const socketRef = useRef(null);
   const bottomRef = useRef(null);
@@ -83,6 +87,12 @@ export default function ChatPage() {
         if (msg.senderId !== myUserIdRef.current) {
           socket.emit('mark_read', { matchId });
         }
+      }
+    });
+
+    socket.on('message_deleted', ({ matchId: delMatchId, messageId }) => {
+      if (String(delMatchId) === String(matchId)) {
+        setMessages((prev) => prev.filter((m) => m.id !== messageId));
       }
     });
 
@@ -180,7 +190,10 @@ export default function ChatPage() {
   }
 
   async function handlePhotoSelect(e) {
-    const file = e.target.files?.[0];
+    const picked = e.target.files?.[0];
+    e.target.value = '';
+    if (!picked) return;
+    const file = await editPhoto(picked, { aspects: ['original', '1:1', '4:5'], doneLabel: 'Gönder' });
     if (!file) return;
     const formData = new FormData();
     formData.append('photo', await compressImage(file));
@@ -254,6 +267,18 @@ export default function ChatPage() {
     mediaRecorderRef.current?.stop();
   }
 
+  async function unsendMessage(m) {
+    setUnsending(m.id);
+    try {
+      await api.delete(`/messages/${matchId}/${m.id}`);
+      setMessages((prev) => prev.filter((x) => x.id !== m.id));
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Mesaj silinemedi.');
+    } finally {
+      setUnsending(null);
+    }
+  }
+
   function formatTime(iso) {
     if (!iso) return '';
     const d = new Date(iso);
@@ -278,6 +303,7 @@ export default function ChatPage() {
     return `son görülme: ${d.toLocaleDateString('tr-TR')}`;
   }
 
+  const now = useUnsendClock(messages, myUserId);
   const lastMineIndex = [...messages].map((m) => m.senderId === myUserId).lastIndexOf(true);
 
   return (
@@ -355,7 +381,20 @@ export default function ChatPage() {
                     {m.content}
                   </div>
                 )}
-                <div className="message-time">{formatTime(m.createdAt)}</div>
+                <div className="message-meta">
+                  {mine && unsendSecondsLeft(m.createdAt, now) > 0 && (
+                    <button
+                      type="button"
+                      className="unsend-btn"
+                      onClick={() => unsendMessage(m)}
+                      disabled={unsending === m.id}
+                      aria-label={tx('Mesajı geri al, {n} saniye kaldı', { n: unsendSecondsLeft(m.createdAt, now) })}
+                    >
+                      {tx('Geri al')} · {unsendSecondsLeft(m.createdAt, now)} {tx('sn')}
+                    </button>
+                  )}
+                  <div className="message-time">{formatTime(m.createdAt)}</div>
+                </div>
               </div>
               {mine && i === lastMineIndex && m.isRead && (
                 <div className="message-seen">{tx("Görüldü")}</div>

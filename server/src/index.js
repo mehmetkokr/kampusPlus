@@ -63,16 +63,19 @@ app.use(cors({ origin: CLIENT_URL }));
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
+    // Apple / Google giriş pencereleri sonucu açan sayfaya iletebilsin
+    crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'"],
-        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+        // Apple / Google ile giriş betikleri ve pencereleri
+        scriptSrc: ["'self'", "'unsafe-inline'", 'https://accounts.google.com', 'https://appleid.cdn-apple.com'],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://accounts.google.com'],
         fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
-        imgSrc: ["'self'", 'data:', 'blob:'],
+        imgSrc: ["'self'", 'data:', 'blob:', 'https://images.unsplash.com'],
         mediaSrc: ["'self'", 'blob:'],
-        connectSrc: ["'self'", 'ws:', 'wss:'],
-        frameSrc: ["'self'"],
+        connectSrc: ["'self'", 'ws:', 'wss:', 'https://accounts.google.com', 'https://appleid.apple.com'],
+        frameSrc: ["'self'", 'https://accounts.google.com', 'https://appleid.apple.com'],
         objectSrc: ["'none'"],
         frameAncestors: ["'self'"],
       },
@@ -120,6 +123,7 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Sunucu çalışıyor' });
 });
 
+app.use('/api/auth/oauth', require('./routes/oauth'));
 app.use('/api/auth', authRoutes);
 app.use('/api/universities', universityRoutes);
 app.use('/api/profile', profileRoutes);

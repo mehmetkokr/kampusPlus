@@ -4,6 +4,14 @@ import { applyTheme, getStoredTheme, systemTheme, takeGuestThemeChoice } from '.
 
 const AuthContext = createContext(null);
 
+// Kayıt formu kısa; doğum tarihi, bölüm ve sınıf e-posta doğrulandıktan sonra
+// başlangıç ekranında (/welcome) alınır. Bunlar eksikken uygulamaya geçilmez.
+// Profil henüz tam yüklenmediyse (alan hiç yoksa) karar verilmez.
+export function needsBasics(user) {
+  if (!user || user.isAdmin || !('department' in user)) return false;
+  return !user.department || !user.classYear || !user.birthDate;
+}
+
 // "Beni Hatırla" işaretliyse token localStorage'da (tarayıcı kapansa da kalır),
 // işaretli değilse sessionStorage'da (sekme kapanınca silinir) tutulur.
 function readStoredToken() {

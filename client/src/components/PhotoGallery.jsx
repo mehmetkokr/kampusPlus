@@ -6,6 +6,7 @@ import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { useI18n } from '../i18n';
 import { compressImage } from '../utils/image';
+import { usePhotoEditor } from '../context/PhotoEditorContext';
 
 const MAX_PHOTOS = 6;
 
@@ -15,6 +16,7 @@ export default function PhotoGallery({ photos, onChange }) {
   const { t } = useI18n();
   const toast = useToast();
   const confirm = useConfirm();
+  const editPhoto = usePhotoEditor();
   const fileRef = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [menuFor, setMenuFor] = useState(null);
@@ -23,10 +25,12 @@ export default function PhotoGallery({ photos, onChange }) {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
+    const edited = await editPhoto(file, { aspects: ['3:4', '1:1', '4:5'], title: 'Profil fotoğrafı' });
+    if (!edited) return;
     setUploading(true);
     try {
       const form = new FormData();
-      form.append('photo', await compressImage(file));
+      form.append('photo', await compressImage(edited));
       const res = await api.post('/profile/me/photos', form, { headers: { 'Content-Type': 'multipart/form-data' } });
       onChange(res.data);
     } catch (err) {

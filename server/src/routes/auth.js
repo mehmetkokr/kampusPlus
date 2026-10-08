@@ -12,6 +12,8 @@ const fsp = require('fs/promises');
 const { toTitleCaseTR, normalizeEmail } = require('../lib/text');
 const { parseBirthDate } = require('../lib/age');
 const { ALLOWED_INTENTS } = require('../lib/intents');
+const { isSchoolEmail } = require('../lib/schoolEmail');
+const { linkFromTicket } = require('../lib/oauth');
 
 // ---------------------------------------------------------
 // Kayıt e-posta doğrulama kodu
@@ -51,12 +53,6 @@ async function findUserByEmail(rawEmail) {
 
 // Kayıt yalnızca seçilen üniversitenin okul e-postasıyla yapılabilir.
 // Alt alan adları da okulun adresidir (ör. ogr.mku.edu.tr → mku.edu.tr).
-function isSchoolEmail(email, university) {
-  const uniDomain = university?.emailDomain?.toLowerCase();
-  const emailDomain = email.split('@')[1]?.toLowerCase();
-  return !!(uniDomain && emailDomain && (emailDomain === uniDomain || emailDomain.endsWith('.' + uniDomain)));
-}
-
 const schoolEmailError = (university) =>
   `Doğrulama kodu yalnızca okul e-postana gönderilir. ${university.name} için @${university.emailDomain} ile biten adresini gir.`;
 
@@ -193,15 +189,14 @@ router.post('/register', registerLimiter, upload.private.single('studentDoc'), v
       });
     }
 
-    // Bölüm ve sınıf kayıttan sonra değiştirilemediği için kayıtta zorunludur
-    if (!department || !classYear) {
-      return res.status(400).json({ error: 'Bölüm ve sınıf bilgisi zorunludur.' });
-    }
-
-    const birth = parseBirthDate(birthDate);
+    // Kayıt formu kısa tutulur: doğum tarihi, bölüm, sınıf ve "ne arıyorsun"
+    // e-posta doğrulandıktan sonraki başlangıç adımında (/profile/me/basics)
+    // alınır. Eski istemciler bunları burada göndermeye devam edebilir.
+    const birth = birthDate ? parseBirthDate(birthDate) : { date: null, age: null };
     if (birth.error) {
       return res.status(400).json({ error: birth.error });
     }
+    const classYearValue = [1, 2, 3, 4, 5].includes(Number(classYear)) ? Number(classYear) : null;
 
     const selectedIntents = (intent || 'friendship')
       .split(',')
@@ -239,7 +234,7 @@ router.post('/register', registerLimiter, upload.private.single('studentDoc'), v
         fullName,
         universityId: Number(universityId),
         department,
-        classYear: classYear ? Number(classYear) : null,
+        classYear: classYearValue,
         birthDate: birth.date,
         age: birth.age,
         intent: intentValue,
@@ -248,6 +243,8 @@ router.post('/register', registerLimiter, upload.private.single('studentDoc'), v
     });
 
     await prisma.emailVerificationCode.delete({ where: { email } }).catch(() => {});
+    // Apple/Google ile gelip okul e-postasıyla kaydolduysa sağlayıcıyı bağla
+    await linkFromTicket(prisma, user.id, req.body.oauthTicket).catch(() => {});
 
     const token = jwt.sign({ userId: user.id, tokenVersion: user.tokenVersion }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
@@ -291,6 +288,9 @@ router.post('/login', loginLimiter, async (req, res) => {
     if (user.isBanned) {
       return res.status(403).json({ error: 'Hesabın askıya alındı. Detaylar için destek ekibiyle iletişime geç.' });
     }
+
+    // Apple/Google ile denendi ama hesap bulunamadıysa, şifreyle girişte bağla
+    await linkFromTicket(prisma, user.id, req.body.oauthTicket).catch(() => {});
 
     let reactivated = false;
     if (user.isFrozen) {

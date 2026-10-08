@@ -51,6 +51,9 @@ model User {
   id           Int        @id @default(autoincrement())
   email        String     @unique
   passwordHash String
+  // Apple / Google ile giriş: sağlayıcının kalıcı kullanıcı kimliği (sub)
+  googleId     String?    @unique
+  appleId      String?    @unique
   fullName     String
   // Bir üniversite silinirse öğrencileri silinmesin - önce öğrenciler
   // başka bir üniversiteye taşınmalı/silinmeli (Restrict = varsayılan davranış).

@@ -797,6 +797,35 @@ textarea {
   padding: 0 4px;
 }
 
+/* Saat + "Geri al" (gönderdikten sonraki 1 dk) */
+.message-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.msg-row.mine .message-meta { justify-content: flex-end; }
+.message-meta .message-time { margin-top: 4px; }
+.unsend-btn {
+  position: relative;
+  margin-top: 4px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--coral);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.unsend-btn::after {
+  /* küçük yazıya rağmen rahat dokunma alanı */
+  content: '';
+  position: absolute;
+  inset: -12px -6px;
+}
+.unsend-btn:disabled { opacity: 0.5; cursor: default; }
+
 .chat-empty {
   text-align: center;
   color: var(--text-faint);

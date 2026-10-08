@@ -3,6 +3,7 @@ import { AnimatePresence, motion, useInView, useReducedMotion } from 'framer-mot
 import { BadgeCheck, Check, Crown, EyeOff, Heart, Loader2, Lock, Mail, ShieldCheck, UserX, X } from 'lucide-react';
 import Reveal from './Reveal';
 import { useI18n } from '../../i18n';
+import { demoPhoto } from './demoPhotos';
 import { Bot, Camera, Guitar } from 'lucide-react';
 
 const EASE = [0.16, 1, 0.3, 1];
@@ -39,10 +40,10 @@ function Tile({ className = '', eyebrow, title, desc, children, tone = 'amber', 
 /* ---------------- Kart Modu demosu ---------------- */
 
 const PROFILES = [
-  { initials: 'EY', name: 'Elif, 21', dept: 'Bilgisayar Müh.', grad: 'from-[#b9d6f7] to-[#b9d6f7]', tag: 'Arkadaşlık' },
-  { initials: 'KA', name: 'Kerem, 22', dept: 'Mimarlık', grad: 'from-[#9ec9f5] to-[#9ec9f5]', tag: 'Çalışma' },
-  { initials: 'ZD', name: 'Zeynep, 20', dept: 'Psikoloji', grad: 'from-[var(--amber-soft)] to-[var(--amber-soft)]', tag: 'Etkinlik' },
-  { initials: 'MT', name: 'Mert, 23', dept: 'Endüstri Müh.', grad: 'from-[#a7e3b5] to-[#a7e3b5]', tag: 'Kulüp' },
+  { id: 'elif', initials: 'EY', name: 'Elif, 21', dept: 'Bilgisayar Müh.', tone: '#b9d6f7', tag: 'Arkadaşlık', bio: 'Hackathon bağımlısı, satranç kulübü yöneticisi.' },
+  { id: 'kerem', initials: 'KA', name: 'Kerem, 22', dept: 'Mimarlık', tone: '#9ec9f5', tag: 'Çalışma Arkadaşı', bio: 'Stüdyo gecelerinde kahve ve iyi müzik şart.' },
+  { id: 'zeynep', initials: 'ZA', name: 'Zeynep, 21', dept: 'Tıp', tone: '#ffc8d4', tag: 'Etkinlik Arkadaşı', bio: 'Sabah koşusu, akşam anatomi.' },
+  { id: 'mert', initials: 'MT', name: 'Mert, 23', dept: 'Endüstri Müh.', tone: '#a7e3b5', tag: 'Proje Ortağı', bio: 'Girişimcilik kulübünde etkinlik sorumlusu.' },
 ];
 
 function SwipeDemo() {
@@ -77,10 +78,16 @@ function SwipeDemo() {
           exit={{ x: 260, rotate: 16, opacity: 0 }}
           transition={{ duration: 0.55, ease: EASE }}
         >
-          <div className="relative h-[200px] bg-[linear-gradient(160deg,var(--color-surface-3)_0%,var(--color-surface-2)_55%,var(--color-surface-3)_100%)]">
-            <div className={`absolute left-1/2 top-1/2 flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-gradient-to-br ${PROFILES[index].grad} text-2xl font-bold text-[#1d1d1f] ring-4 ring-surface`}>
-              {PROFILES[index].initials}
-            </div>
+          <div className="relative h-[200px]" style={{ background: PROFILES[index].tone }}>
+            <span className="absolute inset-0 flex items-center justify-center text-3xl font-bold text-[#1d1d1f]/70">{PROFILES[index].initials}</span>
+            <img
+              src={demoPhoto(PROFILES[index].id, 270, 200)}
+              alt=""
+              decoding="async"
+              draggable={false}
+              className="absolute inset-0 h-full w-full object-cover"
+              onError={(e) => e.currentTarget.remove()}
+            />
             <span className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-surface/80 px-2.5 py-1 text-[0.625rem] font-semibold text-teal backdrop-blur">
               <BadgeCheck size={11} /> {tx("Doğrulanmış")}
             </span>
@@ -88,6 +95,7 @@ function SwipeDemo() {
           <div className="px-4 py-3">
             <p className="text-base font-semibold text-paper">{PROFILES[index].name}</p>
             <p className="text-xs text-paper-muted">{tx(PROFILES[index].dept)}</p>
+            <p className="mt-1 truncate text-xs text-paper">{tx(PROFILES[index].bio)}</p>
             <span className="mt-2 inline-block rounded-full bg-surface-3 px-2 py-0.5 text-[0.625rem] font-medium text-paper">
               {tx(PROFILES[index].tag)}
             </span>
@@ -179,13 +187,13 @@ function VerifyDemo() {
 
 /* ---------------- Seni Beğenenler demosu ---------------- */
 
-const LIKE_GRADS = [
-  'from-[var(--amber-soft)] to-[var(--amber-soft)]',
-  'from-[#b9d6f7] to-[#b9d6f7]',
-  'from-[#9ec9f5] to-[#9ec9f5]',
-  'from-[#a7e3b5] to-[#a7e3b5]',
-  'from-[#c6c5f2] to-[#c6c5f2]',
-  'from-[#ffd6a5] to-[#ffd6a5]',
+const LIKE_FACES = [
+  ['zeynep', '#ffc8d4'],
+  ['deniz', '#a7e3b5'],
+  ['elif', '#b9d6f7'],
+  ['ayse', '#ffd6a5'],
+  ['selin', '#ffe39f'],
+  ['can', '#c6c5f2'],
 ];
 
 function LikesDemo() {
@@ -197,9 +205,16 @@ function LikesDemo() {
   return (
     <div ref={ref} className="px-6 pb-7 sm:px-7">
       <div className="grid grid-cols-3 gap-2.5">
-        {LIKE_GRADS.map((g, i) => (
-          <div key={g} className="relative aspect-square overflow-hidden rounded-2xl border border-line bg-surface-2/60">
-            <div className={`absolute inset-3 rounded-full bg-gradient-to-br ${g} opacity-80 blur-md`} />
+        {LIKE_FACES.map(([key, tone], i) => (
+          <div key={key} className="relative aspect-square overflow-hidden rounded-2xl border border-line" style={{ background: tone }}>
+            <img
+              src={demoPhoto(key, 48)}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              className="absolute inset-0 h-full w-full scale-110 object-cover blur-md"
+              onError={(e) => e.currentTarget.remove()}
+            />
             {i < count && (
               <motion.span
                 initial={{ scale: 0 }}
