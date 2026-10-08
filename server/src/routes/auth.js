@@ -13,7 +13,6 @@ const { toTitleCaseTR, normalizeEmail } = require('../lib/text');
 const { parseBirthDate } = require('../lib/age');
 const { ALLOWED_INTENTS } = require('../lib/intents');
 const { isSchoolEmail } = require('../lib/schoolEmail');
-const { linkFromTicket } = require('../lib/oauth');
 
 // ---------------------------------------------------------
 // Kayıt e-posta doğrulama kodu
@@ -243,8 +242,6 @@ router.post('/register', registerLimiter, upload.private.single('studentDoc'), v
     });
 
     await prisma.emailVerificationCode.delete({ where: { email } }).catch(() => {});
-    // Apple/Google ile gelip okul e-postasıyla kaydolduysa sağlayıcıyı bağla
-    await linkFromTicket(prisma, user.id, req.body.oauthTicket).catch(() => {});
 
     const token = jwt.sign({ userId: user.id, tokenVersion: user.tokenVersion }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
@@ -288,9 +285,6 @@ router.post('/login', loginLimiter, async (req, res) => {
     if (user.isBanned) {
       return res.status(403).json({ error: 'Hesabın askıya alındı. Detaylar için destek ekibiyle iletişime geç.' });
     }
-
-    // Apple/Google ile denendi ama hesap bulunamadıysa, şifreyle girişte bağla
-    await linkFromTicket(prisma, user.id, req.body.oauthTicket).catch(() => {});
 
     let reactivated = false;
     if (user.isFrozen) {

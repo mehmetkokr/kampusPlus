@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, ShieldCheck, Eye, EyeOff, Check, Mail, RotateCw } from 'lucide-react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
@@ -11,7 +11,6 @@ import { minDuration } from '../utils/wait';
 import { toTitleCaseTR, normalizeEmail } from '../utils/text';
 import { useI18n } from '../i18n';
 import ThemeToggle from '../components/ThemeToggle';
-import SocialLogin from '../components/SocialLogin';
 
 const PASSWORD_MIN = 8;
 const CODE_LENGTH = 6;
@@ -34,13 +33,11 @@ export default function RegisterPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
   const toast = useToast();
-  // Apple/Google ile gelindiyse: ad hazır, kayıt bitince hesap bağlanır
-  const { oauthTicket, oauthName, oauthProvider } = useLocation().state || {};
 
   const [step, setStep] = useState('details'); // details | code
   const [universities, setUniversities] = useState([]);
   const [form, setForm] = useState({
-    fullName: oauthName || '',
+    fullName: '',
     email: '',
     password: '',
     universityId: '',
@@ -174,7 +171,6 @@ export default function RegisterPage() {
         fullName: toTitleCaseTR(form.fullName),
         email: normalizeEmail(form.email),
         code: joined,
-        oauthTicket,
       });
       await waitSuccess();
       login(res.data.token, res.data.user, true);
@@ -232,14 +228,6 @@ export default function RegisterPage() {
             <>
               <h2>{tx("Hesap oluştur")}</h2>
               <p className="muted">{tx("Üniversite e-postanla katıl")}</p>
-
-              {oauthProvider ? (
-                <p className="field-hint register-oauth-note">
-                  {tx('{provider} hesabın, okul e-postanla kaydolduğunda bu hesaba bağlanır.', { provider: oauthProvider === 'apple' ? 'Apple' : 'Google' })}
-                </p>
-              ) : (
-                <SocialLogin />
-              )}
 
               <form onSubmit={sendCode}>
                 <label htmlFor="reg-name">{tx("Ad Soyad")}</label>

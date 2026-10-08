@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
@@ -9,15 +9,12 @@ import CubeLoader from '../components/CubeLoader';
 import { minDuration } from '../utils/wait';
 import { useI18n } from '../i18n';
 import ThemeToggle from '../components/ThemeToggle';
-import SocialLogin from '../components/SocialLogin';
 
 export default function LoginPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const { login } = useAuth();
   const toast = useToast();
-  // Apple/Google ile gelip okul hesabı bulunamadıysa: şifreyle girince bağlanır
-  const oauthTicket = useLocation().state?.oauthTicket;
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -32,7 +29,7 @@ export default function LoginPage() {
     const waitError = minDuration(600);
 
     try {
-      const res = await api.post('/auth/login', { email, password, oauthTicket });
+      const res = await api.post('/auth/login', { email, password });
       // Giriş animasyonu görünsün; login() sayfayı hemen yönlendirdiği için önce beklenir
       await waitSuccess();
       login(res.data.token, res.data.user, rememberMe);
@@ -68,8 +65,6 @@ export default function LoginPage() {
         <div className="auth-card">
           <h2>{t("Tekrar hoş geldin")}</h2>
           <p className="muted">{t("Hesabına giriş yap")}</p>
-
-          <SocialLogin />
 
           <form onSubmit={handleSubmit}>
             <label>{t("E-posta")}</label>

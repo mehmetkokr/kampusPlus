@@ -1078,7 +1078,7 @@ const en = {
   'Ne arıyorum': "Looking for",
   'İlgi alanları': "Interests",
   'Sıradaki adım: en az 3 fotoğraf ekle': "Next step: add at least 3 photos",
-  // Fotoğraf düzenleyici, mesaj geri alma, kısa kayıt, Apple/Google girişi
+  // Fotoğraf düzenleyici, mesaj geri alma, kısa kayıt
   'Fotoğrafı düzenle': 'Edit photo',
   'Hazırlanıyor…': 'Preparing…',
   'Profil fotoğrafı': 'Profile photo',
@@ -1122,13 +1122,6 @@ const en = {
   'En az bir seçenek seç.': 'Pick at least one option.',
   '{n}. adım': 'Step {n}',
   'Bir fotoğraf ekle': 'Add a photo',
-  'Apple ile devam et': 'Continue with Apple',
-  'Google ile devam et': 'Continue with Google',
-  'veya e-postanla': 'or with your email',
-  'Apple ile giriş henüz ayarlanmadı.': 'Sign in with Apple isn\'t set up yet.',
-  'Google ile giriş henüz ayarlanmadı.': 'Sign in with Google isn\'t set up yet.',
-  '{provider} hesabın okul e-postana bağlı değil. Okul e-postanla devam et; hesabın {provider} ile bağlanacak.': 'Your {provider} account isn\'t your school email. Continue with your school email and we\'ll link it to {provider}.',
-  '{provider} hesabın, okul e-postanla kaydolduğunda bu hesaba bağlanır.': 'Your {provider} account will be linked once you sign up with your school email.',
   'Eskiz': 'Sketching',
   'Tıp': 'Medicine',
   'Hukuk': 'Law',
