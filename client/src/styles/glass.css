@@ -3089,7 +3089,7 @@ select option:disabled {
 .register-steps li.is-current span { color: #ffffff; background: var(--accent-solid); box-shadow: none; }
 .register-steps li.is-done span { color: #10261a; background: var(--teal); box-shadow: none; }
 
-.field-hint-warn { color: #409cff; }
+.field-hint-warn { color: var(--coral); }
 
 .pw-strength {
   display: flex;

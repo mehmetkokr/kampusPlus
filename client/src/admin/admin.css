@@ -10,12 +10,13 @@
   --adm-card: var(--surface);
   --adm-line: var(--border);
   --adm-soft: var(--surface-2);
-  /* Grafik ve durum renkleri: uygulamanın Apple paletiyle aynı */
+  /* Durum renkleri uygulamayla aynı; grafik serileri matplotlib renk sırası
+     (C0 mavi, C1 turuncu, C4 mor; koyu modda zemine göre doğrulanmış tonlar) */
   --adm-up: var(--teal);
   --adm-down: var(--coral);
-  --adm-c1: var(--amber-soft);
-  --adm-c2: #30b0c7;
-  --adm-c3: var(--sky);
+  --adm-c1: #3a8fd0;
+  --adm-c2: #e06d0a;
+  --adm-c3: #a47bd0;
   display: grid;
   grid-template-columns: 248px minmax(0, 1fr);
   min-height: 100dvh;
@@ -24,7 +25,7 @@
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
 }
-[data-theme='light'] .adm { --adm-c2: #0e8aa3; }
+[data-theme='light'] .adm { --adm-c1: #1f77b4; --adm-c2: #ff7f0e; --adm-c3: #9467bd; }
 
 /* ---------- Kenar çubuğu ---------- */
 .adm-side {
@@ -414,87 +415,93 @@
 }
 .adm-note svg { width: 16px; height: 16px; flex-shrink: 0; margin-top: 2px; color: var(--adm-c3); }
 
-/* ---------- Grafikler ---------- */
-.adm-chart { position: relative; width: 100%; }
-.adm-chart svg { display: block; width: 100%; height: auto; overflow: visible; }
-.adm-chart .grid line { stroke: var(--adm-line); stroke-dasharray: 2 4; }
-.adm-chart .axis text { fill: var(--text-faint); font-size: 10px; font-family: var(--font-body); }
-.adm-legend { display: flex; flex-wrap: wrap; gap: 6px; }
-.adm-legend button {
+/* ---------- Grafikler: matplotlib görünümü ----------
+   Açık mod matplotlib'in varsayılan stili (beyaz figür, siyah eksenler);
+   koyu mod "dark_background" stili. Renkler C0 mavi, C1 turuncu, C4 mor. */
+.adm {
+  --mpl-bg: #ffffff;
+  --mpl-fg: #000000;
+  --mpl-grid: #b0b0b0;
+  --mpl-legend-edge: #cccccc;
+  --mpl-font: 'DejaVu Sans', 'Bitstream Vera Sans', Verdana, Geneva, sans-serif;
+}
+[data-theme='dark'] .adm {
+  --mpl-bg: #000000;
+  --mpl-fg: #ffffff;
+  --mpl-grid: #5a5a5a;
+  --mpl-legend-edge: #808080;
+}
+.mpl-fig {
+  margin: 0;
+  padding: 10px 10px 6px;
+  background: var(--mpl-bg);
+  color: var(--mpl-fg);
+  font-family: var(--mpl-font);
+  border-radius: 4px;
+}
+.mpl-plot { position: relative; width: 100%; }
+.mpl-plot svg { display: block; max-width: 100%; height: auto; overflow: visible; }
+.mpl-spines { fill: none; stroke: var(--mpl-fg); stroke-width: 0.8; shape-rendering: crispEdges; }
+.mpl-grid line { stroke: var(--mpl-grid); stroke-width: 0.8; opacity: 0.35; shape-rendering: crispEdges; }
+.mpl-ticks line { stroke: var(--mpl-fg); stroke-width: 0.8; shape-rendering: crispEdges; }
+.mpl-ticks text, .mpl-barlabel { fill: var(--mpl-fg); font-family: var(--mpl-font); font-size: 10px; }
+.mpl-barlabel { font-variant-numeric: tabular-nums; }
+.mpl-drop { fill: #d62728; font-family: var(--mpl-font); font-size: 9.5px; }
+[data-theme='dark'] .mpl-drop { fill: #ff6b6b; }
+.mpl-dim { opacity: 0.45; transition: opacity 0.15s ease; }
+.mpl-cursor { stroke: var(--mpl-fg); stroke-width: 0.8; stroke-dasharray: 3 3; opacity: 0.6; }
+.mpl-marker { fill: var(--mpl-bg); stroke-width: 1.5; }
+
+/* fig.legend(loc="upper center", ncol=3, frameon=True) */
+.mpl-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px 4px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto 8px;
+  padding: 3px 6px;
+  border: 1px solid var(--mpl-legend-edge);
+  border-radius: 3px;
+  background: var(--mpl-bg);
+}
+.mpl-legend button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   min-height: 32px;
-  padding: 0 10px;
-  border-radius: 999px;
-  border: 1px solid var(--adm-line);
+  padding: 0 6px;
+  border: 0;
   background: none;
-  color: var(--text-muted);
-  font: inherit;
-  font-size: 0.78rem;
-  font-weight: 600;
+  color: var(--mpl-fg);
+  font-family: var(--mpl-font);
+  font-size: 11px;
   cursor: pointer;
 }
-.adm-legend button.on { color: var(--text); background: var(--adm-soft); }
-.adm-legend i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
-.adm-tooltip {
+.mpl-legend button.off { opacity: 0.4; text-decoration: line-through; }
+.mpl-legend button:focus-visible { outline: 2px solid var(--adm-c1); outline-offset: 1px; }
+.mpl-legend b { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+/* ax.annotate(..., bbox=dict(boxstyle="round", fc="w", ec="k")) */
+.mpl-annot {
   position: absolute;
-  top: 0;
+  top: 6px;
   pointer-events: none;
-  min-width: 130px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  background: var(--surface);
-  border: 1px solid var(--adm-line);
-  box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.45);
-  font-size: 0.78rem;
-  transform: translateX(-50%);
+  min-width: 132px;
+  padding: 5px 8px;
+  border: 0.8px solid var(--mpl-fg);
+  border-radius: 5px;
+  background: var(--mpl-bg);
+  color: var(--mpl-fg);
+  font-family: var(--mpl-font);
+  font-size: 11px;
   z-index: 2;
 }
-.adm-tooltip b { display: block; margin-bottom: 4px; font-size: 0.76rem; color: var(--text-muted); }
-.adm-tooltip div { display: flex; align-items: center; gap: 6px; justify-content: space-between; font-variant-numeric: tabular-nums; }
-.adm-tooltip i { width: 7px; height: 7px; border-radius: 50%; background: var(--c); display: inline-block; margin-right: 4px; }
+.mpl-annot b { display: block; margin-bottom: 3px; }
+.mpl-annot div { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-variant-numeric: tabular-nums; }
+.mpl-annot i { display: inline-block; width: 12px; height: 2px; margin-right: 5px; vertical-align: middle; }
 
-.adm-bars { display: flex; flex-direction: column; gap: 9px; }
-.adm-bar-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; font-size: 0.84rem; }
-.adm-bar-row span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.adm-bar-row b { font-variant-numeric: tabular-nums; font-weight: 650; }
-.adm-bar-track { grid-column: 1 / -1; height: 7px; border-radius: 999px; background: var(--adm-soft); overflow: hidden; }
-.adm-bar-fill {
-  height: 100%;
-  border-radius: inherit;
-  background: var(--c, var(--amber-soft));
-  transform-origin: left;
-  animation: adm-grow 0.7s var(--adm-ease) both;
-}
-@keyframes adm-grow { from { transform: scaleX(0.02); } }
-
-.adm-funnel { display: flex; flex-direction: column; gap: 10px; }
-.adm-funnel-step { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: 4px 10px; }
-.adm-funnel-step .n {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--adm-soft);
-  font-size: 0.72rem;
-  font-weight: 700;
-  display: grid;
-  place-items: center;
-  color: var(--text-muted);
-}
-.adm-funnel-step .label { font-size: 0.86rem; font-weight: 600; }
-.adm-funnel-step .val { font-size: 0.84rem; font-variant-numeric: tabular-nums; text-align: right; }
-.adm-funnel-step .val small { color: var(--text-faint); margin-left: 6px; }
-.adm-funnel-step .adm-bar-track { grid-column: 2 / -1; height: 9px; }
-.adm-funnel-drop { grid-column: 2 / -1; font-size: 0.72rem; color: var(--adm-down); }
-
-.adm-ring { display: flex; align-items: center; gap: 12px; }
-.adm-ring svg { width: 58px; height: 58px; transform: rotate(-90deg); flex-shrink: 0; }
-.adm-ring circle { fill: none; stroke-width: 6; }
-.adm-ring .bg { stroke: var(--adm-soft); }
-.adm-ring .fg { stroke: var(--c, var(--amber-soft)); stroke-linecap: round; transition: stroke-dashoffset 0.8s var(--adm-ease); }
-.adm-ring-val { font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.adm-ring-label { font-size: 0.8rem; color: var(--text-muted); }
 
 /* Yapılacaklar */
 .adm-todo { display: flex; flex-direction: column; gap: 8px; }
@@ -737,8 +744,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .adm-drawer, .adm-overlay, .adm-scrim, .adm-bar-fill, .adm-skeleton { animation: none; }
-  .adm-side, .adm-ring .fg { transition: none; }
+  .adm-drawer, .adm-overlay, .adm-scrim, .adm-skeleton { animation: none; }
+  .adm-side { transition: none; }
 }
 
 /* Uygulamanın genel form stillerini (index.css: label büyük harf, input %100
@@ -769,3 +776,4 @@
 .adm h4 > svg,
 .adm span > svg,
 .adm summary > svg { display: inline-block; vertical-align: -2px; }
+.mpl-sub { font-size: 9px; opacity: 0.75; }

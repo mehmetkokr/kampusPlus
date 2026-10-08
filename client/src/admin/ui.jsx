@@ -132,24 +132,6 @@ export function Person({ user, meta }) {
   );
 }
 
-export function Ring({ value, label, color }) {
-  const r = 24;
-  const c = 2 * Math.PI * r;
-  const v = Math.min(Math.max(value || 0, 0), 100);
-  return (
-    <div className="adm-ring" style={{ '--c': color }}>
-      <svg viewBox="0 0 58 58" aria-hidden="true">
-        <circle className="bg" cx="29" cy="29" r={r} />
-        <circle className="fg" cx="29" cy="29" r={r} strokeDasharray={c} strokeDashoffset={c - (v / 100) * c} />
-      </svg>
-      <div>
-        <div className="adm-ring-val">%{v.toLocaleString('tr-TR')}</div>
-        <div className="adm-ring-label">{label}</div>
-      </div>
-    </div>
-  );
-}
-
 // Sağdan kayan panel (Esc ve arka plana tıklama ile kapanır)
 export function Drawer({ title, onClose, children, actions }) {
   useEffect(() => {

@@ -15,8 +15,8 @@ import {
   Wifi,
 } from 'lucide-react';
 import adminApi, { errorText } from '../adminApi';
-import { CLASS_LABELS, INTENT_LABELS, Kpi, PageHead, PERIODS, Ring, Segmented, Skeleton, fmt, fmtMoney } from '../ui';
-import { BarList, Funnel, LineChart } from '../charts';
+import { CLASS_LABELS, INTENT_LABELS, Kpi, PageHead, PERIODS, Segmented, Skeleton, fmt, fmtMoney } from '../ui';
+import { BarList, Funnel, LineChart, RetentionBars } from '../charts';
 
 const SERIES = [
   { key: 'signups', label: 'Yeni kayıt', color: 'var(--adm-c1)' },
@@ -147,16 +147,7 @@ export default function AdminOverview() {
           {loading ? (
             <Skeleton h={200} />
           ) : (
-            <div className="adm-grid" style={{ gap: 18 }}>
-              {data.retention.map((r, i) => (
-                <div key={r.day} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                  <Ring value={r.rate} label={`${r.day}. gün`} color={['var(--adm-c1)', 'var(--adm-c2)', 'var(--adm-c3)'][i]} />
-                  <span className="adm-faint" style={{ textAlign: 'right' }}>
-                    {r.eligible ? `${fmt(r.returned)} / ${fmt(r.eligible)} öğrenci` : 'Henüz yeterli süre geçmedi'}
-                  </span>
-                </div>
-              ))}
-            </div>
+            <RetentionBars items={data.retention} />
           )}
         </section>
       </div>

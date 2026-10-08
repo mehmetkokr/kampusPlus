@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, ShieldCheck, Eye, EyeOff, Check, Mail, RotateCw } from 'lucide-react';
+import { ArrowLeft, ShieldCheck, Eye, EyeOff, Check, X, Mail, RotateCw } from 'lucide-react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -40,6 +40,7 @@ export default function RegisterPage() {
     fullName: '',
     email: '',
     password: '',
+    passwordConfirm: '',
     universityId: '',
   });
   const [showPassword, setShowPassword] = useState(false);
@@ -81,6 +82,8 @@ export default function RegisterPage() {
   }
 
   const strength = passwordStrength(form.password);
+  const passwordsMatch = form.passwordConfirm.length > 0 && form.password === form.passwordConfirm;
+  const confirmMismatch = form.passwordConfirm.length > 0 && form.password !== form.passwordConfirm;
   const selectedUni = universities.find((u) => String(u.id) === String(form.universityId));
   const emailDomain = normalizeEmail(form.email).split('@')[1] || '';
   const uniDomain = selectedUni?.emailDomain?.toLowerCase();
@@ -96,6 +99,10 @@ export default function RegisterPage() {
       return toast.error(tx('Doğrulama kodu yalnızca okul e-postana gönderilir. @{domain} ile biten adresini gir.', { domain: selectedUni.emailDomain }));
     }
     if (form.password.length < PASSWORD_MIN) return toast.error(tx('Şifre en az {n} karakter olmalı.', { n: PASSWORD_MIN }));
+    if (form.password !== form.passwordConfirm) {
+      document.getElementById('reg-pass2')?.focus();
+      return toast.error('Şifreler birbiriyle eşleşmiyor.');
+    }
 
     setSending(true);
     try {
@@ -300,6 +307,32 @@ export default function RegisterPage() {
                     </span>
                     {tx(strength.label)}
                   </div>
+                )}
+
+                <label htmlFor="reg-pass2">{tx("Şifre (tekrar)")}</label>
+                <div className="password-field-wrap">
+                  <input
+                    id="reg-pass2"
+                    type={showPassword ? 'text' : 'password'}
+                    name="passwordConfirm"
+                    value={form.passwordConfirm}
+                    onChange={handleChange}
+                    autoComplete="new-password"
+                    aria-invalid={confirmMismatch}
+                    aria-describedby={confirmMismatch ? 'reg-pass2-hint' : undefined}
+                    className={confirmMismatch ? 'is-invalid' : passwordsMatch ? 'is-valid' : ''}
+                    required
+                  />
+                  {(passwordsMatch || confirmMismatch) && (
+                    <span className={`pw-match ${passwordsMatch ? 'ok' : 'no'}`} aria-hidden="true">
+                      {passwordsMatch ? <Check size={16} /> : <X size={16} />}
+                    </span>
+                  )}
+                </div>
+                {confirmMismatch && (
+                  <p id="reg-pass2-hint" className="field-hint field-hint-warn">
+                    {tx("Şifreler birbiriyle eşleşmiyor.")}
+                  </p>
                 )}
 
                 <p className="field-hint register-next-note">{tx("Doğum tarihi, bölüm ve ne aradığın gibi bilgileri e-postanı doğruladıktan sonra soracağız.")}</p>
