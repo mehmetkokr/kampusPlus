@@ -2,9 +2,7 @@
 // Güvenlik için takip yalnızca aynı üniversiteden kişilerle kurulabilir.
 const express = require('express');
 const { visibleIntentFor } = require('../lib/intents');
-const fsp = require('fs/promises');
-const path = require('path');
-const { PUBLIC_UPLOADS } = require('../lib/paths');
+const { removeUploadedFile } = require('../lib/uploads');
 const prisma = require('../lib/prisma');
 const { requireAuth } = require('../middleware/auth');
 const upload = require('../middleware/upload');
@@ -308,14 +306,6 @@ router.delete('/posts/:id', requireAuth, async (req, res) => {
     res.status(500).json({ error: 'Gönderi silinemedi.' });
   }
 });
-
-// Silinen gönderi/hikayenin fotoğrafını diskten de kaldır: aksi halde dosya
-// /uploads altında bağlantıyı bilen herkese açık kalmaya devam ederdi.
-async function removeUploadedFile(url) {
-  if (!url || !url.startsWith('/uploads/')) return;
-  const filePath = path.join(PUBLIC_UPLOADS, path.basename(url));
-  await fsp.unlink(filePath).catch(() => {});
-}
 
 // POST /api/posts/:id/like — beğen / beğeniyi geri al (toggle)
 router.post('/posts/:id/like', requireAuth, async (req, res) => {

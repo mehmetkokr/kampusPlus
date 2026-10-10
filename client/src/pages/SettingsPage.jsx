@@ -50,11 +50,11 @@ export default function SettingsPage() {
     if (!(await confirm({ title: 'Otomatik yenileme kapatılsın mı?', message: 'Premium üyeliğin mevcut süre dolana kadar devam eder, sonra yenilenmez.', confirmLabel: 'Yenilemeyi kapat' }))) return;
     setCancelling(true);
     try {
-      await api.post('/premium/cancel');
-      setUser((prev) => ({ ...prev, isPremium: false }));
+      const res = await api.post('/premium/cancel');
+      setUser((prev) => ({ ...prev, premiumAutoRenew: res.data.premiumAutoRenew }));
       toast.success('Otomatik yenileme kapatıldı.');
     } catch (err) {
-      toast.error('İşlem tamamlanamadı.');
+      toast.error(err.response?.data?.error || 'İşlem tamamlanamadı.');
     } finally {
       setCancelling(false);
     }
@@ -213,9 +213,13 @@ export default function SettingsPage() {
                 ? t('Üyeliğin {date} tarihine kadar aktif. Tüm üniversitelerdeki kişileri görebilirsin.', { date: new Date(user.premiumUntil).toLocaleDateString(lang === 'en' ? 'en-GB' : 'tr-TR') })
                 : t("Tüm üniversitelerdeki kişileri görebilirsin.")}
             </p>
-            <button className="btn-secondary" onClick={handleCancelPremium} disabled={cancelling}>
-              {cancelling ? t("İşleniyor...") : t("Otomatik Yenilemeyi Kapat")}
-            </button>
+            {user.premiumUntil && user.premiumAutoRenew === false ? (
+              <p className="muted">{t("Otomatik yenileme kapalı. Süre dolunca üyeliğin yenilenmez.")}</p>
+            ) : user.premiumUntil ? (
+              <button className="btn-secondary" onClick={handleCancelPremium} disabled={cancelling}>
+                {cancelling ? t("İşleniyor...") : t("Otomatik Yenilemeyi Kapat")}
+              </button>
+            ) : null}
           </>
         ) : (
           <>

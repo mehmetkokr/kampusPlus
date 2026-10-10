@@ -31,9 +31,17 @@ async function authenticateFileRequest(req, res, next) {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
-      select: { id: true, isBanned: true },
+      select: { id: true, isBanned: true, tokenVersion: true },
     });
     if (!user || user.isBanned) {
+      return res.status(401).json({ error: 'Oturum geçersiz veya süresi dolmuş.' });
+    }
+    // Şifre sıfırlama/tüm oturumlardan çıkış sonrası eski token'lar özel dosyaları da açamaz
+    if (payload.tokenVersion !== undefined && payload.tokenVersion !== user.tokenVersion) {
+      return res.status(401).json({ error: 'Oturum geçersiz veya süresi dolmuş.' });
+    }
+    // Şifre sıfırlama bağlantısındaki token oturum token'ı yerine kullanılamaz
+    if (payload.purpose) {
       return res.status(401).json({ error: 'Oturum geçersiz veya süresi dolmuş.' });
     }
     req.userId = user.id;

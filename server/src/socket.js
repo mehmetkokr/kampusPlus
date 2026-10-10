@@ -71,6 +71,9 @@ function setupSocket(io) {
     }
     try {
       const payload = jwt.verify(token, process.env.JWT_SECRET);
+      if (payload.purpose) {
+        return next(new Error('Geçersiz token.'));
+      }
 
       const user = await prisma.user.findUnique({
         where: { id: payload.userId },

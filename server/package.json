@@ -13,7 +13,8 @@
     "prisma:seed": "node prisma/seed.js",
     "mail:test": "node scripts/mail-test.js",
     "admin:create": "node scripts/create-admin.js",
-    "start:prod": "prisma migrate deploy && node prisma/seed.js --if-empty && node src/index.js"
+    "start:prod": "prisma migrate deploy && node prisma/seed.js --if-empty && node src/index.js",
+    "test": "node --test test/lib.test.js test/api.test.js"
   },
   "dependencies": {
     "@prisma/client": "^5.20.0",
