@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { VerifiedBadge } from '@/components/ui/icon-badge';
 import { useNavigate } from 'react-router-dom';
-import { BadgeCheck, ChevronLeft, ChevronRight, Flag, MoreHorizontal, ShieldOff, Sparkles, UserPlus, UserRound } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Flag, MoreHorizontal, ShieldOff, Sparkles, UserPlus, UserRound } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 import { useI18n } from '../i18n';
 import { useToast } from '../context/ToastContext';
@@ -100,7 +101,7 @@ export default function SuggestedPeopleRail({ users, followedIds, onToggleFollow
                 </span>
                 <span className="person-card-name">
                   <span className="person-card-name-text">{u.fullName}</span>
-                  {u.verified && <BadgeCheck size={14} className="person-card-verified" aria-label={t('Doğrulanmış')} />}
+                  {u.verified && <VerifiedBadge size="sm" label={t('Onaylı öğrenci')} />}
                 </span>
                 <span className="person-card-sub">{sub}</span>
                 {u.commonTags?.length > 0 ? (

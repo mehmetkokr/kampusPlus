@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import { VerifiedBadge } from '@/components/ui/icon-badge';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Flag, ShieldOff, BadgeCheck } from 'lucide-react';
+import { ArrowLeft, Flag, ShieldOff } from 'lucide-react';
 import api from '../api';
 import { API_BASE_URL } from '../config';
 import { useToast } from '../context/ToastContext';
@@ -92,7 +93,7 @@ export default function UserProfileViewPage() {
             <h3 className="profile-name">
               {profile.fullName}
               {profile.age ? `, ${profile.age}` : ''}
-              {profile.isStudentVerified && <BadgeCheck size={18} className="name-verified" aria-label={t("Onaylı öğrenci")} />}
+              {profile.isStudentVerified && <VerifiedBadge size="lg" className="ml-1.5" label={t("Onaylı öğrenci")} />}
             </h3>
             <p className="muted profile-sub">{profile.university?.name}</p>
             <p className="muted profile-sub">

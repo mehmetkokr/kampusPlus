@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { VerifiedBadge } from '@/components/ui/icon-badge';
 import { useNavigate } from 'react-router-dom';
 import {
   Search,
   Filter,
-  BadgeCheck,
   Heart,
   MessageCircle,
   Share2,
@@ -273,7 +273,7 @@ export default function DiscoverPage() {
                   <div className="suggest-card-info">
                     <div className="suggest-card-name">
                       {u.fullName}
-                      {u.verified && <BadgeCheck size={15} className="suggest-card-verified" />}
+                      {u.verified && <VerifiedBadge size="sm" label={t("Onaylı öğrenci")} />}
                     </div>
                     <div className="suggest-card-university">{u.university?.name}</div>
                     {u.department && <div className="suggest-card-department">{u.department}</div>}

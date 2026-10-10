@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { VerifiedBadge } from '@/components/ui/icon-badge';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Flag, ArrowLeft, Layers, Heart, X, BadgeCheck } from 'lucide-react';
+import { Flag, ArrowLeft, Layers, Heart, X } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import PhotoCarousel from '../components/PhotoCarousel';
 import api from '../api';
@@ -307,7 +308,7 @@ export default function SwipeDiscoverPage() {
                 <h3>
                   {current.fullName}
                   {current.age ? <span className="swipe-card-age">{current.age}</span> : null}
-                  {current.isStudentVerified && <BadgeCheck size={19} className="swipe-card-verified" aria-label={t("Onaylı öğrenci")} />}
+                  {current.isStudentVerified && <VerifiedBadge size="lg" className="ml-1.5" label={t("Onaylı öğrenci")} />}
                 </h3>
               </div>
               <div className="swipe-info-actions">

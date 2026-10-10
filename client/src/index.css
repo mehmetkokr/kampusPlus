@@ -27,6 +27,17 @@
   --color-paper-faint: #6e6e73;
 
   --animate-rise: auth-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+
+  /* shadcn/ui belirteçleri (components/ui): uygulamanın açık/koyu paletine bağlı */
+  --color-primary: var(--amber-soft);
+  --color-primary-foreground: #ffffff;
+  --color-secondary: var(--surface-2);
+  --color-secondary-foreground: var(--text);
+  --color-destructive: var(--coral);
+  --color-destructive-foreground: #ffffff;
+  --color-foreground: var(--text);
+  --color-border: var(--border);
+  --color-ring: var(--amber-soft);
 }
 
 @layer base {
@@ -2197,11 +2208,7 @@ textarea {
   font-weight: 500;
 }
 
-.remember-me-check input[type='checkbox'] {
-  width: 15px;
-  height: 15px;
-  accent-color: var(--amber);
-}
+.remember-me-check .neon-checkbox__label { font-size: 13px; color: var(--text-muted); }
 
 .forgot-password-link {
   font-size: 13px;
@@ -2722,7 +2729,6 @@ textarea {
   gap: 5px;
 }
 
-.suggest-card-verified { color: var(--teal); flex-shrink: 0; }
 
 .suggest-card-university {
   font-size: 12.5px;

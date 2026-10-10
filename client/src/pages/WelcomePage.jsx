@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import { VerifiedBadge } from '@/components/ui/icon-badge';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, BadgeCheck, Check, UserRound } from 'lucide-react';
+import { ArrowRight, Check, UserRound } from 'lucide-react';
 import api from '../api';
 import { API_BASE_URL } from '../config';
 import { needsBasics, useAuth } from '../context/AuthContext';
@@ -305,7 +306,7 @@ export default function WelcomePage() {
                     <span className="welcome-person-text">
                       <strong>
                         {p.fullName}
-                        {p.verified && <BadgeCheck size={14} className="person-card-verified" />}
+                        {p.verified && <VerifiedBadge size="sm" label={t("Onaylı öğrenci")} />}
                       </strong>
                       <span>{p.department || p.university?.name}</span>
                     </span>

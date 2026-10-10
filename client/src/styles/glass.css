@@ -1760,7 +1760,6 @@ img:not([src]) {
 .story-ring { background: var(--accent-solid); }
 
 /* Doğrulanmış rozet ve çevrimiçi göstergeler: adaçayı */
-.suggest-card-verified { color: var(--teal); }
 
 /* Butonlar: ışıma yok, sadece ince derinlik */
 .icon-btn-amber.is-primary,
@@ -2549,14 +2548,7 @@ select option:disabled {
    Onaylı öğrenci rozeti
    ========================================================================== */
 
-.name-verified {
-  display: inline-block;
-  margin-left: 6px;
-  vertical-align: -3px;
-  color: var(--teal);
-}
 
-.swipe-card-verified { color: #b5e0c1; align-self: center; }
 
 .badge.badge-neutral {
   background: var(--glass-soft);
@@ -2869,7 +2861,6 @@ select option:disabled {
 }
 
 .swipe-info-title .swipe-card-age { font-size: 20px; font-weight: 500; color: var(--text-muted); }
-.swipe-info-title .swipe-card-verified { color: var(--teal); align-self: center; }
 
 .swipe-info-actions { display: flex; gap: 6px; flex-shrink: 0; }
 
@@ -3327,7 +3318,6 @@ select option:disabled {
   color: var(--text);
 }
 .person-card-name-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.person-card-verified { flex-shrink: 0; color: var(--teal); }
 .person-card-sub,
 .person-card-active {
   max-width: 100%;
@@ -4759,7 +4749,7 @@ button.announcement-main { cursor: pointer; }
   color: var(--text) !important;
   cursor: pointer;
 }
-.poll-multiple input { width: 20px; height: 20px; margin: 0; accent-color: var(--amber-soft); }
+.poll-multiple .neon-checkbox__label { font-size: 14px; }
 
 /* Yönetim sayfası */
 .club-manage { max-height: 88dvh; overflow-y: auto; }

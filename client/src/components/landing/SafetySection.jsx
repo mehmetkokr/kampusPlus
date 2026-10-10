@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
-import { BadgeCheck, FileCheck2, ShieldCheck, UserX } from 'lucide-react';
+import { VerifiedBadge } from '@/components/ui/icon-badge';
+import { FileCheck2, ShieldCheck, UserX } from 'lucide-react';
 import Reveal from './Reveal';
 import GlassCard from './GlassCard';
 import { useI18n } from '../../i18n';
@@ -78,7 +79,7 @@ export default function SafetySection() {
                   {t("kampüs")}<span className="text-amber">·</span>
                 </span>
                 <span className="flex items-center gap-1 rounded-full bg-amber-dim px-2.5 py-1 text-[0.625rem] font-bold text-amber-soft">
-                  <BadgeCheck size={11} /> {t("DOĞRULANMIŞ")}
+                  <VerifiedBadge size="sm" label="Doğrulanmış" /> {t("DOĞRULANMIŞ")}
                 </span>
               </div>
 

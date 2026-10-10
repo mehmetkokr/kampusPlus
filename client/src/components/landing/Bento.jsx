@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
+import { VerifiedBadge } from '@/components/ui/icon-badge';
 import { AnimatePresence, motion, useInView, useReducedMotion } from 'framer-motion';
-import { BadgeCheck, Check, Crown, EyeOff, Heart, Loader2, Lock, Mail, ShieldCheck, UserX, X } from 'lucide-react';
+import { Check, Crown, EyeOff, Heart, Loader2, Lock, Mail, ShieldCheck, UserX, X } from 'lucide-react';
 import Reveal from './Reveal';
 import { useI18n } from '../../i18n';
 import { demoPhoto } from './demoPhotos';
@@ -89,7 +90,7 @@ function SwipeDemo() {
               onError={(e) => e.currentTarget.remove()}
             />
             <span className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-surface/80 px-2.5 py-1 text-[0.625rem] font-semibold text-teal backdrop-blur">
-              <BadgeCheck size={11} /> {tx("Doğrulanmış")}
+              <VerifiedBadge size="sm" label="Doğrulanmış" /> {tx("Doğrulanmış")}
             </span>
           </div>
           <div className="px-4 py-3">

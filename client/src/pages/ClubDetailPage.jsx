@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { useConfirm } from '../context/ConfirmContext';
 import { useI18n } from '../i18n';
+import { NeonCheckbox } from '@/components/ui/animated-check-box';
 import { useToast } from '../context/ToastContext';
 import { compressImage } from '../utils/image';
 import { usePhotoEditor } from '../context/PhotoEditorContext';
@@ -827,10 +828,13 @@ function CreatePollModal({ clubId, onClose, onCreated }) {
             </button>
           )}
 
-          <label className="poll-multiple">
-            <input type="checkbox" checked={multiple} onChange={(e) => setMultiple(e.target.checked)} />
-            <span>{t('Birden fazla seçeneğe oy verilebilsin')}</span>
-          </label>
+          <NeonCheckbox
+            className="poll-multiple"
+            size={22}
+            checked={multiple}
+            onChange={(e) => setMultiple(e.target.checked)}
+            label={t('Birden fazla seçeneğe oy verilebilsin')}
+          />
 
           {error && <p className="error-text">{error}</p>}
           <button className="btn btn-like" type="submit" disabled={saving} style={{ marginTop: 10 }}>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import { VerifiedBadge } from '@/components/ui/icon-badge';
 import { useNavigate } from 'react-router-dom';
-import { Heart, Crown, BadgeCheck, Eye } from 'lucide-react';
+import { Heart, Crown, Eye } from 'lucide-react';
 import api from '../api';
 import { API_BASE_URL } from '../config';
 import { useToast } from '../context/ToastContext';
@@ -112,7 +113,7 @@ export default function LikesReceived({ data, onChanged, onGoCards }) {
                 {u.fullName}
                 {u.age ? `, ${u.age}` : ''}
                 {u.studentDocStatus === 'approved' && (
-                  <BadgeCheck size={15} className="suggest-card-verified" />
+                  <VerifiedBadge size="sm" label={t("Onaylı öğrenci")} />
                 )}
               </div>
               <div className="match-sub">

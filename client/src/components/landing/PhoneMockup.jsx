@@ -10,9 +10,9 @@ import {
 } from 'framer-motion';
 import {
   ArrowRight,
-  BadgeCheck,
   BarChart3,
   BatteryFull,
+  Camera,
   Bell,
   CalendarDays,
   Check,
@@ -24,9 +24,12 @@ import {
   Layers,
   LayoutGrid,
   MessageCircle,
+  MoreHorizontal,
   Pin,
+  Plus,
   RotateCcw,
   Search,
+  Settings,
   Send,
   Signal,
   SlidersHorizontal,
@@ -34,9 +37,11 @@ import {
   UserPlus,
   Users,
   Wifi,
+  X,
 } from 'lucide-react';
 import { useI18n } from '../../i18n';
 import { demoPhoto } from './demoPhotos';
+import { Badge } from '@/components/ui/badge';
 
 // Ana sayfadaki telefon: uygulamanın gerçek ekranlarının küçük, dokunulabilen
 // bir kopyası. Ekranda görününce kendi kendine bir tur atar (Kart Modu →
@@ -75,11 +80,11 @@ const TABS = [
 
 const HEADERS = {
   discover: { icon: Compass, eyebrow: UNI, title: 'Keşfet', actions: ['bell', 'filter'] },
-  cards: { icon: Layers, eyebrow: 'Sağa kaydır: beğen · Sola: geç', title: 'Kart Modu', back: true },
+  cards: { icon: Layers, title: 'Kart Modu', back: true },
   feed: { icon: LayoutGrid, eyebrow: UNI, title: 'Akış', actions: ['bell'] },
   clubs: { icon: Users, eyebrow: UNI, title: 'Kulüpler' },
-  chat: { icon: MessageCircle, eyebrow: 'Eşleşmelerin', title: 'Sohbet' },
-  profile: { icon: User, eyebrow: 'Hesabın', title: 'Profilim', actions: ['bell'] },
+  chat: { icon: MessageCircle, eyebrow: 'Mesajlar', title: 'Sohbet' },
+  profile: { plain: true, title: 'Profilim', actions: ['settings', 'bell'] },
 };
 
 const CLUBS = [
@@ -109,6 +114,16 @@ const TOUR = [
   { key: 'feed', label: 'Akış', ms: 4600 },
   { key: 'profile', label: 'Profil', ms: 4600 },
 ];
+
+// Onaylı öğrenci: uygulamadaki gibi yuvarlak, dolu, tikli rozet (badge-12)
+function Verified({ size = 12 }) {
+  const { t } = useI18n();
+  return (
+    <Badge role="img" aria-label={t('Onaylı öğrenci')} className="shrink-0 rounded-full p-0" style={{ width: size, height: size }}>
+      <Check strokeWidth={4} style={{ width: size * 0.62, height: size * 0.62 }} />
+    </Badge>
+  );
+}
 
 // Fotoğraf yüklenene kadar (ya da yüklenemezse) baş harfler görünür
 function Face({ person, size, className = '', style }) {
@@ -174,6 +189,20 @@ function Header({ tab, matches, club, onBack }) {
   const h = club
     ? { icon: Users, eyebrow: t('Kulüp sohbeti · {n} üye', { n: club.members }), title: club.name, back: true }
     : HEADERS[tab];
+  if (h.plain) {
+    return (
+      <div className="relative z-20 mx-3 mt-3 flex items-center gap-2 px-1 py-1.5">
+        <p className="text-[19px] font-extrabold tracking-[-0.03em] text-paper">{t(h.title)}</p>
+        <div className="ml-auto flex items-center gap-2 text-paper">
+          <Settings size={15} />
+          <span className="relative">
+            <Bell size={15} />
+            {matches.length > 0 && <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-coral" />}
+          </span>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="relative z-20 mx-3 mt-3 flex items-center gap-2 rounded-[1.1rem] border border-line bg-surface/90 px-2.5 py-2 backdrop-blur-xl">
       {h.back && (
@@ -185,7 +214,7 @@ function Header({ tab, matches, club, onBack }) {
         <h.icon size={15} strokeWidth={2.3} />
       </span>
       <div className="min-w-0 leading-tight">
-        <p className="truncate text-[7.5px] font-bold uppercase tracking-[0.12em] text-amber-soft">{t(h.eyebrow)}</p>
+        {h.eyebrow && <p className="truncate text-[7.5px] font-bold uppercase tracking-[0.12em] text-amber-soft">{t(h.eyebrow)}</p>}
         <p className="truncate text-[14px] font-bold text-paper">{t(h.title)}</p>
       </div>
       <div className="ml-auto flex gap-1.5">
@@ -280,7 +309,7 @@ function SwipeCard({ person, isTop, depth, command, onDecide, nudge }) {
       <div className="px-3 pb-3 pt-2">
         <div className="flex items-start gap-1.5">
           <p className="flex items-center gap-1 text-[14px] font-bold leading-tight text-paper">
-            {person.name} <BadgeCheck size={13} className="text-amber-soft" aria-label={t('Onaylı öğrenci')} />
+            {person.name} <Verified size={13} />
           </p>
           <span className="text-[12px] text-paper-muted">{person.age}</span>
           <span className="ml-auto flex items-center gap-1 rounded-full border border-line px-2 py-0.5 text-[8.5px] font-semibold text-paper">
@@ -320,6 +349,7 @@ function SwipeCard({ person, isTop, depth, command, onDecide, nudge }) {
 
 function CardsScreen({ deck, likesCount, command, setCommand, onDecide, onReset, nudge }) {
   const { t } = useI18n();
+  const [view, setView] = useState('cards');
   const top = deck[0];
   const decide = (person, dir) => {
     setCommand(null);
@@ -327,41 +357,79 @@ function CardsScreen({ deck, likesCount, command, setCommand, onDecide, onReset,
   };
   return (
     <div className="px-3">
-      <div className="mb-2 flex items-center gap-2 rounded-[0.9rem] border border-line bg-surface px-2.5 py-2">
-        <span className="flex h-6 w-6 items-center justify-center rounded-[0.5rem] bg-amber-soft text-white">
-          <Heart size={11} fill="currentColor" />
-        </span>
-        <span className="min-w-0 flex-1 leading-tight">
-          <span className="block text-[10px] font-bold text-paper">{t('{n} kişi seni beğendi', { n: likesCount })}</span>
-          <span className="block text-[8px] text-paper-muted">{t('Premium ile kim olduklarını gör')}</span>
-        </span>
-        <FaceStack ids={['zeynep', 'deniz', 'elif']} size={16} />
-        <ChevronRight size={12} className="text-paper-faint" />
+      {/* Uygulamadaki gibi: Keşfet | Seni beğenenler */}
+      <div className="mb-2 flex rounded-[0.8rem] bg-surface-2 p-0.5 text-[9.5px] font-semibold" role="tablist">
+        {[
+          ['cards', t('Keşfet')],
+          ['likes', t('Seni beğenenler')],
+        ].map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            aria-selected={view === key}
+            onClick={() => setView(key)}
+            className={`flex min-h-[26px] flex-1 items-center justify-center gap-1 rounded-[0.65rem] ${view === key ? 'bg-surface text-paper shadow-sm' : 'text-paper-muted'}`}
+          >
+            {label}
+            {key === 'likes' && <span className="flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-coral px-1 text-[7px] font-bold text-white">{likesCount}</span>}
+          </button>
+        ))}
       </div>
-      <div className="relative h-[292px]">
-        {deck.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center rounded-[1.3rem] border border-line bg-surface px-6 text-center">
-            <p className="text-[12px] font-bold text-paper">{t('Şu an gösterilecek kimse kalmadı.')}</p>
-            <p className="mt-1 text-[9.5px] text-paper-muted">{t('Kampüsüne yeni öğrenciler katıldıkça burada görünecek.')}</p>
-            <button type="button" onClick={onReset} className="mt-3 flex min-h-[34px] items-center gap-1.5 rounded-full bg-surface-2 px-3.5 text-[10px] font-semibold text-paper">
-              <RotateCcw size={11} /> {t('Baştan başla')}
-            </button>
+
+      {view === 'likes' ? (
+        <div className="flex h-[352px] flex-col items-center rounded-[1.3rem] border border-line bg-surface px-4 pt-5 text-center">
+          <span className="flex items-center gap-1 rounded-full bg-amber-soft px-2.5 py-1 text-[12px] font-bold text-white">
+            <Heart size={11} fill="currentColor" /> {likesCount}
+          </span>
+          <p className="mt-2 text-[12px] font-bold text-paper">{t('{n} kişi seni beğendi', { n: likesCount })}</p>
+          <p className="mt-0.5 text-[9px] text-paper-muted">{t('Premium ile kim olduklarını gör')}</p>
+          <div className="mt-3 grid w-full grid-cols-2 gap-2">
+            {['zeynep', 'deniz', 'elif', 'selin'].map((id) => (
+              <div key={id} className="relative aspect-[4/5] overflow-hidden rounded-[0.9rem]" style={{ background: byId(id).tone }}>
+                <img src={demoPhoto(id, 60, 75)} alt="" className="absolute inset-0 h-full w-full scale-110 object-cover blur-md" onError={(e) => e.currentTarget.remove()} />
+                <span className="absolute bottom-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-amber-soft text-white">
+                  <Heart size={9} fill="currentColor" />
+                </span>
+              </div>
+            ))}
           </div>
-        ) : (
-          deck
-            .slice(0, 2)
-            .map((p, i) => <SwipeCard key={p.id} person={p} isTop={i === 0} depth={i} command={i === 0 ? command : null} onDecide={decide} nudge={i === 0 && nudge} />)
-            .reverse()
-        )}
-      </div>
-      <div className="mt-2 grid grid-cols-2 gap-2">
-        <button type="button" disabled={!top} onClick={() => setCommand({ dir: -1, n: Date.now() })} className="min-h-[34px] rounded-[0.8rem] border border-coral/45 bg-coral/10 text-[11px] font-bold text-coral transition-transform active:scale-95 disabled:opacity-40">
-          {t('Geç')}
-        </button>
-        <button type="button" disabled={!top} onClick={() => setCommand({ dir: 1, n: Date.now() })} className="min-h-[34px] rounded-[0.8rem] bg-amber-soft text-[11px] font-bold text-white transition-transform active:scale-95 disabled:opacity-40">
-          {t('Beğen')}
-        </button>
-      </div>
+        </div>
+      ) : (
+        <>
+          <div className="relative h-[292px]">
+            {deck.length === 0 ? (
+              <div className="flex h-full flex-col items-center justify-center rounded-[1.3rem] border border-line bg-surface px-6 text-center">
+                <p className="text-[12px] font-bold text-paper">{t('Şu an gösterilecek kimse kalmadı.')}</p>
+                <p className="mt-1 text-[9.5px] text-paper-muted">{t('Kampüsüne yeni öğrenciler katıldıkça burada görünecek.')}</p>
+                <button type="button" onClick={onReset} className="mt-3 flex min-h-[34px] items-center gap-1.5 rounded-full bg-surface-2 px-3.5 text-[10px] font-semibold text-paper">
+                  <RotateCcw size={11} /> {t('Baştan başla')}
+                </button>
+              </div>
+            ) : (
+              deck
+                .slice(0, 2)
+                .map((p, i) => <SwipeCard key={p.id} person={p} isTop={i === 0} depth={i} command={i === 0 ? command : null} onDecide={decide} nudge={i === 0 && nudge} />)
+                .reverse()
+            )}
+          </div>
+          {/* Yuvarlak karar düğmeleri (uygulamadaki gibi) */}
+          <div className="mt-2 flex items-end justify-center gap-6">
+            <div className="flex flex-col items-center gap-0.5">
+              <button type="button" disabled={!top} onClick={() => setCommand({ dir: -1, n: Date.now() })} aria-label={t('Geç')} className="flex h-10 w-10 items-center justify-center rounded-full border border-line bg-surface text-coral shadow-md transition-transform active:scale-90 disabled:opacity-40">
+                <X size={18} strokeWidth={2.6} />
+              </button>
+              <span className="text-[7.5px] font-semibold text-paper-muted">{t('Geç')}</span>
+            </div>
+            <div className="flex flex-col items-center gap-0.5">
+              <button type="button" disabled={!top} onClick={() => setCommand({ dir: 1, n: Date.now() })} aria-label={t('Beğen')} className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-soft text-white shadow-lg transition-transform active:scale-90 disabled:opacity-40">
+                <Heart size={20} fill="currentColor" strokeWidth={0} />
+              </button>
+              <span className="text-[7.5px] font-semibold text-paper-muted">{t('Beğen')}</span>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -518,7 +586,7 @@ function FeedScreen({ liked, onLike, scrollRef, going, onGo }) {
               <Avatar person={p.who} size={26} />
               <div className="min-w-0 flex-1 leading-tight">
                 <p className="flex items-center gap-1 text-[9.5px] font-bold text-paper">
-                  {p.who.name} <BadgeCheck size={10} className="text-amber-soft" />
+                  {p.who.name} <Verified size={10} />
                 </p>
                 <p className="text-[7.5px] text-paper-muted">{t(p.meta)}</p>
               </div>
@@ -676,6 +744,9 @@ function ChatScreen({ chats, active, typing, onOpen, onSend }) {
         <Avatar person={active} size={26} online />
         <span className="text-[11px] font-bold text-paper">{active.name}</span>
         <span className="ml-auto text-[8px] font-semibold text-teal">{typing === active.id ? t('yazıyor…') : t('çevrimiçi')}</span>
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-surface-2 text-paper-muted" aria-hidden="true">
+          <MoreHorizontal size={12} />
+        </span>
       </div>
       <div className="flex flex-1 flex-col justify-end gap-1.5 overflow-hidden">
         <AnimatePresence initial={false}>
@@ -709,98 +780,109 @@ function ChatScreen({ chats, active, typing, onOpen, onSend }) {
   );
 }
 
-function ProfileScreen({ likes, joined, matches, scrollRef }) {
+function ProfileScreen({ likes, joined, scrollRef }) {
   const { t } = useI18n();
   const me = ME;
-  const r = 16;
-  const c = 2 * Math.PI * r;
-  const score = Math.min(100, 70 + likes * 5 + joined * 5);
-  const myClubs = [CLUBS[0], CLUBS[1], ...CLUBS.slice(2).filter((cl) => joined > 0 && cl.id === 3)];
+  const R = 31;
+  const C = 2 * Math.PI * R;
+  const score = Math.min(100, 65 + likes * 5 + joined * 5);
+  const intents = ['Arkadaşlık', 'Bir Kahve', 'Çalışma Arkadaşı', 'Etkinlik Arkadaşı', 'Kulüp Arkadaşı', 'Spor Arkadaşı', 'Proje Ortağı'];
+  const selected = ['Arkadaşlık', 'Bir Kahve', 'Çalışma Arkadaşı', 'Etkinlik Arkadaşı'];
+  const tags = ['Yapay Zeka', 'Oyun', 'Yazılım', 'Satranç', 'Kahve', 'Fotoğraf'];
+  const label = 'text-[7.5px] font-bold uppercase tracking-[0.08em] text-paper-muted';
   return (
-    <div ref={scrollRef} className="h-[452px] space-y-2 overflow-y-auto scroll-smooth px-3 pb-16 [scrollbar-width:none]">
-      <div className="rounded-[1.2rem] border border-line bg-surface px-3 pb-3 pt-3">
-        <div className="flex items-center gap-3">
-          <Avatar person={me} size={52} ring />
-          <div className="min-w-0 leading-tight">
-            <p className="flex items-center gap-1 text-[12.5px] font-bold text-paper">
-              {me.name}, {me.age} <BadgeCheck size={12} className="text-amber-soft" />
-            </p>
-            <p className="truncate text-[8.5px] text-paper-muted">{t('Hatay Mustafa Kemal Üniversitesi')}</p>
-            <p className="text-[8.5px] text-paper-muted">{t('Bilgisayar Müh.')} · {t('2. Sınıf')}</p>
-          </div>
+    <div ref={scrollRef} className="relative h-[452px] space-y-2 overflow-y-auto scroll-smooth px-3 pb-24 [scrollbar-width:none]">
+      {/* Profil kartı: ilerleme halkalı fotoğraf */}
+      <div className="flex flex-col items-center rounded-[1.2rem] border border-line bg-surface px-3 pb-3 pt-4 text-center">
+        <div className="relative h-[74px] w-[74px]">
+          <svg viewBox="0 0 74 74" className="absolute inset-0 -rotate-90" aria-hidden="true">
+            <circle cx="37" cy="37" r={R} fill="none" strokeWidth="3" className="stroke-surface-3" />
+            <motion.circle cx="37" cy="37" r={R} fill="none" strokeWidth="3" strokeLinecap="round" stroke="var(--amber-soft)" strokeDasharray={C} animate={{ strokeDashoffset: C - (score / 100) * C }} transition={{ duration: 0.6, ease: EASE_OUT }} />
+          </svg>
+          <span className="absolute inset-[7px]">
+            <Face person={me} size={60} />
+          </span>
+          <span className="absolute bottom-1 right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-[var(--surface)] bg-amber-soft text-white">
+            <Camera size={9} />
+          </span>
         </div>
-        <p className="mt-2 text-[9px] leading-snug text-paper">{t('Kahve, satranç ve uzun yürüyüşler. Proje arkadaşı arıyorum.')}</p>
-        <div className="mt-2 grid grid-cols-4 gap-1">
-          {[
-            [matches, 'eşleşme'],
-            [2 + joined, 'kulüp'],
-            [128, 'takipçi'],
-            [96, 'takip'],
-          ].map(([n, l]) => (
-            <div key={l} className="rounded-[0.6rem] bg-surface-2 py-1 text-center">
-              <p className="text-[11px] font-bold leading-tight text-paper">{n}</p>
-              <p className="text-[6.5px] text-paper-muted">{t(l)}</p>
+        <p className="mt-2 text-[13px] font-extrabold tracking-[-0.02em] text-paper">
+          {me.name}, {me.age}
+        </p>
+        <p className="text-[8.5px] text-paper-muted">{t('Hatay Mustafa Kemal Üniversitesi')}</p>
+        <div className="mt-2 flex items-center gap-2">
+          <span className="flex items-center gap-1 rounded-full border border-teal/60 bg-teal/10 px-2 py-0.5 text-[8px] font-bold text-teal">
+            <Verified size={10} /> {t('Onaylı Öğrenci')}
+          </span>
+          <span className="flex items-center text-[8.5px] font-semibold text-paper">
+            {t('Profil Tamamlama')}: %{score} <ChevronRight size={10} className="text-paper-faint" />
+          </span>
+        </div>
+      </div>
+
+      {/* Fotoğraflar 2×3 */}
+      <div className="rounded-[1.1rem] border border-line bg-surface p-2.5">
+        <div className="mb-1.5 flex items-center justify-between">
+          <p className="text-[10.5px] font-bold text-paper">{t('Fotoğraflar')}</p>
+          <span className="text-[9px] font-semibold text-amber-soft">{t('Düzenle')}</span>
+        </div>
+        <div className="grid grid-cols-3 gap-1.5">
+          {['ece', 'coffee', 'chess', null, null, null].map((key, i) => (
+            <div key={key || `e${i}`} className="relative flex aspect-[3/4] items-center justify-center overflow-hidden rounded-[0.6rem] bg-surface-2 text-paper">
+              {key ? (
+                <img src={demoPhoto(key, 70, 94)} alt="" decoding="async" className="absolute inset-0 h-full w-full object-cover" onError={(e) => e.currentTarget.remove()} />
+              ) : (
+                i === 3 && <Plus size={14} strokeWidth={2.4} />
+              )}
             </div>
           ))}
         </div>
       </div>
 
-      <div className="rounded-[1rem] border border-line bg-surface p-2.5">
-        <p className="text-[8px] font-bold uppercase tracking-wider text-paper-faint">{t('Ne arıyorum')}</p>
-        <div className="mt-1 flex flex-wrap gap-1">
-          {['Arkadaşlık', 'Çalışma Arkadaşı', 'Proje Ortağı'].map((i) => (
-            <span key={i} className={`rounded-full px-2 py-0.5 text-[8px] font-semibold ${INTENT_TONE[i] || 'bg-[color:var(--sky)]/15 text-[color:var(--sky)]'}`}>
-              {t(i)}
-            </span>
-          ))}
-        </div>
-        <p className="mt-2 text-[8px] font-bold uppercase tracking-wider text-paper-faint">{t('İlgi alanları')}</p>
-        <div className="mt-1 flex flex-wrap gap-1">
-          {['Satranç', 'Fotoğraf', 'Koşu', 'Kahve', 'Müzik'].map((i) => (
-            <span key={i} className="rounded-full bg-surface-2 px-2 py-0.5 text-[8px] font-semibold text-paper">
-              {t(i)}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-3 gap-1.5">
-        {[
-          ['ece', '#ffd6a5'],
-          ['coffee', '#e8d5c0'],
-          ['chess', '#b9d6f7'],
-        ].map(([key, bg], i) => (
-          <div key={key} className="relative aspect-[3/4] overflow-hidden rounded-[0.7rem]" style={{ background: bg }}>
-            <img src={demoPhoto(key, 90, 120)} alt="" decoding="async" className="absolute inset-0 h-full w-full object-cover" onError={(e) => e.currentTarget.remove()} />
-            {i === 0 && <span className="absolute left-1 top-1 rounded-full bg-black/45 px-1 text-[6.5px] font-bold text-white">{t('Ana')}</span>}
-          </div>
-        ))}
-      </div>
-
-      <div className="rounded-[1rem] border border-line bg-surface p-2.5">
-        <p className="mb-1.5 text-[8px] font-bold uppercase tracking-wider text-paper-faint">{t('Kulüplerim')}</p>
-        <div className="space-y-1.5">
-          {myClubs.map((cl, i) => (
-            <div key={cl.id} className="flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-[0.5rem] text-white" style={{ background: cl.tone }}>
-                <Users size={11} />
-              </span>
-              <span className="min-w-0 flex-1 truncate text-[9.5px] font-semibold text-paper">{t(cl.name)}</span>
-              {i === 0 && <span className="rounded-full bg-[color:var(--sky)]/15 px-1.5 py-0.5 text-[7px] font-bold text-[color:var(--sky)]">{t('Yönetici')}</span>}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2.5 rounded-[1rem] border border-line bg-surface p-2.5">
-        <svg width="40" height="40" viewBox="0 0 40 40" className="-rotate-90" aria-hidden="true">
-          <circle cx="20" cy="20" r={r} fill="none" strokeWidth="4" className="stroke-surface-3" />
-          <motion.circle cx="20" cy="20" r={r} fill="none" strokeWidth="4" strokeLinecap="round" stroke="var(--amber-soft)" strokeDasharray={c} animate={{ strokeDashoffset: c - (score / 100) * c }} transition={{ duration: 0.6, ease: EASE_OUT }} />
-        </svg>
+      <div className="space-y-3 rounded-[1.1rem] border border-line bg-surface p-2.5">
         <div>
-          <p className="text-[10.5px] font-bold text-paper">{t('Profil gücün')} %{score}</p>
-          <p className="text-[8px] text-paper-muted">{score >= 100 ? t('Profilin eksiksiz') : t('Sıradaki adım: Instagram hesabını bağla')}</p>
+          <p className={label}>{t('Ne arıyorsun?')}</p>
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {intents.map((i) => (
+              <span key={i} className={`rounded-full px-2 py-1 text-[8px] font-semibold ${selected.includes(i) ? 'bg-amber-soft text-white' : 'bg-surface-2 text-paper-muted'}`}>
+                {t(i)}
+              </span>
+            ))}
+          </div>
         </div>
+        <div>
+          <div className="flex justify-between">
+            <p className={label}>{t('Hakkımda')}</p>
+            <span className="text-[7.5px] text-paper-faint">58/300</span>
+          </div>
+          <p className="mt-1.5 rounded-[0.6rem] bg-surface-2 px-2 py-1.5 text-left text-[8.5px] leading-snug text-paper">
+            {t('Kahve, satranç ve uzun yürüyüşler. Proje arkadaşı arıyorum.')}
+          </p>
+        </div>
+        <div>
+          <div className="flex justify-between">
+            <p className={label}>{t('İlgi alanları')}</p>
+            <span className="text-[7.5px] font-semibold text-paper-faint">{tags.length}/10</span>
+          </div>
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {tags.map((tag) => (
+              <span key={tag} className="flex items-center gap-0.5 rounded-full bg-surface-2 py-0.5 pl-2 pr-1 text-[8px] font-semibold text-paper">
+                {t(tag)} <X size={8} className="text-paper-faint" />
+              </span>
+            ))}
+            <span className="flex items-center gap-0.5 rounded-full border border-dashed border-amber-soft/60 px-2 py-0.5 text-[8px] font-semibold text-amber-soft">
+              {t('Ekle')} <Plus size={8} />
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Sabit kaydet düğmesi, alt menünün üstünde */}
+      {/* Kaydırma alanı alt menünün biraz üstünde bittiği için düğme alana göre aşağı itilir */}
+      <div className="sticky z-10 pt-1" style={{ bottom: -36 }}>
+        <span className="flex min-h-[30px] items-center justify-center rounded-[0.8rem] bg-amber-soft text-[8.5px] font-extrabold uppercase tracking-[0.06em] text-white shadow-lg">
+          {t('Değişiklikleri kaydet')}
+        </span>
       </div>
     </div>
   );
@@ -1043,7 +1125,7 @@ export default function PhoneMockup({ className = '' }) {
                   {tab === 'clubs' && !openClub && <ClubsScreen joined={joined} onOpen={setOpenClub} onToggle={(id) => setJoined((j) => (j.includes(id) ? j.filter((x) => x !== id) : [...j, id]))} />}
                   {tab === 'clubs' && openClub && <ClubChatScreen club={openClub} votes={votes} myVote={myVote} onVote={vote} />}
                   {tab === 'chat' && <ChatScreen chats={chats} active={chatWith} typing={typing} onOpen={openChat} onSend={(text) => send(text)} />}
-                  {tab === 'profile' && <ProfileScreen scrollRef={profileRef} likes={likes} joined={joined.length} matches={matches.length} />}
+                  {tab === 'profile' && <ProfileScreen scrollRef={profileRef} likes={likes} joined={joined.length} />}
                 </motion.div>
               </div>
 

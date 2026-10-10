@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { VerifiedBadge } from '@/components/ui/icon-badge';
 import { Link } from 'react-router-dom';
-import { BadgeCheck, Camera, ChevronRight, GraduationCap, Lock, LogOut, Settings, ShieldCheck } from 'lucide-react';
+import { Camera, ChevronRight, GraduationCap, Lock, LogOut, Settings, ShieldCheck } from 'lucide-react';
 import api from '../api';
 import { API_BASE_URL } from '../config';
 import { useAuth } from '../context/AuthContext';
@@ -160,7 +161,7 @@ export default function ProfilePage() {
         <div className="pf-hero-row">
           {isStudentVerified ? (
             <span className="pf-verified">
-              <BadgeCheck size={16} /> {t('Onaylı Öğrenci')}
+              <VerifiedBadge size="sm" label={t('Onaylı öğrenci')} /> {t('Onaylı Öğrenci')}
             </span>
           ) : (
             statusBadge && <span className="pf-status">{t(statusBadge)}</span>

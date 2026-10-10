@@ -9,6 +9,7 @@ import CubeLoader from '../components/CubeLoader';
 import { minDuration } from '../utils/wait';
 import { useI18n } from '../i18n';
 import ThemeToggle from '../components/ThemeToggle';
+import { NeonCheckbox } from '@/components/ui/animated-check-box';
 
 export default function LoginPage() {
   const { t } = useI18n();
@@ -96,14 +97,13 @@ export default function LoginPage() {
             </div>
 
             <div className="auth-row-between">
-              <label className="remember-me-check">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                />
-                {t("Beni Hatırla")}
-              </label>
+              <NeonCheckbox
+                className="remember-me-check"
+                size={22}
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                label={t("Beni Hatırla")}
+              />
               <Link to="/forgot-password" className="forgot-password-link">
                 {t("Şifremi Unuttum")}
               </Link>
