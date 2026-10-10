@@ -66,7 +66,7 @@ export default function DiscoverQuickTiles({ user, quick }) {
       )}
 
       {swipeOn && (
-        <button type="button" className="quick-tile quick-likes" onClick={() => navigate('/matches?tab=likes')}>
+        <button type="button" className="quick-tile quick-likes" onClick={() => navigate('/discover/swipe?tab=likes')}>
           <span className="quick-icon tone-rose">
             <Heart size={17} fill="currentColor" />
           </span>

@@ -38,11 +38,11 @@ import { useConfirm } from '../context/ConfirmContext';
 import { useI18n } from '../i18n';
 import { PenLine, Sprout, UsersRound } from 'lucide-react';
 import { compressImage } from '../utils/image';
+import EmojiPicker from '../components/EmojiPicker';
 import { usePhotoEditor } from '../context/PhotoEditorContext';
 
 const PAGE_SIZE = 10;
 const CAPTION_MAX = 280;
-const EMOJI_SET = ['😀', '😂', '😍', '🥳', '🔥', '👏', '🎉', '❤️', '😎', '🤔', '👍', '🙌'];
 
 // Akış sekmeleri: kampüsteki herkes, takip ettiklerim, benim paylaşımlarım.
 // Gönderiler sen silene kadar kalır; hikayeler 12 saat sonra kaybolur.
@@ -540,13 +540,13 @@ function Composer({ user, onCreated }) {
         </div>
 
         {showEmoji && (
-          <div className="emoji-strip">
-            {EMOJI_SET.map((em) => (
-              <button type="button" key={em} onClick={() => { setText((t) => t + em); textRef.current?.focus(); }}>
-                {em}
-              </button>
-            ))}
-          </div>
+          <EmojiPicker
+            className="composer-emoji"
+            onPick={(em) => {
+              setText((t) => t + em);
+              textRef.current?.focus();
+            }}
+          />
         )}
 
         <div className="x-composer-toolbar">

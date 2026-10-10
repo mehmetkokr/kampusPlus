@@ -563,28 +563,63 @@ textarea {
 
 .swipe-actions {
   display: flex;
-  gap: 12px;
-  padding-top: 16px;
+  justify-content: center;
+  align-items: flex-end; /* farklı boyuttaki düğmelerin yazıları aynı hizada */
+  gap: 36px;
+  padding-top: 18px;
 }
 
-.swipe-actions button {
-  flex: 1;
-}
-
+/* Genel olumlu / olumsuz düğmeler (kulüp sayfası vb.) */
 .btn-pass {
   background: color-mix(in srgb, var(--coral) 6%, transparent);
   border: 1.5px solid color-mix(in srgb, var(--coral) 70%, transparent);
   color: var(--coral);
   box-shadow: none;
 }
+.btn-pass:hover { background: var(--coral-dim); }
+.btn-like { background: var(--amber-soft); color: #ffffff; }
 
-.btn-pass:hover {
-  background: var(--coral-dim);
+/* Kart Modu karar düğmeleri: yuvarlak, simgeli; altta kısa yazı */
+.swipe-action {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
 }
-
-.btn-like {
+.swipe-btn {
+  display: grid;
+  place-items: center;
+  width: 66px;
+  height: 66px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: 0 10px 26px -14px rgba(0, 0, 0, 0.45), 0 2px 6px -2px rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+  transition: transform 0.18s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.18s ease, background-color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.swipe-btn.pass { color: var(--coral); }
+.swipe-btn.like {
+  width: 76px;
+  height: 76px;
+  border: 0;
   background: var(--amber-soft);
-  color: #ffffff;
+  color: #fff;
+  box-shadow: 0 14px 30px -12px color-mix(in srgb, var(--amber-soft) 70%, transparent);
+}
+@media (hover: hover) {
+  .swipe-btn:hover { transform: translateY(-2px) scale(1.04); }
+  .swipe-btn.pass:hover { background: color-mix(in srgb, var(--coral) 8%, var(--surface)); }
+}
+.swipe-btn:active { transform: scale(0.92); }
+.swipe-btn:focus-visible { outline: 3px solid var(--amber-soft); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) {
+  .swipe-btn { transition: none; }
+  .swipe-btn:hover, .swipe-btn:active { transform: none; }
 }
 
 .empty-state {
@@ -717,14 +752,15 @@ textarea {
 
 .chat-header-status {
   font-size: 11.5px;
-  color: var(--teal);
+  color: var(--text-muted);
   display: flex;
   align-items: center;
   gap: 6px;
   margin-top: 1px;
 }
 
-.chat-header-status::before {
+/* Yeşil nokta yalnızca çevrimiçiyken (çevrimdışı/son görülme gri, nokta yok) */
+.chat-header-status.online::before {
   content: '';
   width: 6px;
   height: 6px;
@@ -1704,30 +1740,6 @@ textarea {
 }
 
 /* ---------- Gönderi Oluşturma Kutusu ---------- */
-
-.emoji-strip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 8px;
-  margin-bottom: 12px;
-}
-
-.emoji-strip button {
-  background: none;
-  border: none;
-  font-size: 18px;
-  padding: 4px;
-  cursor: pointer;
-  border-radius: 6px;
-}
-
-.emoji-strip button:hover {
-  background: var(--surface-3);
-}
 
 /* ---------- Gönderi Kartı (Instagram tarzı) ---------- */
 

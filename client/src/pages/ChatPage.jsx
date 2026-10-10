@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
-import { Smile } from 'lucide-react';
+import { HeartOff, MoreHorizontal, Smile, UserRound } from 'lucide-react';
 import api, { buildFileUrl } from '../api';
 import { API_BASE_URL } from '../config';
 import { useToast } from '../context/ToastContext';
+import { useConfirm } from '../context/ConfirmContext';
 import { ArrowLeft as ArrowLeftIcon, Send as SendIcon, Image as ImageIcon, Mic as MicIcon, Paperclip as PaperclipIcon, File as FileIcon } from 'lucide-react';
 import VoiceMessagePlayer from '../components/VoiceMessagePlayer';
 import { useI18n } from '../i18n';
@@ -26,6 +27,10 @@ export default function ChatPage() {
   const navigate = useNavigate();
   const toast = useToast();
   const editPhoto = usePhotoEditor();
+  const confirm = useConfirm();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+  const unmatchingRef = useRef(false); // kendi kaldırdığımızda canlı bildirim ikinci kez uyarmasın
 
   const [messages, setMessages] = useState([]);
   const [hasMoreMessages, setHasMoreMessages] = useState(false);
@@ -87,6 +92,13 @@ export default function ChatPage() {
         if (msg.senderId !== myUserIdRef.current) {
           socket.emit('mark_read', { matchId });
         }
+      }
+    });
+
+    socket.on('match_removed', ({ matchId: removedId }) => {
+      if (String(removedId) === String(matchId) && !unmatchingRef.current) {
+        toast.info('Bu eşleşme kaldırıldı.');
+        navigate('/matches', { replace: true });
       }
     });
 
@@ -267,6 +279,39 @@ export default function ChatPage() {
     mediaRecorderRef.current?.stop();
   }
 
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const onDown = (e) => menuRef.current && !menuRef.current.contains(e.target) && setMenuOpen(false);
+    const onKey = (e) => e.key === 'Escape' && setMenuOpen(false);
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [menuOpen]);
+
+  async function unmatch() {
+    setMenuOpen(false);
+    const name = otherUser?.fullName?.split(' ')[0] || '';
+    const ok = await confirm({
+      title: 'Eşleşme kaldırılsın mı?',
+      message: tx('{name} ile sohbetiniz ikiniz için de silinir ve birbirinizin Kart Modu destesinde tekrar görünmezsiniz. Bu işlem geri alınamaz.', { name }),
+      confirmLabel: 'Eşleşmeyi kaldır',
+      danger: true,
+    });
+    if (!ok) return;
+    unmatchingRef.current = true;
+    try {
+      await api.delete(`/matches/${matchId}`);
+      toast.success('Eşleşme kaldırıldı.');
+      navigate('/matches', { replace: true });
+    } catch (err) {
+      unmatchingRef.current = false;
+      toast.error(err.response?.data?.error || 'Eşleşme kaldırılamadı.');
+    }
+  }
+
   async function unsendMessage(m) {
     setUnsending(m.id);
     try {
@@ -327,6 +372,30 @@ export default function ChatPage() {
             <div className="chat-header-status online">{tx("çevrimiçi")}</div>
           ) : (
             <div className="chat-header-status">{tx(formatLastSeen(presence.lastSeenAt))}</div>
+          )}
+        </div>
+        <div className="member-menu-wrap chat-header-menu" ref={menuRef}>
+          <button
+            type="button"
+            className="member-menu-btn"
+            onClick={() => setMenuOpen((v) => !v)}
+            aria-label={tx('Sohbet seçenekleri')}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+          >
+            <MoreHorizontal size={20} />
+          </button>
+          {menuOpen && (
+            <div className="member-menu" role="menu">
+              {otherUser?.id && (
+                <button type="button" role="menuitem" onClick={() => navigate(`/users/${otherUser.id}`)}>
+                  <UserRound size={15} /> {tx('Profili gör')}
+                </button>
+              )}
+              <button type="button" role="menuitem" className="danger" onClick={unmatch}>
+                <HeartOff size={15} /> {tx('Eşleşmeyi kaldır')}
+              </button>
+            </div>
           )}
         </div>
       </div>

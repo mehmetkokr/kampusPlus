@@ -1151,6 +1151,25 @@ const en = {
   '{name} ile birbirinizi beğendiniz. İlk mesajı sen at.': 'You and {name} liked each other. Send the first message.',
   'Mesaj gönder': 'Send a message',
   'Kaydırmaya devam et': 'Keep swiping',
+  // Kart Modu sekmeleri, eşleşmeyi kaldırma, emoji seçici
+  'Kart Modu sekmeleri': 'Card Mode tabs',
+  'Seni beğenenler': 'Liked you',
+  'Bu profil için karar ver': 'Decide on this profile',
+  'Geç (←)': 'Pass (←)',
+  'Beğen (→)': 'Like (→)',
+  'Sohbet seçenekleri': 'Chat options',
+  'Eşleşmeyi kaldır': 'Unmatch',
+  'Eşleşme kaldırılsın mı?': 'Unmatch?',
+  '{name} ile sohbetiniz ikiniz için de silinir ve birbirinizin Kart Modu destesinde tekrar görünmezsiniz. Bu işlem geri alınamaz.': 'Your chat with {name} will be deleted for both of you and you won\'t appear in each other\'s Card Mode again. This can\'t be undone.',
+  'Bu eşleşme kaldırıldı.': 'This match was removed.',
+  'Eşleşme kaldırıldı.': 'Unmatched.',
+  'Eşleşme kaldırılamadı.': 'Couldn\'t unmatch.',
+  'Emoji kategorileri': 'Emoji categories',
+  'Son kullanılanlar': 'Recently used',
+  'Yüzler': 'Smileys',
+  'El hareketleri': 'Hand gestures',
+  'Kalpler': 'Hearts',
+  'Semboller': 'Symbols',
 };
 
 const ORDINAL = { 1: '1st', 2: '2nd', 3: '3rd', 4: '4th' };

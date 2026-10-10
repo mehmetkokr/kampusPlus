@@ -5,6 +5,9 @@ const { requireAuth } = require('../middleware/auth');
 const { createNotification } = require('../lib/notifications');
 const { isBlockedEitherWay } = require('../lib/block');
 const { isPremiumActive } = require('../lib/premium');
+const fs = require('fs');
+const path = require('path');
+const { PRIVATE_UPLOADS } = require('../lib/paths');
 
 const router = express.Router();
 
@@ -161,6 +164,39 @@ router.get('/', requireAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Eşleşmeler alınamadı.' });
+  }
+});
+
+// DELETE /api/matches/:matchId — eşleşmeyi kaldır. Sohbet ve ekleri iki taraf
+// için de silinir. Beğeniler yerinde kalır: iki kişi birbirinin Kart Modu
+// destesine geri düşmez ve kendiliğinden yeniden eşleşmez.
+router.delete('/:matchId', requireAuth, async (req, res) => {
+  try {
+    const matchId = Number(req.params.matchId);
+    const match = await prisma.match.findUnique({ where: { id: matchId } });
+    if (!match || (match.userAId !== req.userId && match.userBId !== req.userId)) {
+      return res.status(404).json({ error: 'Eşleşme bulunamadı.' });
+    }
+
+    const files = await prisma.message.findMany({
+      where: { matchId, OR: [{ photoUrl: { not: null } }, { audioUrl: { not: null } }, { fileUrl: { not: null } }] },
+      select: { photoUrl: true, audioUrl: true, fileUrl: true },
+    });
+    await prisma.$transaction([
+      prisma.notification.deleteMany({ where: { targetType: 'match', targetId: matchId } }),
+      prisma.match.delete({ where: { id: matchId } }), // mesajlar cascade ile silinir
+    ]);
+    for (const m of files) {
+      for (const url of [m.photoUrl, m.audioUrl, m.fileUrl]) {
+        if (url?.startsWith('/api/files/')) fs.unlink(path.join(PRIVATE_UPLOADS, path.basename(url)), () => {});
+      }
+    }
+
+    req.app.get('io')?.to(`match_${matchId}`).emit('match_removed', { matchId });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Eşleşme kaldırılamadı.' });
   }
 });
 

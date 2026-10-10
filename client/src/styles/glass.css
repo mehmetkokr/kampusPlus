@@ -795,12 +795,6 @@
   border-radius: 18px;
 }
 
-.emoji-strip {
-  background: var(--glass-soft);
-  border: 1px solid var(--glass-border);
-  border-radius: 16px;
-}
-
 .sidebar-follow-btn {
   border: 1px solid color-mix(in srgb, var(--teal) 25%, transparent);
 }
@@ -3918,73 +3912,8 @@ select option:disabled {
 .quick-chevron { color: var(--text-faint); flex-shrink: 0; }
 
 /* ==========================================================================
-   Keşfet: ilgi alanına göre keşfet
+   Keşfet: kulüp başlangıç kartı ve öneri şeridi
    ========================================================================== */
-.interest-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 22px;
-}
-@media (min-width: 560px) {
-  .interest-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-}
-.interest-tile {
-  --tile: var(--accent-solid);
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-  min-height: 108px;
-  padding: 12px;
-  border-radius: 18px;
-  border: 1px solid color-mix(in srgb, var(--tile) 22%, var(--glass-border));
-  background:
-    var(--glass-surface);
-  color: var(--text);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.interest-tile:hover:not(.is-empty) { transform: translateY(-2px); }
-.interest-tile:active:not(.is-empty) { transform: scale(0.98); }
-.interest-tile.is-empty { cursor: default; }
-.interest-tile.is-empty .interest-tile-icon { opacity: 0.6; }
-.interest-tile.tone-brick { --tile: var(--amber-soft); }
-.interest-tile.tone-sage { --tile: var(--teal); }
-.interest-tile.tone-ink { --tile: var(--sky); }
-.interest-tile.tone-stone { --tile: #8e8e93; }
-.interest-tile-icon {
-  width: 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
-  border-radius: 11px;
-  background: color-mix(in srgb, var(--tile) 20%, transparent);
-  color: color-mix(in srgb, var(--tile) 75%, var(--text));
-}
-.interest-tile-name { font-size: 14.5px; font-weight: 700; }
-.interest-tile-meta {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: auto;
-  font-size: 12px;
-  color: var(--text-muted);
-}
-.interest-avatars { display: flex; }
-.interest-avatars img {
-  width: 20px;
-  height: 20px;
-  margin-left: -6px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid var(--surface);
-}
-.interest-avatars img:first-child { margin-left: 0; }
-
-.interest-empty,
 .club-starter {
   display: flex;
   align-items: center;
@@ -4000,62 +3929,13 @@ select option:disabled {
   text-align: left;
   cursor: pointer;
 }
-.interest-empty-icon {
-  width: 40px;
-  height: 40px;
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--accent-solid) 16%, transparent);
-  color: var(--accent-solid);
-}
-.interest-empty-text,
 .club-starter-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
-.interest-empty-text strong,
 .club-starter-text strong { font-size: 14.5px; }
-.interest-empty-text span,
 .club-starter-text span { font-size: 12.5px; color: var(--text-muted); line-height: 1.4; }
-.interest-empty-plus,
 .club-starter-chevron { color: var(--text-faint); flex-shrink: 0; }
 .club-starter-icons { display: flex; flex-shrink: 0; }
 .club-starter-icons > * { margin-left: -12px; border: 2px solid var(--surface); border-radius: 12px; }
 .club-starter-icons > *:first-child { margin-left: 0; }
-
-/* Etiketi seçmiş kişiler (alttan açılan pencere) */
-.tag-people-list { margin: 0; padding: 0; list-style: none; max-height: 60vh; overflow-y: auto; }
-.tag-people-list button {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  min-height: 60px;
-  padding: 8px 4px;
-  border: 0;
-  border-bottom: 1px solid var(--glass-border);
-  background: none;
-  color: var(--text);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.tag-people-list li:last-child button { border-bottom: 0; }
-.tag-people-avatar {
-  width: 44px;
-  height: 44px;
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  overflow: hidden;
-  border-radius: 50%;
-  background: var(--surface-2);
-  color: var(--text-muted);
-}
-.tag-people-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.tag-people-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
-.tag-people-text strong { display: inline-flex; align-items: center; gap: 4px; font-size: 14.5px; }
-.tag-people-text span { font-size: 12.5px; color: var(--text-muted); }
-.tag-people-chevron { color: var(--text-faint); }
 
 /* Öneri şeridinin sonundaki davet kartı */
 .person-card-invite {
@@ -4074,7 +3954,7 @@ select option:disabled {
 .person-card-invite .person-card-follow { align-self: stretch; }
 
 @media (prefers-reduced-motion: reduce) {
-  .quick-tile, .interest-tile { transition: none; }
+  .quick-tile { transition: none; }
   .quick-ring-fill { transition: none; }
 }
 /* Davet kartı diğer kartlardan uzun olmasın (şerit yüksekliğini o belirlemesin) */
@@ -4967,3 +4847,82 @@ button.announcement-main { cursor: pointer; }
 .match-primary:active, .match-secondary:active { transform: scale(0.97); }
 .match-primary:disabled { opacity: 0.6; cursor: default; }
 .match-primary:focus-visible, .match-secondary:focus-visible { outline: 2px solid var(--amber-soft); outline-offset: 3px; }
+
+/* Sohbet başlığındaki seçenekler menüsü (sağda) */
+.chat-header > div:not(.chat-back):not(.chat-header-menu) { flex: 1; min-width: 0; }
+.chat-header-menu { margin-left: auto; }
+.chat-header-menu .member-menu-btn { width: 44px; height: 44px; color: var(--text-muted); }
+.chat-header-menu .member-menu { top: 48px; min-width: 210px; }
+
+/* Kategorili emoji seçici (akış) */
+.emoji-picker {
+  margin-bottom: 12px;
+  padding: 8px;
+  border-radius: 18px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-soft);
+}
+.emoji-picker-tabs {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.emoji-picker-tabs::-webkit-scrollbar { display: none; }
+.emoji-picker-tabs button {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.55;
+  filter: grayscale(0.6);
+  transition: opacity 0.15s ease, filter 0.15s ease, background-color 0.15s ease;
+}
+.emoji-picker-tabs button:hover { opacity: 0.9; filter: none; }
+.emoji-picker-tabs button.on {
+  opacity: 1;
+  filter: none;
+  background: color-mix(in srgb, var(--amber-soft) 14%, transparent);
+}
+.emoji-picker-title {
+  margin: 8px 4px 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.emoji-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+  max-height: 208px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.emoji-picker-grid button {
+  display: grid;
+  place-items: center;
+  height: 42px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.12s cubic-bezier(0.23, 1, 0.32, 1), background-color 0.12s ease;
+}
+.emoji-picker-grid button:hover { background: var(--surface-2); transform: scale(1.12); }
+.emoji-picker-grid button:active { transform: scale(0.9); }
+.emoji-picker button:focus-visible { outline: 2px solid var(--amber-soft); outline-offset: 1px; }
+@media (prefers-reduced-motion: reduce) {
+  .emoji-picker-grid button { transition: none; }
+  .emoji-picker-grid button:hover, .emoji-picker-grid button:active { transform: none; }
+}

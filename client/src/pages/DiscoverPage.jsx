@@ -24,7 +24,6 @@ import StudentBadgeCard from '../components/StudentBadgeCard';
 import SuggestedPeopleRail from '../components/SuggestedPeopleRail';
 import ActiveNowStrip from '../components/ActiveNowStrip';
 import DiscoverQuickTiles from '../components/DiscoverQuickTiles';
-import InterestTiles from '../components/InterestTiles';
 import ReportModal from '../components/ReportModal';
 import PaywallModal from '../components/PaywallModal';
 import { useConfirm } from '../context/ConfirmContext';
@@ -326,12 +325,6 @@ export default function DiscoverPage() {
                 onReport={setReportingUserId}
                 onBlock={handleBlock}
               />
-
-              {/* ---------- İlgi alanına göre keşfet ---------- */}
-              <div className="section-heading">
-                <h3>{t("İlgi alanına göre keşfet")}</h3>
-              </div>
-              <InterestTiles tiles={data.interestTiles} />
 
               {/* ---------- Onaylı öğrenci rozeti çağrısı ---------- */}
               <StudentBadgeCard user={user} setUser={setUser} variant="home" />

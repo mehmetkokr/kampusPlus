@@ -31,7 +31,6 @@ const CARD_SELECT = {
 // için birebir eşleşirler).
 const tagKey = (t) => t.trim().toLocaleLowerCase('tr');
 const splitTags = (v) => (v || '').split(',').map((t) => t.trim()).filter(Boolean);
-const userTags = (u) => [...splitTags(u.interests), ...splitTags(u.hobbies)];
 
 function isVerified(u) {
   return u.studentDocStatus === 'approved';
@@ -184,24 +183,6 @@ router.get('/home', requireAuth, async (req, res) => {
       where: { ...campusPeopleWhere, swipeEnabled: true, id: { notIn: [req.userId, ...blockedIds, ...likedRows.map((l) => l.toUserId)] } },
     });
 
-    // ---------- İlgi alanına göre keşfet ----------
-    // Kendi ilgi alanı ve hobilerimin her biri için kampüste bunu seçmiş kişi
-    // sayısı ve birkaç avatar. Kampüs küçük olsa da kişinin kendi etiketleriyle
-    // dolduğu için bölüm boş kalmaz.
-    const campusTagRows = await prisma.user.findMany({
-      where: { ...campusPeopleWhere, AND: [discoverableUserWhere(me.universityId), { OR: [{ interests: { not: null } }, { hobbies: { not: null } }] }] },
-      select: { interests: true, hobbies: true, photoUrl: true },
-      take: 3000,
-    });
-    const myUniqueTags = [...new Map(userTags(me).map((t) => [tagKey(t), t])).values()];
-    const interestTiles = myUniqueTags
-      .map((tag) => {
-        const k = tagKey(tag);
-        const people = campusTagRows.filter((u) => userTags(u).some((x) => tagKey(x) === k));
-        return { tag, count: people.length, avatars: people.filter((p) => p.photoUrl).slice(0, 3).map((p) => p.photoUrl) };
-      })
-      .sort((a, b) => b.count - a.count);
-
     // ---------- Trend Kulüpler ----------
     const clubs = await prisma.club.findMany({
       where: { universityId: me.universityId },
@@ -252,7 +233,6 @@ router.get('/home', requireAuth, async (req, res) => {
       },
       onlineUsers,
       quick: { swipeCount, myClubCount },
-      interestTiles,
       trendingClubs,
       recentPosts,
       isPremium: isPremiumActive(me),
@@ -260,53 +240,6 @@ router.get('/home', requireAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Keşfet verileri alınamadı.' });
-  }
-});
-
-// ---------------------------------------------------------
-// GET /api/discover/by-tag?tag=Kahve — kendi kampüsümde bu ilgi alanını ya da
-// hobiyi seçmiş öğrenciler (Keşfet'teki "İlgi alanına göre keşfet" kutuları)
-// ---------------------------------------------------------
-router.get('/by-tag', requireAuth, async (req, res) => {
-  try {
-    const tag = String(req.query.tag || '').trim().slice(0, 40);
-    if (!tag) return res.json({ tag, users: [] });
-
-    const [me, blockedByMe, blockingMe, followingRows] = await Promise.all([
-      prisma.user.findUnique({ where: { id: req.userId }, select: { universityId: true } }),
-      prisma.block.findMany({ where: { blockerId: req.userId }, select: { blockedId: true } }),
-      prisma.block.findMany({ where: { blockedId: req.userId }, select: { blockerId: true } }),
-      prisma.follow.findMany({ where: { followerId: req.userId }, select: { followingId: true } }),
-    ]);
-    const following = new Set(followingRows.map((f) => f.followingId));
-    const rows = await prisma.user.findMany({
-      where: {
-        AND: [discoverableUserWhere(me.universityId), { OR: [{ interests: { contains: tag } }, { hobbies: { contains: tag } }] }],
-        universityId: me.universityId,
-        verificationStatus: { in: ['auto_verified', 'verified'] },
-        id: { notIn: [req.userId, ...blockedByMe.map((b) => b.blockedId), ...blockingMe.map((b) => b.blockerId)] },
-      },
-      select: { ...CARD_SELECT, interests: true, hobbies: true },
-      take: 200,
-    });
-    // "contains" kaba bir ön süzgeç (ör. "Kamp" "Kamping"i de yakalar); kesin eşleşme burada
-    const k = tagKey(tag);
-    const users = rows
-      .filter((u) => userTags(u).some((x) => tagKey(x) === k))
-      .slice(0, 60)
-      .map((u) => ({
-        id: u.id,
-        fullName: u.fullName,
-        photoUrl: u.photoUrl,
-        department: u.department,
-        classYear: u.classYear,
-        verified: isVerified(u),
-        following: following.has(u.id),
-      }));
-    res.json({ tag, users });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Liste alınamadı.' });
   }
 });
 

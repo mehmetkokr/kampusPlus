@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Flag, ArrowLeft, Layers, Heart, ChevronRight, BadgeCheck } from 'lucide-react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Flag, ArrowLeft, Layers, Heart, X, BadgeCheck } from 'lucide-react';
 import PageHeader from '../components/PageHeader';
 import PhotoCarousel from '../components/PhotoCarousel';
 import api from '../api';
@@ -8,6 +8,8 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import ReportModal from '../components/ReportModal';
 import MatchCelebration from '../components/MatchCelebration';
+import LikesReceived from '../components/LikesReceived';
+import SegmentedControl from '../components/SegmentedControl';
 import { INTENT_LABEL, INTENT_CHIP_CLASS, parseIntents } from '../constants/intents';
 import { UserPlus as UserPlusIcon, UserCheck as UserCheckIcon } from 'lucide-react';
 import { useI18n } from '../i18n';
@@ -24,7 +26,13 @@ export default function SwipeDiscoverPage() {
   const [loading, setLoading] = useState(true);
   const [followedIds, setFollowedIds] = useState(new Set());
   const [reportingUserId, setReportingUserId] = useState(null);
-  const [likesCount, setLikesCount] = useState(0);
+  const [likes, setLikes] = useState(null); // "Seni beğenenler" (Premium değilse yalnızca sayı)
+  const likesCount = likes?.count || 0;
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = searchParams.get('tab') === 'likes' ? 'likes' : 'cards';
+  const setTab = (next) => setSearchParams(next === 'likes' ? { tab: 'likes' } : {}, { replace: true });
+  // Klavye kısayolları (← geç, → beğen) her çizimde güncel kartla çalışsın
+  const keyActions = useRef({});
   const [celebration, setCelebration] = useState(null); // { other, matchId }
   const navigate = useNavigate();
 
@@ -37,15 +45,26 @@ export default function SwipeDiscoverPage() {
   const dragXRef = useRef(0);
   const cardRef = useRef(null);
 
-  function loadLikesCount() {
+  function loadLikes() {
     api
       .get('/matches/likes-received')
-      .then((res) => setLikesCount(res.data.count))
+      .then((res) => setLikes(res.data))
       .catch(() => {});
   }
 
   useEffect(() => {
-    loadLikesCount();
+    loadLikes();
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e) => {
+      const a = keyActions.current;
+      if (!a.enabled || e.defaultPrevented || e.target.closest?.('input, textarea, select, [contenteditable]')) return;
+      if (e.key === 'ArrowLeft') a.pass();
+      if (e.key === 'ArrowRight') a.like();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, []);
 
   useEffect(() => {
@@ -95,7 +114,7 @@ export default function SwipeDiscoverPage() {
       if (res.data.matched) {
         setCelebration({ other: target, matchId: res.data.match?.id });
         // Seni beğenen biriyle eşleştin: "seni beğendi" sayacı artık bir eksik
-        loadLikesCount();
+        loadLikes();
       }
     } catch (err) {
       toast.error(err.response?.data?.error || 'Beğeni gönderilemedi.');
@@ -199,6 +218,11 @@ export default function SwipeDiscoverPage() {
   }
 
   const current = candidates[index];
+  keyActions.current = {
+    enabled: tab === 'cards' && !!current && !reportingUserId && !celebration,
+    pass: () => handlePass(),
+    like: () => current && handleLike(current.id),
+  };
   const rotation = Math.max(-15, Math.min(15, drag.x / 12));
   const cardStyle = drag.active
     ? { transform: `translateX(${drag.x}px) rotate(${rotation}deg)`, transition: 'none' }
@@ -224,31 +248,23 @@ export default function SwipeDiscoverPage() {
 
   return (
     <div className="container">
-      <PageHeader
-        compact
-        tone="rose"
-        icon={Layers}
-        eyebrow={t("Sağa kaydır: beğen · Sola: geç")}
-        title={t("Kart Modu")}
-        onBack={() => navigate('/discover')}
+      <PageHeader compact tone="rose" icon={Layers} title={t("Kart Modu")} onBack={() => navigate('/discover')} />
+
+      <SegmentedControl
+        ariaLabel={t('Kart Modu sekmeleri')}
+        value={tab}
+        onChange={setTab}
+        options={[
+          { value: 'cards', label: 'Keşfet' },
+          { value: 'likes', label: 'Seni beğenenler', badge: likesCount > 0 ? (likesCount > 99 ? '99+' : likesCount) : null },
+        ]}
       />
 
-      {likesCount > 0 && (
-        <button type="button" className="likes-teaser" onClick={() => navigate('/matches?tab=likes')}>
-          <span className="likes-teaser-icon">
-            <Heart size={16} fill="currentColor" />
-          </span>
-          <span className="likes-teaser-text">
-            <strong>{likesCount} {t("kişi seni beğendi")}</strong>
-            <small>{user?.isPremium ? t("Kim olduklarını gör") : t("Premium ile kim olduklarını gör")}</small>
-          </span>
-          <ChevronRight size={18} />
-        </button>
-      )}
+      {tab === 'likes' && <LikesReceived data={likes} onChanged={loadLikes} onGoCards={() => setTab('cards')} />}
 
-      {loading && <p className="muted center-text">{t("Yükleniyor...")}</p>}
+      {tab === 'cards' && loading && <p className="muted center-text">{t("Yükleniyor...")}</p>}
 
-      {!loading && !current && (
+      {tab === 'cards' && !loading && !current && (
         <div className="card empty-state">
           <div className="empty-icon is-glyph"><Telescope size={26} strokeWidth={1.8} /></div>
           <p className="muted">{t("Şu an gösterilecek başka kullanıcı yok.")}</p>
@@ -258,7 +274,7 @@ export default function SwipeDiscoverPage() {
         </div>
       )}
 
-      {current && (
+      {tab === 'cards' && current && (
         <div
           className="swipe-card swipe-card-drag-layer"
           ref={cardRef}
@@ -376,13 +392,19 @@ export default function SwipeDiscoverPage() {
             )}
           </div>
 
-          <div className="swipe-actions">
-            <button className="btn btn-pass" onClick={handlePass}>
-              {t("Geç")}
-            </button>
-            <button className="btn btn-like" onClick={() => handleLike(current.id)}>
-              {t("Beğen")}
-            </button>
+          <div className="swipe-actions" role="group" aria-label={t('Bu profil için karar ver')}>
+            <div className="swipe-action">
+              <button type="button" className="swipe-btn pass" onClick={handlePass} aria-label={t('Geç')} title={t('Geç (←)')}>
+                <X size={30} strokeWidth={2.6} />
+              </button>
+              <span aria-hidden="true">{t('Geç')}</span>
+            </div>
+            <div className="swipe-action">
+              <button type="button" className="swipe-btn like" onClick={() => handleLike(current.id)} aria-label={t('Beğen')} title={t('Beğen (→)')}>
+                <Heart size={32} fill="currentColor" strokeWidth={0} />
+              </button>
+              <span aria-hidden="true">{t('Beğen')}</span>
+            </div>
           </div>
         </div>
       )}

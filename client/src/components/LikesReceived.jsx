@@ -13,10 +13,10 @@ import { useI18n } from '../i18n';
 // Kaç tane kilitli önizleme kartı gösterileceği (gerçek sayıdan bağımsız üst sınır)
 const MAX_LOCKED_PREVIEW = 6;
 
-// "Seni Beğenenler" sekmesi. Premium kullanıcı listeyi görür ve geri beğenerek
+// Kart Modu'ndaki "Seni beğenenler" sekmesi. Premium kullanıcı listeyi görür ve geri beğenerek
 // anında eşleşebilir; premium olmayan kullanıcı yalnızca kaç kişinin onu
 // beğendiğini ve bulanık kartları görür (kimlikler sunucudan hiç gelmez).
-export default function LikesReceived({ data, onChanged }) {
+export default function LikesReceived({ data, onChanged, onGoCards }) {
   const { t } = useI18n();
   const navigate = useNavigate();
   const toast = useToast();
@@ -49,8 +49,8 @@ export default function LikesReceived({ data, onChanged }) {
         <p className="muted">
           {t("Henüz seni beğenen yeni biri yok. Kart Modu'nda gezinmeye devam et, beğeniler burada görünecek.")}
         </p>
-        <button className="btn" style={{ width: 'auto', marginTop: 6 }} onClick={() => navigate('/discover/swipe')}>
-          {t("Kart Moduna Git")}
+        <button className="btn" style={{ width: 'auto', marginTop: 6 }} onClick={() => (onGoCards ? onGoCards() : navigate('/discover/swipe'))}>
+          {t("Kaydırmaya başla")}
         </button>
       </div>
     );
