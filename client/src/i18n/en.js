@@ -1170,6 +1170,22 @@ const en = {
   'El hareketleri': 'Hand gestures',
   'Kalpler': 'Hearts',
   'Semboller': 'Symbols',
+  // Profilim
+  'Profil Tamamlama': 'Profile completion',
+  'Onaylı Öğrenci': 'Verified Student',
+  'Düzenle': 'Edit',
+  'Ne arıyorsun?': 'What are you looking for?',
+  'Kendinden birkaç cümle bahset...': 'Tell us a little about yourself...',
+  'Sosyal Medya Bağlantıları': 'Social media',
+  'Değişiklikleri kaydet': 'Save changes',
+  'Değişiklikler kaydedildi.': 'Changes saved.',
+  '"Ne arıyorsun?" için en az bir seçenek seç.': 'Pick at least one option for "What are you looking for?".',
+  'Profil fotoğrafını değiştir': 'Change profile photo',
+  '{tag} etiketini kaldır': 'Remove {tag}',
+  'Ara…': 'Search…',
+  '{label} içinde ara': 'Search {label}',
+  'En fazla {n} tane seçebilirsin. Eklemek için birini kaldır.': 'You can pick up to {n}. Remove one to add another.',
+  'Eşleşen seçenek yok.': 'No matching options.',
 };
 
 const ORDINAL = { 1: '1st', 2: '2nd', 3: '3rd', 4: '4th' };

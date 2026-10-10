@@ -1,24 +1,52 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ShieldCheck, Settings, Link2, BadgeCheck, User as UserIcon, Lock, GraduationCap } from 'lucide-react';
+import { BadgeCheck, Camera, ChevronRight, GraduationCap, Lock, LogOut, Settings, ShieldCheck } from 'lucide-react';
 import api from '../api';
 import { API_BASE_URL } from '../config';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
-import { Camera as CameraIcon } from 'lucide-react';
 import NotificationBell from '../components/NotificationBell';
-import PageHeader from '../components/PageHeader';
 import PhotoGallery from '../components/PhotoGallery';
 import StudentBadgeCard from '../components/StudentBadgeCard';
-import ProfileCompletion from '../components/ProfileCompletion';
+import ProfileCompletion, { getCompletionPercent } from '../components/ProfileCompletion';
+import ChipTagEditor from '../components/ChipTagEditor';
 import { INTENT_OPTIONS, parseIntents } from '../constants/intents';
 import { INTEREST_OPTIONS, HOBBY_OPTIONS, parseTags } from '../constants/tags';
-import TagPicker from '../components/TagPicker';
 import { useI18n } from '../i18n';
 import { compressImage } from '../utils/image';
 import { usePhotoEditor } from '../context/PhotoEditorContext';
 import BirthDateInput from '../components/BirthDateInput';
-import ThemeToggle from '../components/ThemeToggle';
+import '../styles/profile.css';
+
+// Profilim: ortada ilerleme halkalı fotoğraf ve rozetler; altında 2×3
+// fotoğraf galerisi, "Ne arıyorsun?", "Hakkımda", ilgi alanları, hobiler ve
+// sosyal medya. Değişiklikler alttaki sabit düğmeyle tek seferde kaydedilir.
+const BIO_MAX = 300;
+
+// Marka simgeleri (lucide'da yok): sade çizgi hâlleri
+const InstagramGlyph = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+    <rect x="3" y="3" width="18" height="18" rx="5" />
+    <circle cx="12" cy="12" r="4" />
+    <circle cx="17.5" cy="6.5" r="0.6" fill="currentColor" />
+  </svg>
+);
+const XGlyph = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M17.75 3h3.07l-6.71 7.67L22 21h-6.18l-4.84-6.33L5.44 21H2.37l7.18-8.2L2 3h6.34l4.37 5.78L17.75 3Zm-1.08 16.17h1.7L7.4 4.74H5.58l11.09 14.43Z" />
+  </svg>
+);
+
+function fromUser(user) {
+  return {
+    bio: user.bio || '',
+    interests: user.interests || '',
+    hobbies: user.hobbies || '',
+    instagramUrl: user.instagramUrl || '',
+    twitterUrl: user.twitterUrl || '',
+    intent: parseIntents(user.intent).join(','),
+  };
+}
 
 export default function ProfilePage() {
   const { t } = useI18n();
@@ -26,48 +54,42 @@ export default function ProfilePage() {
   const toast = useToast();
   const editPhoto = usePhotoEditor();
 
-  const [bio, setBio] = useState('');
-  const [interests, setInterests] = useState('');
-  const [hobbies, setHobbies] = useState('');
-  const [instagramUrl, setInstagramUrl] = useState('');
-  const [twitterUrl, setTwitterUrl] = useState('');
-  const [intents, setIntents] = useState(['friendship']);
+  const [form, setForm] = useState(null);
   const [birthDate, setBirthDate] = useState('');
   const [saving, setSaving] = useState(false);
-  function toggleIntent(value) {
-    setIntents((prev) =>
-      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
-    );
-  }
+  const [editingPhotos, setEditingPhotos] = useState(false);
+  const [showCompletion, setShowCompletion] = useState(false);
 
   useEffect(() => {
-    if (user) {
-      setBio(user.bio || '');
-      setInterests(user.interests || '');
-      setHobbies(user.hobbies || '');
-      setInstagramUrl(user.instagramUrl || '');
-      setTwitterUrl(user.twitterUrl || '');
-      setIntents(parseIntents(user.intent));
-      setBirthDate('');
-    }
+    if (user) setForm(fromUser(user));
   }, [user]);
 
-  async function handleSave(e) {
-    e.preventDefault();
+  if (!user || !form) return null;
+
+  const set = (key, value) => setForm((f) => ({ ...f, [key]: value }));
+  const intents = form.intent ? form.intent.split(',') : [];
+  const toggleIntent = (value) =>
+    set('intent', (intents.includes(value) ? intents.filter((v) => v !== value) : [...intents, value]).join(','));
+
+  const saved = fromUser(user);
+  const dirty = Object.keys(saved).some((k) => saved[k] !== form[k]) || (!user.birthDate && !!birthDate);
+
+  async function handleSave() {
+    if (intents.length === 0) {
+      toast.error('"Ne arıyorsun?" için en az bir seçenek seç.');
+      document.getElementById('profile-intents')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
     setSaving(true);
     try {
       const res = await api.put('/profile/me', {
-        bio,
-        interests,
-        hobbies,
-        instagramUrl,
-        twitterUrl,
-        intent: (intents.length ? intents : ['friendship']).join(','),
+        ...form,
         // Doğum tarihi yalnızca daha önce hiç girilmemişse bir kez gönderilir
         ...(!user.birthDate && birthDate ? { birthDate } : {}),
       });
       setUser((prev) => ({ ...prev, ...res.data.user }));
-      toast.success('Profil güncellendi.');
+      setBirthDate('');
+      toast.success('Değişiklikler kaydedildi.');
     } catch (err) {
       toast.error(err.response?.data?.error || 'Güncelleme başarısız oldu.');
     } finally {
@@ -81,213 +103,221 @@ export default function ProfilePage() {
     if (!file) return;
     const edited = await editPhoto(file, { aspects: ['1:1'], title: 'Profil fotoğrafı' });
     if (!edited) return;
-
     const formData = new FormData();
     formData.append('photo', await compressImage(edited));
-
     try {
-      const res = await api.post('/profile/me/photo', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const res = await api.post('/profile/me/photo', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       setUser((prev) => ({ ...prev, photoUrl: res.data.photoUrl, photos: res.data.photos || prev.photos }));
     } catch (err) {
       toast.error(err.response?.data?.error || 'Fotoğraf yüklenemedi.');
-    } finally {
-      e.target.value = '';
     }
   }
 
-  if (!user) return null;
-
+  const percent = getCompletionPercent(user);
+  const R = 62;
+  const C = 2 * Math.PI * R;
   const isStudentVerified = user.studentDocStatus === 'approved';
-  // Hesap erişimi (e-posta) ile onaylı öğrenci rozeti ayrı gösterilir
   const statusBadge = isStudentVerified
-    ? { text: 'Onaylı öğrenci', cls: 'badge-verified' }
+    ? null
     : {
-        pending: { text: 'Doğrulama bekleniyor', cls: 'badge-pending' },
-        manual_review: { text: 'Belge inceleniyor', cls: 'badge-pending' },
-        auto_verified: { text: 'E-posta doğrulandı', cls: 'badge-neutral' },
-        verified: { text: 'E-posta doğrulandı', cls: 'badge-neutral' },
-        rejected: { text: 'Belge reddedildi', cls: 'badge-pending' },
+        pending: 'Doğrulama bekleniyor',
+        manual_review: 'Belge inceleniyor',
+        auto_verified: 'E-posta doğrulandı',
+        verified: 'E-posta doğrulandı',
+        rejected: 'Belge reddedildi',
       }[user.verificationStatus];
 
   return (
-    <div className="container">
-      <PageHeader
-        compact
-        tone="amber"
-        icon={UserIcon}
-        eyebrow={t("Hesabın")}
-        title={t("Profilim")}
-        actions={
-          <>
-            <ThemeToggle className="icon-btn-amber" />
-            <NotificationBell />
-            <Link to="/settings" className="icon-btn-amber" aria-label={t("Ayarlar")}>
-              <Settings size={18} />
-            </Link>
-          </>
-        }
-      />
+    <div className="container pf-page">
+      <header className="pf-header">
+        <h1>{t('Profilim')}</h1>
+        <div className="pf-header-actions">
+          <Link to="/settings" className="pf-icon-btn" aria-label={t('Ayarlar')}>
+            <Settings size={22} />
+          </Link>
+          <NotificationBell />
+        </div>
+      </header>
 
-      <div className="card profile-hero">
-        <div className="profile-avatar-wrap">
-          <img
-            className="profile-avatar"
-            src={user.photoUrl ? `${API_BASE_URL}${user.photoUrl}` : undefined}
-            alt={user.fullName}
-          />
-          <label className="profile-photo-edit">
-            <CameraIcon width={16} height={16} />
+      {/* ---------- Profil kartı ---------- */}
+      <section className="pf-card pf-hero">
+        <div className="pf-avatar">
+          <svg viewBox="0 0 140 140" aria-hidden="true">
+            <circle cx="70" cy="70" r={R} className="pf-ring-track" />
+            <circle cx="70" cy="70" r={R} className="pf-ring-fill" strokeDasharray={C} strokeDashoffset={C * (1 - percent / 100)} />
+          </svg>
+          {user.photoUrl ? <img src={`${API_BASE_URL}${user.photoUrl}`} alt={user.fullName} /> : <span className="pf-avatar-empty" aria-hidden="true" />}
+          <label className="pf-avatar-edit" aria-label={t('Profil fotoğrafını değiştir')}>
+            <Camera size={16} />
             <input type="file" accept="image/*" onChange={handlePhotoUpload} />
           </label>
         </div>
-        <h3 className="profile-name">
+        <h2 className="pf-name">
           {user.fullName}
           {user.age ? `, ${user.age}` : ''}
-          {isStudentVerified && <BadgeCheck size={18} className="name-verified" aria-label={t("Onaylı öğrenci")} />}
-        </h3>
-        <p className="muted profile-sub">{user.university?.name}</p>
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginTop: 6 }}>
-          {statusBadge && <span className={`badge ${statusBadge.cls}`}>{t(statusBadge.text)}</span>}
+        </h2>
+        <p className="pf-uni">{user.university?.name}</p>
+        <div className="pf-hero-row">
+          {isStudentVerified ? (
+            <span className="pf-verified">
+              <BadgeCheck size={16} /> {t('Onaylı Öğrenci')}
+            </span>
+          ) : (
+            statusBadge && <span className="pf-status">{t(statusBadge)}</span>
+          )}
+          <button type="button" className="pf-completion-link" onClick={() => setShowCompletion((v) => !v)} aria-expanded={showCompletion}>
+            {t('Profil Tamamlama')}: %{percent} <ChevronRight size={16} className={showCompletion ? 'is-open' : ''} />
+          </button>
         </div>
+      </section>
 
-      </div>
+      {showCompletion && <ProfileCompletion user={user} />}
+      {!isStudentVerified && <StudentBadgeCard user={user} setUser={setUser} variant="profile" />}
 
-      <ProfileCompletion user={user} />
-
-      <StudentBadgeCard user={user} setUser={setUser} variant="profile" />
-
-      <div className="card" id="profile-gallery" tabIndex={-1}>
+      {/* ---------- Fotoğraflar ---------- */}
+      <section className="pf-card" id="profile-gallery" tabIndex={-1}>
+        <div className="pf-section-head">
+          <h3 className="pf-title">{t('Fotoğraflar')}</h3>
+          <button type="button" className="pf-link" onClick={() => setEditingPhotos((v) => !v)} aria-pressed={editingPhotos}>
+            {editingPhotos ? t('Bitti') : t('Düzenle')}
+          </button>
+        </div>
         <PhotoGallery
+          bare
+          editing={editingPhotos}
           photos={user.photos || []}
           onChange={(data) => setUser((prev) => ({ ...prev, photos: data.photos, photoUrl: data.photoUrl }))}
         />
-      </div>
+      </section>
 
-      <div className="card">
-        <form onSubmit={handleSave}>
-          <label>{t("Ne arıyorsun? (en az bir tane seç)")}</label>
-          <div className="intent-select-grid">
-            {INTENT_OPTIONS.map((opt) => (
-              <button
-                type="button"
-                key={opt.value}
-                className={`intent-toggle ${intents.includes(opt.value) ? 'active' : ''}`}
-                onClick={() => toggleIntent(opt.value)}
-              >
-                {t(opt.label)}
-              </button>
-            ))}
+      <section className="pf-card pf-form">
+        {/* ---------- Ne arıyorsun? ---------- */}
+        <div className="pf-section" id="profile-intents">
+          <h3 className="pf-label">{t('Ne arıyorsun?')}</h3>
+          <div className="pf-chips" role="group" aria-label={t('Ne arıyorsun?')}>
+            {INTENT_OPTIONS.map((opt) => {
+              const on = intents.includes(opt.value);
+              return (
+                <button key={opt.value} type="button" className={`pf-chip ${on ? 'is-on' : ''}`} aria-pressed={on} onClick={() => toggleIntent(opt.value)}>
+                  {t(opt.label)}
+                </button>
+              );
+            })}
           </div>
-          <p className="field-hint intent-dating-note">{t("Flört ve Uzun Süreli İlişki seçimini yalnızca bunları seçen öğrenciler görür.")}</p>
-
-          <div className="locked-info" aria-label={t("Okul bilgilerin")}>
-            <div className="locked-info-head">
-              <GraduationCap size={16} /> {t("Okul bilgilerin")}
-              <span className="locked-info-tag">
-                <Lock size={12} /> {t("Değiştirilemez")}
-              </span>
-            </div>
-            <dl>
-              <div>
-                <dt>{t("Üniversite")}</dt>
-                <dd>{user.university?.name || t('Belirtilmemiş')}</dd>
-              </div>
-              <div>
-                <dt>{t("Bölüm")}</dt>
-                <dd>{user.department || t('Belirtilmemiş')}</dd>
-              </div>
-              <div>
-                <dt>{t("Sınıf")}</dt>
-                <dd>{user.classYear ? (user.classYear >= 5 ? t("Yüksek Lisans / Diğer") : t(`${user.classYear}. Sınıf`)) : t('Belirtilmemiş')}</dd>
-              </div>
-              <div>
-                <dt>{t("Yaş")}</dt>
-                <dd>{user.age ?? t('Belirtilmemiş')}</dd>
-              </div>
-            </dl>
-            <p>{t("Bu bilgiler kayıt sırasında belirlenir ve sonradan değiştirilemez. Hatalıysa destek ekibine yaz.")}</p>
-          </div>
-
-          {!user.birthDate && (
-            <>
-              <label htmlFor="profile-birth">{t("Doğum Tarihi")}</label>
-              <BirthDateInput id="profile-birth" value={birthDate} onChange={setBirthDate} />
-              <p className="field-hint">{t("Yaşın buradan hesaplanır. Bir kez kaydedildikten sonra değiştirilemez.")}</p>
-            </>
-          )}
-
-          <label htmlFor="profile-bio">{t("Hakkımda")}</label>
-          <textarea id="profile-bio" rows={3} value={bio} onChange={(e) => setBio(e.target.value)} />
-
-          <TagPicker
-            id="profile-interests"
-            label={t('İlgi Alanları')}
-            options={INTEREST_OPTIONS}
-            value={parseTags(interests)}
-            onChange={(tags) => setInterests(tags.join(', '))}
-          />
-
-          <TagPicker
-            id="profile-hobbies"
-            label={t('Hobiler')}
-            options={HOBBY_OPTIONS}
-            value={parseTags(hobbies)}
-            onChange={(tags) => setHobbies(tags.join(', '))}
-          />
-
-          <label>{t("Sosyal Medya Bağlantıları (isteğe bağlı)")}</label>
-          <div className="social-links-row" style={{ marginBottom: 8 }}>
-            <div>
-              <input
-                id="profile-social"
-                value={instagramUrl}
-                onChange={(e) => setInstagramUrl(e.target.value)}
-                placeholder={t("Instagram kullanıcı adı")}
-              />
-            </div>
-          </div>
-          <div className="social-links-row" style={{ marginBottom: 14 }}>
-            <div>
-              <input
-                value={twitterUrl}
-                onChange={(e) => setTwitterUrl(e.target.value)}
-                placeholder={t("Twitter / X kullanıcı adı")}
-              />
-            </div>
-          </div>
-
-          <button className="btn" type="submit" disabled={saving}>
-            {saving ? t("Kaydediliyor...") : t("Kaydet")}
-          </button>
-        </form>
-      </div>
-
-      {(user.instagramUrl || user.twitterUrl) && (
-        <div className="card" style={{ display: 'flex', gap: 18, justifyContent: 'center', flexWrap: 'wrap' }}>
-          {user.instagramUrl && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-              <Link2 size={16} /> {t("Instagram")}
-            </span>
-          )}
-          {user.twitterUrl && (
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-              <Link2 size={16} /> {t("Twitter/X")}
-            </span>
-          )}
+          <p className="pf-hint">{t('Flört ve Uzun Süreli İlişki seçimini yalnızca bunları seçen öğrenciler görür.')}</p>
         </div>
-      )}
 
-      {user?.isAdmin && (
-        <Link to="/admin" className="btn btn-secondary" style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, textDecoration: 'none' }}>
-          <ShieldCheck size={16} /> {t("Admin Paneli")}
-        </Link>
-      )}
+        {/* ---------- Hakkımda ---------- */}
+        <div className="pf-section">
+          <div className="pf-section-head">
+            <label className="pf-label" htmlFor="profile-bio">
+              {t('Hakkımda')}
+            </label>
+            <span className="pf-count">
+              {form.bio.length}/{BIO_MAX}
+            </span>
+          </div>
+          <textarea
+            id="profile-bio"
+            className="pf-input pf-textarea"
+            rows={3}
+            maxLength={BIO_MAX}
+            value={form.bio}
+            onChange={(e) => set('bio', e.target.value)}
+            placeholder={t('Kendinden birkaç cümle bahset...')}
+          />
+        </div>
 
-      <button className="btn btn-secondary" style={{ marginTop: 12 }} onClick={logout}>
-        {t("Çıkış Yap")}
-      </button>
+        {/* ---------- İlgi alanları ve hobiler ---------- */}
+        <ChipTagEditor
+          id="profile-interests"
+          label={t('İlgi Alanları')}
+          options={INTEREST_OPTIONS}
+          value={parseTags(form.interests)}
+          onChange={(tags) => set('interests', tags.join(', '))}
+        />
+        <ChipTagEditor
+          id="profile-hobbies"
+          label={t('Hobiler')}
+          options={HOBBY_OPTIONS}
+          value={parseTags(form.hobbies)}
+          onChange={(tags) => set('hobbies', tags.join(', '))}
+        />
+
+        {/* ---------- Sosyal medya ---------- */}
+        <div className="pf-section" id="profile-social" tabIndex={-1}>
+          <h3 className="pf-label">{t('Sosyal Medya Bağlantıları')}</h3>
+          <label className="pf-social">
+            <span className="pf-social-icon" aria-hidden="true">
+              <InstagramGlyph />
+            </span>
+            <input className="pf-input" value={form.instagramUrl} onChange={(e) => set('instagramUrl', e.target.value)} placeholder={t('Instagram kullanıcı adı')} aria-label={t('Instagram kullanıcı adı')} />
+          </label>
+          <label className="pf-social">
+            <span className="pf-social-icon" aria-hidden="true">
+              <XGlyph />
+            </span>
+            <input className="pf-input" value={form.twitterUrl} onChange={(e) => set('twitterUrl', e.target.value)} placeholder={t('Twitter / X kullanıcı adı')} aria-label={t('Twitter / X kullanıcı adı')} />
+          </label>
+        </div>
+
+        {!user.birthDate && (
+          <div className="pf-section" id="profile-birth" tabIndex={-1}>
+            <label className="pf-label" htmlFor="profile-birth-input">
+              {t('Doğum Tarihi')}
+            </label>
+            <BirthDateInput id="profile-birth-input" value={birthDate} onChange={setBirthDate} />
+            <p className="pf-hint">{t('Yaşın buradan hesaplanır. Bir kez kaydedildikten sonra değiştirilemez.')}</p>
+          </div>
+        )}
+      </section>
+
+      {/* ---------- Okul bilgileri (değiştirilemez) ---------- */}
+      <section className="pf-card locked-info" aria-label={t('Okul bilgilerin')}>
+        <div className="locked-info-head">
+          <GraduationCap size={16} /> {t('Okul bilgilerin')}
+          <span className="locked-info-tag">
+            <Lock size={12} /> {t('Değiştirilemez')}
+          </span>
+        </div>
+        <dl>
+          <div>
+            <dt>{t('Üniversite')}</dt>
+            <dd>{user.university?.name || t('Belirtilmemiş')}</dd>
+          </div>
+          <div>
+            <dt>{t('Bölüm')}</dt>
+            <dd>{user.department || t('Belirtilmemiş')}</dd>
+          </div>
+          <div>
+            <dt>{t('Sınıf')}</dt>
+            <dd>{user.classYear ? (user.classYear >= 5 ? t('Yüksek Lisans / Diğer') : t(`${user.classYear}. Sınıf`)) : t('Belirtilmemiş')}</dd>
+          </div>
+          <div>
+            <dt>{t('Yaş')}</dt>
+            <dd>{user.age ?? t('Belirtilmemiş')}</dd>
+          </div>
+        </dl>
+        <p>{t('Bu bilgiler kayıt sırasında belirlenir ve sonradan değiştirilemez. Hatalıysa destek ekibine yaz.')}</p>
+      </section>
+
+      <div className="pf-footer-links">
+        {user?.isAdmin && (
+          <Link to="/admin" className="pf-secondary">
+            <ShieldCheck size={16} /> {t('Admin Paneli')}
+          </Link>
+        )}
+        <button type="button" className="pf-secondary" onClick={logout}>
+          <LogOut size={16} /> {t('Çıkış Yap')}
+        </button>
+      </div>
+
+      {/* ---------- Sabit kaydet düğmesi ---------- */}
+      <div className="pf-savebar">
+        <button type="button" className="pf-save" onClick={handleSave} disabled={saving || !dirty}>
+          {saving ? t('Kaydediliyor...') : t('Değişiklikleri kaydet')}
+        </button>
+      </div>
     </div>
   );
 }

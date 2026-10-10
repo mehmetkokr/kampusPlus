@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { ImagePlus, Loader2, MoreHorizontal, Star, Trash2 } from 'lucide-react';
+import { ImagePlus, Loader2, MoreHorizontal, Plus, Star, Trash2 } from 'lucide-react';
 import api from '../api';
 import { API_BASE_URL } from '../config';
 import { useToast } from '../context/ToastContext';
@@ -10,9 +10,11 @@ import { usePhotoEditor } from '../context/PhotoEditorContext';
 
 const MAX_PHOTOS = 6;
 
-// Profil fotoğraf galerisi: en fazla 6 fotoğraf. İlk fotoğraf ana profil
+// Profil fotoğraf galerisi: en fazla 6 fotoğraf (2×3). İlk fotoğraf ana profil
 // fotoğrafıdır; her fotoğrafın ⋯ menüsünden "Ana fotoğraf yap" ya da "Sil".
-export default function PhotoGallery({ photos, onChange }) {
+// bare: kendi başlığı olmadan (başlığı sayfa çizer). editing: false ise ⋯
+// menüleri gizlenir (profil sayfasındaki "Düzenle" düğmesiyle açılır).
+export default function PhotoGallery({ photos, onChange, bare = false, editing = true }) {
   const { t } = useI18n();
   const toast = useToast();
   const confirm = useConfirm();
@@ -66,14 +68,18 @@ export default function PhotoGallery({ photos, onChange }) {
   const firstEmpty = photos.length;
 
   return (
-    <div className="photo-gallery">
-      <div className="photo-gallery-head">
-        <h4>{t("Fotoğrafların")}</h4>
-        <span>
-          {photos.length}/{MAX_PHOTOS}
-        </span>
-      </div>
-      <p className="photo-gallery-hint">{t("İlk fotoğraf profil fotoğrafın olur. Kart Modu'nda tüm fotoğrafların gösterilir.")}</p>
+    <div className={`photo-gallery ${bare ? 'is-bare' : ''}`}>
+      {!bare && (
+        <>
+          <div className="photo-gallery-head">
+            <h4>{t("Fotoğrafların")}</h4>
+            <span>
+              {photos.length}/{MAX_PHOTOS}
+            </span>
+          </div>
+          <p className="photo-gallery-hint">{t("İlk fotoğraf profil fotoğrafın olur. Kart Modu'nda tüm fotoğrafların gösterilir.")}</p>
+        </>
+      )}
 
       <div className="photo-gallery-grid">
         {slots.map((photo, i) =>
@@ -81,6 +87,7 @@ export default function PhotoGallery({ photos, onChange }) {
             <div key={photo.id} className={`photo-slot filled ${i === 0 ? 'is-main' : ''}`}>
               <img src={`${API_BASE_URL}${photo.url}`} alt={`Fotoğraf ${i + 1}`} />
               {i === 0 && <span className="photo-main-badge">{t("Ana")}</span>}
+              {editing && (
               <button
                 type="button"
                 className="photo-slot-menu-btn"
@@ -89,7 +96,8 @@ export default function PhotoGallery({ photos, onChange }) {
               >
                 <MoreHorizontal size={16} />
               </button>
-              {menuFor === photo.id && (
+              )}
+              {editing && menuFor === photo.id && (
                 <div className="photo-slot-menu" role="menu">
                   {i !== 0 && (
                     <button role="menuitem" type="button" onClick={() => makeMain(photo)}>
@@ -111,7 +119,13 @@ export default function PhotoGallery({ photos, onChange }) {
               onClick={() => fileRef.current?.click()}
               aria-label={t("Fotoğraf ekle")}
             >
-              {uploading && i === firstEmpty ? <Loader2 size={20} className="spin" /> : <ImagePlus size={20} />}
+              {uploading && i === firstEmpty ? (
+                <Loader2 size={20} className="spin" />
+              ) : bare ? (
+                i === firstEmpty && <Plus size={26} strokeWidth={2.4} />
+              ) : (
+                <ImagePlus size={20} />
+              )}
             </button>
           )
         )}
