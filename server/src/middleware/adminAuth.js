@@ -16,6 +16,9 @@ async function requireAdmin(req, res, next) {
 
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
+    if (payload.purpose) {
+      return res.status(401).json({ error: 'Oturum geçersiz veya süresi dolmuş.' });
+    }
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
       select: { id: true, isAdmin: true, isBanned: true, tokenVersion: true },
