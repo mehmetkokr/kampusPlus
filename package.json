@@ -9,7 +9,8 @@
     "setup": "npm run install:all && npm run prisma:setup",
     "prisma:setup": "npm run prisma:generate --prefix server && npm run prisma:migrate --prefix server && node server/prisma/seed.js",
     "build": "npm ci --prefix client --include=dev && npm run build --prefix client && npm ci --prefix server && npm run prisma:generate --prefix server",
-    "start": "npm run start:prod --prefix server"
+    "start": "npm run start:prod --prefix server",
+    "test": "npm test --prefix server"
   },
   "engines": {
     "node": ">=20"
