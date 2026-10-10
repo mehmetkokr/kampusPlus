@@ -17,6 +17,7 @@ import {
   CalendarDays,
   Check,
   ChevronLeft,
+  ChevronDown,
   ChevronRight,
   Compass,
   Flag,
@@ -780,15 +781,40 @@ function ChatScreen({ chats, active, typing, onOpen, onSend }) {
   );
 }
 
+// Profil sayfasındaki seçim kutusunun (MultiSelectBox) küçük, etkileşimsiz hali
+function MiniSelect({ label, values, max }) {
+  const { t } = useI18n();
+  return (
+    <div>
+      <div className="flex justify-between">
+        <p className="text-[7.5px] font-bold uppercase tracking-[0.08em] text-paper-muted">{label}</p>
+        {max && (
+          <span className="text-[7.5px] font-semibold text-paper-faint">
+            {values.length}/{max}
+          </span>
+        )}
+      </div>
+      <div className="relative mt-1.5 flex min-h-[28px] flex-wrap items-center gap-1 rounded-[0.6rem] bg-surface-2 py-1 pl-1 pr-5">
+        {values.map((v) => (
+          <span key={v} className="flex items-center gap-0.5 rounded-full bg-amber-soft/15 py-0.5 pl-1.5 pr-1 text-[8px] font-semibold text-paper">
+            {t(v)} <X size={8} className="text-paper-faint" />
+          </span>
+        ))}
+        <ChevronDown size={10} className="absolute right-1.5 top-[9px] text-paper-muted" aria-hidden="true" />
+      </div>
+    </div>
+  );
+}
+
 function ProfileScreen({ likes, joined, scrollRef }) {
   const { t } = useI18n();
   const me = ME;
   const R = 31;
   const C = 2 * Math.PI * R;
   const score = Math.min(100, 65 + likes * 5 + joined * 5);
-  const intents = ['Arkadaşlık', 'Bir Kahve', 'Çalışma Arkadaşı', 'Etkinlik Arkadaşı', 'Kulüp Arkadaşı', 'Spor Arkadaşı', 'Proje Ortağı'];
-  const selected = ['Arkadaşlık', 'Bir Kahve', 'Çalışma Arkadaşı', 'Etkinlik Arkadaşı'];
+  const intents = ['Arkadaşlık', 'Bir Kahve', 'Çalışma Arkadaşı', 'Etkinlik Arkadaşı'];
   const tags = ['Yapay Zeka', 'Oyun', 'Yazılım', 'Satranç', 'Kahve', 'Fotoğraf'];
+  const hobbies = ['Koşu', 'Kamp'];
   const label = 'text-[7.5px] font-bold uppercase tracking-[0.08em] text-paper-muted';
   return (
     <div ref={scrollRef} className="relative h-[452px] space-y-2 overflow-y-auto scroll-smooth px-3 pb-24 [scrollbar-width:none]">
@@ -840,16 +866,7 @@ function ProfileScreen({ likes, joined, scrollRef }) {
       </div>
 
       <div className="space-y-3 rounded-[1.1rem] border border-line bg-surface p-2.5">
-        <div>
-          <p className={label}>{t('Ne arıyorsun?')}</p>
-          <div className="mt-1.5 flex flex-wrap gap-1">
-            {intents.map((i) => (
-              <span key={i} className={`rounded-full px-2 py-1 text-[8px] font-semibold ${selected.includes(i) ? 'bg-amber-soft text-white' : 'bg-surface-2 text-paper-muted'}`}>
-                {t(i)}
-              </span>
-            ))}
-          </div>
-        </div>
+        <MiniSelect label={t('Ne arıyorsun?')} values={intents} />
         <div>
           <div className="flex justify-between">
             <p className={label}>{t('Hakkımda')}</p>
@@ -859,22 +876,8 @@ function ProfileScreen({ likes, joined, scrollRef }) {
             {t('Kahve, satranç ve uzun yürüyüşler. Proje arkadaşı arıyorum.')}
           </p>
         </div>
-        <div>
-          <div className="flex justify-between">
-            <p className={label}>{t('İlgi alanları')}</p>
-            <span className="text-[7.5px] font-semibold text-paper-faint">{tags.length}/10</span>
-          </div>
-          <div className="mt-1.5 flex flex-wrap gap-1">
-            {tags.map((tag) => (
-              <span key={tag} className="flex items-center gap-0.5 rounded-full bg-surface-2 py-0.5 pl-2 pr-1 text-[8px] font-semibold text-paper">
-                {t(tag)} <X size={8} className="text-paper-faint" />
-              </span>
-            ))}
-            <span className="flex items-center gap-0.5 rounded-full border border-dashed border-amber-soft/60 px-2 py-0.5 text-[8px] font-semibold text-amber-soft">
-              {t('Ekle')} <Plus size={8} />
-            </span>
-          </div>
-        </div>
+        <MiniSelect label={t('İlgi alanları')} values={tags} max={10} />
+        <MiniSelect label={t('Hobiler')} values={hobbies} max={10} />
       </div>
 
       {/* Sabit kaydet düğmesi, alt menünün üstünde */}
