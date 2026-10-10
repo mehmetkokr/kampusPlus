@@ -73,22 +73,29 @@ export function Delta({ change, previous }) {
   );
 }
 
-export function Kpi({ icon: Icon, label, value, kpi, color, format = fmt, children }) {
+// TailAdmin metrik kartı: gri kutuda simge; altta etiket + büyük sayı, sağda
+// önceki döneme göre değişim rozeti
+export function Kpi({ icon: Icon, label, value, kpi, format = fmt, children }) {
   return (
-    <div className="adm-card adm-kpi" style={{ '--kpi-color': color }}>
-      <span className="adm-kpi-label">
-        {Icon && <Icon />} {label}
-      </span>
-      <span className="adm-kpi-value">{format(value ?? kpi?.value)}</span>
-      <div className="adm-kpi-foot">
-        {kpi ? (
-          <>
-            <Delta change={kpi.change} previous={kpi.previous} />
-            <span className="adm-delta-note">{kpi.change === null ? 'önceki dönemde yoktu' : 'önceki döneme göre'}</span>
-          </>
-        ) : null}
-        {children}
+    <div className="adm-card adm-kpi">
+      {Icon && (
+        <span className="adm-kpi-icon" aria-hidden="true">
+          <Icon />
+        </span>
+      )}
+      <div className="adm-kpi-body">
+        <div style={{ minWidth: 0 }}>
+          <span className="adm-kpi-label">{label}</span>
+          <span className="adm-kpi-value">{format(value ?? kpi?.value)}</span>
+        </div>
+        {kpi && <Delta change={kpi.change} previous={kpi.previous} />}
       </div>
+      {(kpi || children) && (
+        <div className="adm-kpi-foot">
+          {kpi && <span className="adm-delta-note">{kpi.change === null ? 'önceki dönemde yoktu' : 'önceki döneme göre'}</span>}
+          {children}
+        </div>
+      )}
     </div>
   );
 }

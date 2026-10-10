@@ -9,7 +9,7 @@ import { applyTheme, currentTheme, markGuestThemeChoice } from '../utils/theme';
 // - Oturum açıksa seçim hemen hesaba kaydedilir (Ayarlar'a gitmeye gerek yok).
 // - Oturum yoksa seçim tarayıcıda hatırlanır ve giriş/kayıt sonrası hesaba
 //   aktarılır; yani ana sayfada seçilen mod uygulamada da geçerli olur.
-export default function ThemeToggle({ className = '' }) {
+export default function ThemeToggle({ className = '', bare = false, size = 17 }) {
   const { t } = useI18n();
   const { user, setUser } = useAuth();
   const [theme, setTheme] = useState(currentTheme);
@@ -32,11 +32,12 @@ export default function ThemeToggle({ className = '' }) {
   }
 
   // Uygulama başlığındaki ikon düğmeleriyle (zil, dişli) aynı görünsün
-  const base = className.includes('icon-btn-amber') ? '' : 'theme-toggle-btn';
+  // bare: yalnızca verilen sınıf (ör. yönetim panelinin kendi düğme stili)
+  const base = bare || className.includes('icon-btn-amber') ? '' : 'theme-toggle-btn';
   const label = theme === 'light' ? t('Koyu moda geç') : t('Açık moda geç');
   return (
     <button type="button" className={`${base} ${className}`.trim()} onClick={toggle} aria-label={label} title={label}>
-      {theme === 'light' ? <Moon size={17} /> : <Sun size={17} />}
+      {theme === 'light' ? <Moon size={size} /> : <Sun size={size} />}
     </button>
   );
 }

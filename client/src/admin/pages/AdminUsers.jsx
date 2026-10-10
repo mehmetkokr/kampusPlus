@@ -305,6 +305,12 @@ export default function AdminUsers() {
     return () => clearTimeout(t);
   }, [searchText]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Üst çubuktaki aramadan gelindiyse kutu da aynı metni göstersin
+  const urlSearch = params.get('search') || '';
+  useEffect(() => {
+    setSearchText((cur) => (cur.trim() === urlSearch ? cur : urlSearch));
+  }, [urlSearch]);
+
   const load = useCallback(() => {
     adminApi
       .getUsers({ ...JSON.parse(filterKey), page, pageSize: PAGE_SIZE })
