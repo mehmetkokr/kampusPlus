@@ -6,6 +6,7 @@ const { createNotification } = require('../lib/notifications');
 const { requireAdmin } = require('../middleware/adminAuth');
 const { sendMail } = require('../lib/mailer');
 const { getOnlineUserIds } = require('../socket');
+const { removeUploadedFile, deleteUserWithFiles } = require('../lib/uploads');
 
 const router = express.Router();
 router.use(requireAdmin);
@@ -499,7 +500,7 @@ router.delete('/users/:id', async (req, res) => {
     if (id === req.userId) {
       return res.status(400).json({ error: 'Kendi hesabınızı buradan silemezsiniz.' });
     }
-    await prisma.user.delete({ where: { id } });
+    await deleteUserWithFiles(id);
     res.json({ message: 'Kullanıcı silindi.' });
   } catch (err) {
     console.error(err);
@@ -658,7 +659,8 @@ router.get('/posts', async (req, res) => {
 
 router.delete('/posts/:id', async (req, res) => {
   try {
-    await prisma.post.delete({ where: { id: Number(req.params.id) } });
+    const post = await prisma.post.delete({ where: { id: Number(req.params.id) } });
+    await removeUploadedFile(post.imageUrl);
     res.json({ message: 'Gönderi silindi.' });
   } catch (err) {
     console.error(err);
@@ -796,7 +798,13 @@ router.post('/reports/:id/action', async (req, res) => {
     } else if (action === 'delete_content') {
       const model = { post: 'post', story: 'story', message: 'message', club_message: 'clubMessage', comment: 'comment', club: 'club' }[report.targetType];
       if (!model) return res.status(400).json({ error: 'Bu şikayet türünde silinecek içerik yok; kullanıcıyı askıya alabilirsin.' });
+      // Uygunsuz bulunan görsel, bağlantıyı bilenlere açık kalmasın diye diskten de hemen silinir
+      const fileFields = { post: ['imageUrl'], story: ['imageUrl'], message: ['photoUrl', 'audioUrl', 'fileUrl'], clubMessage: ['photoUrl', 'audioUrl', 'fileUrl'] }[model];
+      const files = fileFields
+        ? await prisma[model].findUnique({ where: { id: report.targetId }, select: Object.fromEntries(fileFields.map((f) => [f, true])) })
+        : null;
       const result = await prisma[model].deleteMany({ where: { id: report.targetId } });
+      if (files) await Promise.all(Object.values(files).map(removeUploadedFile));
       message = result.count ? 'İçerik silindi.' : 'İçerik zaten silinmiş.';
     } else {
       return res.status(400).json({ error: 'Geçersiz işlem.' });

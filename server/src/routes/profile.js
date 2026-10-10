@@ -8,23 +8,13 @@ const { verifyFileSignature } = require('../lib/fileValidation');
 const { isPremiumActive } = require('../lib/premium');
 const { runDocumentOcr } = require('../lib/ocr');
 const fsp = require('fs/promises');
-const path = require('path');
-const { PUBLIC_UPLOADS, PRIVATE_UPLOADS } = require('../lib/paths');
+const { removeUploadedFile, deleteUserWithFiles } = require('../lib/uploads');
 const { parseBirthDate, withLiveAge } = require('../lib/age');
 const { toTitleCaseTR } = require('../lib/text');
 const { discoverableUserWhere } = require('../lib/privacy');
 const { ALLOWED_INTENTS, wantsDating, visibleIntentFor } = require('../lib/intents');
 
 const MAX_PHOTOS = 6;
-
-// Galeriden silinen fotoğrafı diskten de kaldır (bağlantıyı bilen erişemesin)
-async function removeUploadedFile(url) {
-  if (!url) return;
-  // /uploads/... herkese açık klasör; /api/files/... kimlik belgesi gibi özel dosyalar
-  const dir = url.startsWith('/uploads/') ? PUBLIC_UPLOADS : url.startsWith('/api/files/') ? PRIVATE_UPLOADS : null;
-  if (!dir) return;
-  await fsp.unlink(path.join(dir, path.basename(url))).catch(() => {});
-}
 
 // İlgi alanı / hobi listesi: virgülle ayrılmış, en fazla 10 benzersiz öğe,
 // her biri en fazla 40 karakter. undefined gelirse alan değiştirilmez.
@@ -91,6 +81,7 @@ router.get('/me', requireAuth, async (req, res) => {
         university: { select: { id: true, name: true } },
         isPremium: true,
         premiumUntil: true,
+        premiumAutoRenew: true,
         birthDate: true,
         weeklySummaryEnabled: true,
       },
@@ -357,34 +348,8 @@ router.delete('/me', requireAuth, async (req, res) => {
       });
     }
 
-    // Silinen hesabın fotoğraf dosyaları diskte kalmasın (profil, galeri,
-    // gönderi ve hikaye fotoğrafları): kayıtlar cascade ile silinir ama dosyalar değil.
-    // Eşleşmeler silinince içindeki tüm sohbet mesajları da silinir; bu yüzden
-    // iki tarafın da gönderdiği sohbet ekleri (fotoğraf, ses, dosya) temizlenir.
-    // Kulüp sohbetinde yalnızca bu hesabın kendi mesajları silinir.
-    const attachment = { OR: [{ photoUrl: { not: null } }, { audioUrl: { not: null } }, { fileUrl: { not: null } }] };
-    const attachmentFields = { photoUrl: true, audioUrl: true, fileUrl: true };
-    const [photos, posts, stories, chatFiles, clubChatFiles] = await Promise.all([
-      prisma.userPhoto.findMany({ where: { userId: req.userId }, select: { url: true } }),
-      prisma.post.findMany({ where: { authorId: req.userId, imageUrl: { not: null } }, select: { imageUrl: true } }),
-      prisma.story.findMany({ where: { authorId: req.userId }, select: { imageUrl: true } }),
-      prisma.message.findMany({
-        where: { ...attachment, match: { OR: [{ userAId: req.userId }, { userBId: req.userId }] } },
-        select: attachmentFields,
-      }),
-      prisma.clubMessage.findMany({ where: { ...attachment, senderId: req.userId }, select: attachmentFields }),
-    ]);
-    const fileUrls = new Set([
-      me.photoUrl,
-      me.studentDocUrl,
-      ...photos.map((p) => p.url),
-      ...posts.map((p) => p.imageUrl),
-      ...stories.map((s) => s.imageUrl),
-      ...[...chatFiles, ...clubChatFiles].flatMap((m) => [m.photoUrl, m.audioUrl, m.fileUrl]),
-    ]);
-
-    await prisma.user.delete({ where: { id: req.userId } });
-    await Promise.all([...fileUrls].map((url) => removeUploadedFile(url)));
+    // Kayıtlar cascade ile silinir; fotoğraf, belge ve sohbet ekleri de diskten kaldırılır
+    await deleteUserWithFiles(req.userId);
     res.json({ message: 'Hesabın kalıcı olarak silindi.' });
   } catch (err) {
     console.error(err);
