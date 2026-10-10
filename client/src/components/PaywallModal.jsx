@@ -19,12 +19,17 @@ export default function PaywallModal({ onClose, onUpgraded, contextText }) {
   const toast = useToast();
   const [plan, setPlan] = useState('monthly');
   const [plans, setPlans] = useState(null);
+  // Ödeme sağlayıcısı bağlanana kadar yayında satın alma kapalıdır
+  const [checkoutAvailable, setCheckoutAvailable] = useState(true);
   const [saving, setSaving] = useState(false);
 
   React.useEffect(() => {
     api
       .get('/premium/status')
-      .then((res) => setPlans(res.data.plans))
+      .then((res) => {
+        setPlans(res.data.plans);
+        setCheckoutAvailable(res.data.checkoutAvailable !== false);
+      })
       .catch(() => {});
   }, []);
 
@@ -32,7 +37,7 @@ export default function PaywallModal({ onClose, onUpgraded, contextText }) {
     setSaving(true);
     try {
       const res = await api.post('/premium/activate', { plan });
-      setUser((prev) => ({ ...prev, isPremium: true, premiumUntil: res.data.premiumUntil }));
+      setUser((prev) => ({ ...prev, isPremium: true, premiumUntil: res.data.premiumUntil, premiumAutoRenew: res.data.premiumAutoRenew }));
       toast.success('Premium üyeliğin aktif! Artık tüm üniversitelerdeki kişileri görebilirsin.');
       onUpgraded?.();
       onClose();
@@ -92,10 +97,20 @@ export default function PaywallModal({ onClose, onUpgraded, contextText }) {
           ))}
         </div>
 
-        <button className="btn-premium-cta" style={{ width: '100%', justifyContent: 'center' }} onClick={handleUpgrade} disabled={saving}>
+        <button
+          className="btn-premium-cta"
+          style={{ width: '100%', justifyContent: 'center' }}
+          onClick={handleUpgrade}
+          disabled={saving || !checkoutAvailable}
+        >
           {saving ? <Loader2 size={16} className="spin" /> : <Crown size={16} />}
-          {saving ? t("İşleniyor...") : t("Premium'a Geç")}
+          {saving ? t("İşleniyor...") : checkoutAvailable ? t("Premium'a Geç") : t("Çok Yakında")}
         </button>
+        {!checkoutAvailable && (
+          <p className="paywall-modal-sub" style={{ marginTop: 10, marginBottom: 0 }}>
+            {t("Ödeme sistemi hazırlanıyor. Premium çok yakında satışa açılacak.")}
+          </p>
+        )}
       </div>
     </div>
   );

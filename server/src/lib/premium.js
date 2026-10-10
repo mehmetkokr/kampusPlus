@@ -7,4 +7,14 @@ function isPremiumActive(user) {
   return new Date(user.premiumUntil).getTime() > Date.now();
 }
 
-module.exports = { isPremiumActive };
+// Gerçek ödeme sağlayıcısı bağlanana kadar /api/premium/activate ödeme almadan
+// premium açar. Bu yüzden yayında (production / Railway) varsayılan olarak
+// kapalıdır; aksi halde herkes ücretsiz premium alabilirdi. Denemek için
+// MOCK_PAYMENTS="true", yerelde kapatmak için MOCK_PAYMENTS="false" verilir.
+function mockPaymentsEnabled(env = process.env) {
+  if (env.MOCK_PAYMENTS !== undefined && env.MOCK_PAYMENTS !== '') return env.MOCK_PAYMENTS === 'true';
+  const isProduction = env.NODE_ENV === 'production' || Boolean(env.RAILWAY_ENVIRONMENT || env.RAILWAY_ENVIRONMENT_NAME);
+  return !isProduction;
+}
+
+module.exports = { isPremiumActive, mockPaymentsEnabled };
