@@ -46,7 +46,8 @@
 /* Profil kartı */
 .pf-hero { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 24px; }
 .pf-avatar { position: relative; width: 132px; height: 132px; margin-bottom: 14px; }
-.pf-avatar svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+/* Yalnızca ilerleme halkası döner; kamera simgesi gibi iç SVG'ler etkilenmez */
+.pf-avatar > svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
 .pf-ring-track { fill: none; stroke: var(--surface-3); stroke-width: 4; }
 .pf-ring-fill {
   fill: none;
@@ -67,20 +68,26 @@
 }
 .pf-avatar-edit {
   position: absolute;
-  right: 14px;
-  bottom: 14px;
+  right: 10px;
+  bottom: 10px;
+  z-index: 1;
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   margin: 0;
   border-radius: 50%;
   border: 3px solid var(--surface);
-  background: var(--amber-soft);
+  background: linear-gradient(145deg, color-mix(in srgb, var(--amber-soft) 78%, #fff), var(--amber-soft));
   color: #fff;
+  box-shadow: 0 6px 16px -4px color-mix(in srgb, var(--amber-soft) 65%, transparent);
   cursor: pointer;
+  transition: transform 0.18s cubic-bezier(0.23, 1, 0.32, 1), box-shadow 0.18s ease;
 }
 .pf-avatar-edit::after { content: ''; position: absolute; inset: -6px; }
+.pf-avatar-edit:hover { transform: translateY(-1px) scale(1.06); box-shadow: 0 10px 20px -6px color-mix(in srgb, var(--amber-soft) 75%, transparent); }
+.pf-avatar-edit:active { transform: scale(0.94); }
+.pf-avatar-edit:focus-within { outline: 2px solid var(--amber-soft); outline-offset: 3px; }
 .pf-avatar-edit input { display: none; }
 .pf-name { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.02em; color: var(--text); }
 .pf-uni { margin: 4px 0 0; font-size: 14.5px; color: var(--text-muted); }
@@ -148,68 +155,145 @@
   cursor: pointer;
 }
 
-/* Çipler */
-.pf-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.pf-chip {
-  display: inline-flex;
+/* Seçim kutusu (Ne arıyorsun?, İlgi alanları, Hobiler) */
+.pf-select { position: relative; }
+.pf-select-box {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-  min-height: 38px;
-  padding: 0 16px;
-  border-radius: 999px;
+  min-height: 52px;
+  padding: 8px 44px 8px 10px;
+  border-radius: 14px;
   border: 1px solid transparent;
   background: var(--surface-2);
-  color: var(--text-muted);
-  font: inherit;
-  font-size: 14px;
-  font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease, transform 0.12s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, border-radius 0.15s ease;
 }
-.pf-chip:active { transform: scale(0.96); }
-.pf-chip.is-on { background: var(--amber-soft); color: #fff; }
-.pf-chip.is-tag { padding-right: 6px; color: var(--text); cursor: default; }
-.pf-chip.is-tag:active { transform: none; }
-.pf-chip.is-tag button {
+.pf-select-box:hover { border-color: var(--border); }
+.pf-select-box:focus-visible,
+.pf-select.is-open .pf-select-box {
+  outline: none;
+  border-color: var(--amber-soft);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber-soft) 20%, transparent);
+}
+.pf-select-placeholder { padding: 0 4px; font-size: 15px; color: var(--text-faint); }
+.pf-select-chevron {
+  position: absolute;
+  top: 17px;
+  right: 14px;
+  color: var(--text-muted);
+  transition: transform 0.2s ease;
+}
+.pf-select.is-open .pf-select-chevron { transform: rotate(180deg); color: var(--amber-soft); }
+.pf-select-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 32px;
+  padding: 0 4px 0 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--amber-soft) 16%, var(--surface));
+  color: var(--text);
+  font-size: 13.5px;
+  font-weight: 600;
+  animation: pf-chip-in 0.18s ease;
+}
+.pf-select-chip button {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   border: 0;
   border-radius: 50%;
   background: none;
-  color: var(--text-faint);
+  color: var(--text-muted);
   cursor: pointer;
 }
-.pf-chip.is-tag button:hover { background: var(--surface-3); color: var(--text); }
-.pf-chip.is-add {
-  border: 1.5px dashed color-mix(in srgb, var(--amber-soft) 55%, transparent);
-  background: none;
-  color: var(--amber-soft);
-}
-.pf-chip.is-add.is-open { background: color-mix(in srgb, var(--amber-soft) 10%, transparent); }
-.pf-chip:disabled { opacity: 0.45; cursor: default; }
-.pf-chip:focus-visible,
-.pf-chip.is-tag button:focus-visible,
-.pf-link:focus-visible,
-.pf-icon-btn:focus-visible,
-.pf-completion-link:focus-visible { outline: 2px solid var(--amber-soft); outline-offset: 2px; }
+.pf-select-chip button:hover { background: color-mix(in srgb, var(--amber-soft) 22%, transparent); color: var(--text); }
+@keyframes pf-chip-in { from { opacity: 0; transform: scale(0.9); } }
 
-.pf-add-panel { margin-top: 12px; padding: 12px; border-radius: 16px; background: var(--surface-2); }
-.pf-search { position: relative; display: flex; align-items: center; margin: 0 0 10px; }
-.pf-search svg { position: absolute; left: 12px; color: var(--text-faint); }
-.pf-search input {
+.pf-select-panel {
+  margin-top: 8px;
+  padding: 8px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  box-shadow: 0 18px 40px -24px rgba(0, 0, 0, 0.55);
+  animation: pf-panel-in 0.18s cubic-bezier(0.23, 1, 0.32, 1);
+}
+@keyframes pf-panel-in { from { opacity: 0; transform: translateY(-6px); } }
+.pf-select-search { position: relative; display: flex; align-items: center; margin: 0 0 6px; }
+.pf-select-search svg { position: absolute; left: 12px; color: var(--text-faint); }
+.pf-select-search input {
   width: 100%;
   min-height: 42px;
   margin: 0;
   padding: 0 12px 0 36px;
-  border-radius: 12px;
+  border-radius: 11px;
   border: 1px solid var(--border);
   background: var(--surface);
+  color: var(--text);
 }
-.pf-options { max-height: 196px; overflow-y: auto; }
-.pf-options .pf-chip { background: var(--surface); color: var(--text); }
-.pf-add-panel .pf-link { display: block; margin: 6px 0 0 auto; }
+.pf-select-search input:focus { outline: none; border-color: var(--amber-soft); }
+.pf-select-list { max-height: 248px; margin: 0; padding: 0; overflow-y: auto; list-style: none; overscroll-behavior: contain; }
+.pf-select-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  text-align: left;
+  cursor: pointer;
+}
+.pf-select-option:hover:not(:disabled),
+.pf-select-option:focus-visible { outline: none; background: var(--surface-3); }
+.pf-select-option.is-on { font-weight: 650; }
+.pf-select-option:disabled { opacity: 0.4; cursor: default; }
+.pf-select-check {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  border: 1.5px solid var(--text-faint);
+  color: #fff;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.pf-select-option.is-on .pf-select-check { border-color: var(--amber-soft); background: var(--amber-soft); }
+.pf-select-note { margin: 6px 10px; font-size: 12.5px; line-height: 1.45; color: var(--text-faint); }
+.pf-select-done {
+  display: block;
+  width: 100%;
+  min-height: 42px;
+  margin-top: 6px;
+  border: 0;
+  border-radius: 11px;
+  background: var(--amber-soft);
+  color: #fff;
+  font: inherit;
+  font-size: 14.5px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.pf-select-done:focus-visible,
+.pf-select-chip button:focus-visible,
+.pf-link:focus-visible,
+.pf-icon-btn:focus-visible,
+.pf-completion-link:focus-visible { outline: 2px solid var(--amber-soft); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pf-select-chip,
+  .pf-select-panel { animation: none; }
+}
 
 /* Alanlar */
 .pf-input {
@@ -285,5 +369,5 @@
 .photo-gallery.is-bare .photo-slot.empty:disabled { opacity: 1; }
 
 @media (prefers-reduced-motion: reduce) {
-  .pf-ring-fill, .pf-chip, .pf-save, .pf-completion-link svg { transition: none; }
+  .pf-ring-fill, .pf-avatar-edit, .pf-select-box, .pf-select-chevron, .pf-save, .pf-completion-link svg { transition: none; }
 }

@@ -10,9 +10,9 @@ import NotificationBell from '../components/NotificationBell';
 import PhotoGallery from '../components/PhotoGallery';
 import StudentBadgeCard from '../components/StudentBadgeCard';
 import ProfileCompletion, { getCompletionPercent } from '../components/ProfileCompletion';
-import ChipTagEditor from '../components/ChipTagEditor';
+import MultiSelectBox from '../components/MultiSelectBox';
 import { INTENT_OPTIONS, parseIntents } from '../constants/intents';
-import { INTEREST_OPTIONS, HOBBY_OPTIONS, parseTags } from '../constants/tags';
+import { INTEREST_OPTIONS, HOBBY_OPTIONS, MAX_TAGS, parseTags } from '../constants/tags';
 import { useI18n } from '../i18n';
 import { compressImage } from '../utils/image';
 import { usePhotoEditor } from '../context/PhotoEditorContext';
@@ -69,8 +69,6 @@ export default function ProfilePage() {
 
   const set = (key, value) => setForm((f) => ({ ...f, [key]: value }));
   const intents = form.intent ? form.intent.split(',') : [];
-  const toggleIntent = (value) =>
-    set('intent', (intents.includes(value) ? intents.filter((v) => v !== value) : [...intents, value]).join(','));
 
   const saved = fromUser(user);
   const dirty = Object.keys(saved).some((k) => saved[k] !== form[k]) || (!user.birthDate && !!birthDate);
@@ -193,20 +191,14 @@ export default function ProfilePage() {
 
       <section className="pf-card pf-form">
         {/* ---------- Ne arıyorsun? ---------- */}
-        <div className="pf-section" id="profile-intents">
-          <h3 className="pf-label">{t('Ne arıyorsun?')}</h3>
-          <div className="pf-chips" role="group" aria-label={t('Ne arıyorsun?')}>
-            {INTENT_OPTIONS.map((opt) => {
-              const on = intents.includes(opt.value);
-              return (
-                <button key={opt.value} type="button" className={`pf-chip ${on ? 'is-on' : ''}`} aria-pressed={on} onClick={() => toggleIntent(opt.value)}>
-                  {t(opt.label)}
-                </button>
-              );
-            })}
-          </div>
-          <p className="pf-hint">{t('Flört ve Uzun Süreli İlişki seçimini yalnızca bunları seçen öğrenciler görür.')}</p>
-        </div>
+        <MultiSelectBox
+          id="profile-intents"
+          label={t('Ne arıyorsun?')}
+          options={INTENT_OPTIONS}
+          value={intents}
+          onChange={(values) => set('intent', values.join(','))}
+          hint={t('Flört ve Uzun Süreli İlişki seçimini yalnızca bunları seçen öğrenciler görür.')}
+        />
 
         {/* ---------- Hakkımda ---------- */}
         <div className="pf-section">
@@ -230,17 +222,19 @@ export default function ProfilePage() {
         </div>
 
         {/* ---------- İlgi alanları ve hobiler ---------- */}
-        <ChipTagEditor
+        <MultiSelectBox
           id="profile-interests"
           label={t('İlgi Alanları')}
           options={INTEREST_OPTIONS}
+          max={MAX_TAGS}
           value={parseTags(form.interests)}
           onChange={(tags) => set('interests', tags.join(', '))}
         />
-        <ChipTagEditor
+        <MultiSelectBox
           id="profile-hobbies"
           label={t('Hobiler')}
           options={HOBBY_OPTIONS}
+          max={MAX_TAGS}
           value={parseTags(form.hobbies)}
           onChange={(tags) => set('hobbies', tags.join(', '))}
         />
