@@ -320,3 +320,86 @@ test('anlık bildirim: açık anahtar verilir, geçersiz abonelik reddedilir, ge
   assert.equal((await api('DELETE', '/api/push/subscribe', { token, body: { endpoint: sub.endpoint } })).status, 200);
   assert.equal(await prisma.pushSubscription.count({ where: { endpoint: sub.endpoint } }), 0);
 });
+
+// ---------------------------------------------------------------
+// Güvenlik sertleştirmesi
+// ---------------------------------------------------------------
+const PNG_1PX = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+  'base64'
+);
+
+async function upload(url, token, field, buf, type, name) {
+  const form = new FormData();
+  form.append(field, new Blob([buf], { type }), name);
+  const res = await fetch(BASE + url, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form });
+  return { status: res.status, data: await res.json().catch(() => null) };
+}
+
+test('yükleme: uzantı istemciden alınmaz, yanlış tür ve sahte içerik reddedilir', async () => {
+  await createUser('yukleme@test.edu.tr');
+  const token = await tokenFor('yukleme@test.edu.tr');
+
+  const ok = await upload('/api/profile/me/photos', token, 'photo', PNG_1PX, 'image/png', 'x.html');
+  assert.equal(ok.status, 201, JSON.stringify(ok.data));
+  const url = ok.data.photos.at(-1).url;
+  assert.match(url, /^\/uploads\/photo-[0-9a-f]{32}\.png$/, 'ad rastgele, uzantı doğrulanmış türden');
+
+  const served = await fetch(BASE + url);
+  assert.equal(served.status, 200);
+  assert.equal(served.headers.get('content-type'), 'image/png');
+  assert.equal(served.headers.get('x-content-type-options'), 'nosniff');
+  assert.match(served.headers.get('content-security-policy'), /sandbox/);
+
+  const pdf = await upload('/api/profile/me/photos', token, 'photo', Buffer.from('%PDF-1.4\n%%EOF'), 'application/pdf', 'a.pdf');
+  assert.equal(pdf.status, 400, 'fotoğraf alanına PDF yüklenemez');
+  const fake = await upload('/api/profile/me/photos', token, 'photo', Buffer.from('<script>alert(1)</script>'), 'image/png', 'a.png');
+  assert.equal(fake.status, 400, 'image/png etiketli HTML reddedilmeli');
+  const big = await upload('/api/profile/me/photos', token, 'photo', Buffer.alloc(6 * 1024 * 1024), 'image/png', 'b.png');
+  assert.equal(big.status, 400, 'çok büyük dosya 400 dönmeli');
+});
+
+test('yükleme: herkese açık klasörden yalnızca görseller sunulur', async () => {
+  fs.writeFileSync(path.join(tmp, 'uploads', 'eski.html'), '<script>alert(1)</script>');
+  assert.equal((await fetch(`${BASE}/uploads/eski.html`)).status, 404);
+  assert.equal((await fetch(`${BASE}/uploads/.gitkeep`)).status, 404);
+});
+
+test('kayıt kodu: kayıtlı ve kayıtsız adrese aynı yanıt; kayıtlıya kod üretilmez', async () => {
+  const uni = await prisma.university.findFirst({ where: { emailDomain: 'test.edu.tr' } });
+  await createUser('kayitli@test.edu.tr');
+  const known = await api('POST', '/api/auth/register/send-code', { body: { email: 'kayitli@test.edu.tr', universityId: uni.id } });
+  const unknown = await api('POST', '/api/auth/register/send-code', { body: { email: 'yeni@test.edu.tr', universityId: uni.id } });
+  assert.equal(known.status, 200);
+  assert.deepEqual(Object.keys(known.data).sort(), Object.keys(unknown.data).sort());
+  assert.equal(known.data.sent, true);
+  assert.equal(await prisma.emailVerificationCode.findUnique({ where: { email: 'kayitli@test.edu.tr' } }), null);
+  assert.ok(await prisma.emailVerificationCode.findUnique({ where: { email: 'yeni@test.edu.tr' } }));
+});
+
+test('giriş ve şifremi unuttum: hatalı türde girdi 400, hesap varlığı mesajdan anlaşılmaz', async () => {
+  const obj = await api('POST', '/api/auth/login', { body: { email: { not: '' }, password: ['x'] } });
+  assert.equal(obj.status, 400);
+  const a = await api('POST', '/api/auth/forgot-password', { body: { email: 'kayitli@test.edu.tr' } });
+  const b = await api('POST', '/api/auth/forgot-password', { body: { email: 'hic-yok@test.edu.tr' } });
+  assert.equal(a.status, 200);
+  assert.deepEqual(a.data, b.data);
+});
+
+test('gerçek zamanlı bağlantı: boş/null olaylar sunucuyu düşürmez', async () => {
+  const { io } = require('socket.io-client');
+  await createUser('soket@test.edu.tr');
+  const token = await tokenFor('soket@test.edu.tr');
+  const socket = io(BASE, { auth: { token }, transports: ['websocket'] });
+  await new Promise((resolve, reject) => {
+    socket.on('connect', resolve);
+    socket.on('connect_error', reject);
+  });
+  for (const event of ['typing', 'mark_read', 'send_message', 'send_club_message']) {
+    socket.emit(event);
+    socket.emit(event, null);
+  }
+  await new Promise((r) => setTimeout(r, 500));
+  socket.close();
+  assert.equal((await fetch(`${BASE}/api/health`)).status, 200, 'sunucu ayakta kalmalı');
+});

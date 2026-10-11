@@ -14,7 +14,7 @@
     "mail:test": "node scripts/mail-test.js",
     "admin:create": "node scripts/create-admin.js",
     "start:prod": "prisma migrate deploy && node prisma/seed.js --if-empty && node src/index.js",
-    "test": "node --test test/lib.test.js test/api.test.js test/features.test.js",
+    "test": "node --test test/lib.test.js test/hardening.test.js test/api.test.js test/features.test.js",
     "admin:reset-2fa": "node scripts/reset-2fa.js"
   },
   "dependencies": {
@@ -38,7 +38,8 @@
     "web-push": "^3.6.7"
   },
   "devDependencies": {
-    "nodemon": "^3.1.7"
+    "nodemon": "^3.1.7",
+    "socket.io-client": "^4.8.3"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
