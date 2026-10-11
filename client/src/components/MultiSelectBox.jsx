@@ -63,43 +63,39 @@ export default function MultiSelectBox({ id, label, options, value, onChange, ma
       </div>
 
       <div ref={rootRef} className={`pf-select ${open ? 'is-open' : ''}`}>
-        <div
-          className="pf-select-box"
-          role="button"
-          tabIndex={0}
-          aria-haspopup="listbox"
-          aria-expanded={open}
-          aria-controls={listId}
-          aria-label={label}
-          onClick={() => setOpen((v) => !v)}
-          onKeyDown={(e) => {
-            if (e.target !== e.currentTarget) return;
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
+        {/* Kutunun tamamına dokunmak listeyi açar; ekran okuyucu ve klavye için
+            açma işini içteki gerçek düğme yapar (iç içe tıklanabilir öğe olmasın) */}
+        <div className="pf-select-box" onClick={() => setOpen((v) => !v)}>
+          {value.map((v) => (
+            <span key={v} className="pf-select-chip">
+              {labelOf(v)}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggle(v);
+                }}
+                aria-label={t('{tag} etiketini kaldır', { tag: labelOf(v) })}
+              >
+                <X size={12} strokeWidth={2.6} />
+              </button>
+            </span>
+          ))}
+          <button
+            type="button"
+            className={`pf-select-toggle ${value.length === 0 ? 'is-empty' : ''}`}
+            aria-haspopup="listbox"
+            aria-expanded={open}
+            aria-controls={listId}
+            aria-label={label}
+            onClick={(e) => {
+              e.stopPropagation();
               setOpen((v) => !v);
-            }
-          }}
-        >
-          {value.length === 0 ? (
-            <span className="pf-select-placeholder">{placeholder || t('Seçmek için dokun')}</span>
-          ) : (
-            value.map((v) => (
-              <span key={v} className="pf-select-chip">
-                {labelOf(v)}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggle(v);
-                  }}
-                  aria-label={t('{tag} etiketini kaldır', { tag: labelOf(v) })}
-                >
-                  <X size={12} strokeWidth={2.6} />
-                </button>
-              </span>
-            ))
-          )}
-          <ChevronDown size={18} className="pf-select-chevron" aria-hidden="true" />
+            }}
+          >
+            {value.length === 0 && <span className="pf-select-placeholder">{placeholder || t('Seçmek için dokun')}</span>}
+            <ChevronDown size={18} className="pf-select-chevron" aria-hidden="true" />
+          </button>
         </div>
 
         {open && (

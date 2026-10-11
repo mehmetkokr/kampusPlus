@@ -14,7 +14,7 @@ const prisma = require('../src/lib/prisma');
     console.error('Bu e-postayla bir hesap bulunamadı.');
     process.exit(1);
   }
-  await prisma.user.update({ where: { id: user.id }, data: { totpEnabled: false, totpSecret: null } });
+  await prisma.user.update({ where: { id: user.id }, data: { totpEnabled: false, totpSecret: null, totpLastStep: null } });
   console.log(`${user.fullName} için iki adımlı doğrulama kapatıldı. Panelden yeniden kurabilir.`);
   await prisma.$disconnect();
 })();

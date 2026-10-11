@@ -268,7 +268,7 @@
   color: #fff;
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
-.pf-select-option.is-on .pf-select-check { border-color: var(--amber-soft); background: var(--amber-soft); }
+.pf-select-option.is-on .pf-select-check { border-color: var(--amber-soft); background: var(--accent-fill); }
 .pf-select-note { margin: 6px 10px; font-size: 12.5px; line-height: 1.45; color: var(--text-faint); }
 .pf-select-done {
   display: block;
@@ -277,7 +277,7 @@
   margin-top: 6px;
   border: 0;
   border-radius: 11px;
-  background: var(--amber-soft);
+  background: var(--accent-fill);
   color: #fff;
   font: inherit;
   font-size: 14.5px;
@@ -333,7 +333,8 @@
 }
 
 /* Sabit kaydet düğmesi: telefonda alt menünün hemen üstünde */
-.pf-savebar { position: sticky; bottom: 20px; z-index: 30; padding-top: 8px; }
+.pf-savebar { position: sticky; bottom: 20px; z-index: 30; padding-top: 8px; animation: pf-savebar-in 0.22s cubic-bezier(0.23, 1, 0.32, 1); }
+@keyframes pf-savebar-in { from { opacity: 0; transform: translateY(16px); } }
 @media (max-width: 1023px) {
   .pf-savebar { bottom: calc(env(safe-area-inset-bottom, 0px) + 88px); }
 }
@@ -370,4 +371,26 @@
 
 @media (prefers-reduced-motion: reduce) {
   .pf-ring-fill, .pf-avatar-edit, .pf-select-box, .pf-select-chevron, .pf-save, .pf-completion-link svg { transition: none; }
+  .pf-savebar { animation: none; }
+}
+
+/* Seçim kutusundaki açma düğmesi: boşken yer tutucuyu, doluyken yalnızca oku taşır */
+.pf-select-toggle {
+  display: flex;
+  align-items: center;
+  min-height: 34px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.pf-select-toggle.is-empty { flex: 1; }
+.pf-select-toggle:focus-visible { outline: none; }
+.pf-select-box:has(.pf-select-toggle:focus-visible) {
+  border-color: var(--amber-soft);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber-soft) 20%, transparent);
 }

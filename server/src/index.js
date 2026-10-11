@@ -8,6 +8,7 @@ installErrorCapture();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const { ipKeyGenerator } = require('express-rate-limit');
 const jwt = require('jsonwebtoken');
@@ -16,6 +17,9 @@ const { Server } = require('socket.io');
 const path = require('path');
 const fs = require('fs');
 const { PUBLIC_UPLOADS } = require('./lib/paths');
+const { publicUploadGuard, publicStaticHeaders } = require('./lib/safeServe');
+const { trustProxy, allowedOrigins, productionConfigWarnings, siteUrl, configuredSiteUrl } = require('./lib/siteConfig');
+const { renderPage, robotsTxt, sitemapXml } = require('./lib/seo');
 
 const authRoutes = require('./routes/auth');
 const universityRoutes = require('./routes/universities');
@@ -39,39 +43,41 @@ const { startCronJobs } = require('./lib/cron');
 const app = express();
 const server = http.createServer(app);
 
-// Eğer sunucu bir ters proxy (nginx, Cloudflare, Render/Railway vb.) arkasında
-// çalışıyorsa, rate limiter'ın gerçek istemci IP'sini görebilmesi için bu
-// açılmalıdır. Proxy YOKSA bunu açmayın: aksi halde istemciler
-// X-Forwarded-For header'ını sahteleyerek rate limit'i by-pass edebilir.
-if (process.env.TRUST_PROXY === 'true') {
+// Sunucu bir ters proxy (Railway, nginx, Cloudflare) arkasındaysa rate
+// limiter'ın gerçek istemci IP'sini görebilmesi için açılır. Proxy YOKSA
+// açılmamalı: aksi halde istemciler X-Forwarded-For başlığını sahteleyerek
+// sınırı aşabilir. Railway'de kendiliğinden açık (bkz. lib/siteConfig.js).
+if (trustProxy()) {
   app.set('trust proxy', 1);
 }
 
-const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
+const ORIGINS = allowedOrigins();
 
 const io = new Server(server, {
   cors: {
-    origin: CLIENT_URL,
+    origin: ORIGINS,
     methods: ['GET', 'POST'],
   },
 });
 
-app.use(cors({ origin: CLIENT_URL }));
+app.use(cors({ origin: ORIGINS }));
 // Helmet, güvenlik açısından önemli HTTP başlıklarını (XSS koruması,
 // clickjacking koruması, MIME sniffing engeli vb.) otomatik olarak ekler.
 // crossOriginResourcePolicy 'cross-origin' yapılır çünkü /uploads ve
 // /api/files altındaki dosyalar frontend'in farklı origin'inden (5173)
 // <img>/<audio> etiketleriyle doğrudan yükleniyor.
-// İçerik Güvenlik Politikası: sitenin açılış betiği satır içi (tema ve
-// yükleniyor ekranı), yazı tipleri Google Fonts'tan gelir; gerçek zamanlı
-// bağlantı (socket.io) aynı adrese ws/wss ile yapılır.
+// İçerik Güvenlik Politikası: betikler yalnızca sitenin kendi dosyalarından
+// gelir (satır içi betik yok), yazı tipleri Google Fonts'tan gelir; gerçek
+// zamanlı bağlantı (socket.io) aynı adrese ws/wss ile yapılır.
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'"],
+        // Satır içi betik yok (tema: public/theme-init.js); XSS olsa bile
+        // sayfaya enjekte edilen <script> çalışmaz
+        scriptSrc: ["'self'"],
         styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
         fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
         imgSrc: ["'self'", 'data:', 'blob:', 'https://images.unsplash.com'],
@@ -85,6 +91,10 @@ app.use(
     },
   })
 );
+// Metin yanıtlar (HTML, JS, CSS, JSON) sıkıştırılır: ana JavaScript 270 KB
+// yerine ~90 KB iner; telefonda sayfa belirgin hızlı açılır. Görseller zaten
+// sıkıştırılmış olduğu için atlanır (compression yalnızca metin türlerine uygulanır).
+app.use(compression());
 app.use(express.json());
 
 // Genel API isteklerini sınırlar (kaba kuvvet / otomatik istismar araçlarına
@@ -110,7 +120,8 @@ function rateLimitKey(req) {
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 600, // kullanıcı (veya IP) başına 15 dakikada 600 istek
+  // kullanıcı (veya IP) başına 15 dakikada 600 istek (API_RATE_LIMIT ile değişir; yük testi yükseltir)
+  limit: Number(process.env.API_RATE_LIMIT) || 600,
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: rateLimitKey,
@@ -118,12 +129,34 @@ const apiLimiter = rateLimit({
 });
 app.use('/api', apiLimiter);
 
+// Adresteki numaralar veritabanının tamsayı sınırını aşarsa (ör. /api/posts/99999999999)
+// sorgu hata verip 500 dönüyordu; böyle bir kayıt olamayacağı için doğrudan 404
+const MAX_DB_INT = 2147483647;
+app.use('/api', (req, res, next) => {
+  const tooBig = req.path.split('/').some((part) => /^\d+$/.test(part) && (part.length > 10 || Number(part) > MAX_DB_INT));
+  if (tooBig) return res.status(404).json({ error: 'Bulunamadı.' });
+  next();
+});
+
 // Yüklenen dosyalara (profil fotoğrafı, öğrenci belgesi) erişim
-app.use('/uploads', express.static(PUBLIC_UPLOADS));
+// Yalnızca görseller, sayfa olarak çalışamayacak başlıklarla (bkz. lib/safeServe.js)
+app.use('/uploads', publicUploadGuard, express.static(PUBLIC_UPLOADS, { index: false, dotfiles: 'deny', setHeaders: publicStaticHeaders }));
 
 // Sağlık kontrolü - sunucu çalışıyor mu test etmek için
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Sunucu çalışıyor' });
+// Veritabanına da kısa bir sorgu atılır: sunucu açık ama veritabanı
+// erişilemiyorsa 503 döner (dış izleme ve Railway sağlık kontrolü bunu görür)
+app.get('/api/health', async (req, res) => {
+  const started = Date.now();
+  try {
+    const prisma = require('./lib/prisma');
+    await Promise.race([
+      prisma.$queryRaw`SELECT 1`,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Veritabanı 3 sn içinde yanıt vermedi')), 3000)),
+    ]);
+    res.json({ status: 'ok', message: 'Sunucu çalışıyor', db: 'ok', uptimeSec: Math.round(process.uptime()), latencyMs: Date.now() - started });
+  } catch (err) {
+    res.status(503).json({ status: 'error', message: 'Veritabanına ulaşılamıyor', db: 'error' });
+  }
 });
 
 app.use('/api/auth', authRoutes);
@@ -150,11 +183,32 @@ app.use('/api', expressErrorHandler);
 // tek servis. /api, /uploads ve /socket.io dışındaki her istek index.html'e
 // düşer (React Router sayfaları).
 const CLIENT_DIST = path.join(__dirname, '..', '..', 'client', 'dist');
-if (fs.existsSync(path.join(CLIENT_DIST, 'index.html'))) {
+const CLIENT_INDEX = path.join(CLIENT_DIST, 'index.html');
+
+// Arama motorları için adresi yayındaki gerçek adresten üretilen dosyalar
+// (derlemedeki statik kopyalardan önce gelir)
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain').set('Cache-Control', 'public, max-age=3600').send(robotsTxt(siteUrl()));
+});
+app.get('/sitemap.xml', (req, res) => {
+  const lastmod = fs.existsSync(CLIENT_INDEX) ? fs.statSync(CLIENT_INDEX).mtime.toISOString().slice(0, 10) : null;
+  res.type('application/xml').set('Cache-Control', 'public, max-age=3600').send(sitemapXml(siteUrl(), lastmod));
+});
+
+if (fs.existsSync(CLIENT_INDEX)) {
+  const indexHtml = fs.readFileSync(CLIENT_INDEX, 'utf8');
+  app.get('/index.html', (req, res) => res.redirect(301, '/'));
   app.use(express.static(CLIENT_DIST, { index: false, maxAge: '7d', setHeaders: noCacheHtml }));
+  // Her sayfa kendi başlığı, açıklaması ve canonical adresiyle; bilinmeyen
+  // adresler 404 koduyla (sayfayı yine React'in "bulunamadı" ekranı çizer)
   app.get(/^\/(?!api\/|uploads\/|socket\.io\/).*/, (req, res) => {
+    // Eksik dosya (ör. eski sürümden kalan /assets/...js) sayfa değil, düz 404
+    if (/\.[a-z0-9]{1,8}$/i.test(req.path)) return res.status(404).type('text/plain').send('Bulunamadı');
+    const page = renderPage(indexHtml, req.path, configuredSiteUrl());
+    res.status(page.status);
     res.setHeader('Cache-Control', 'no-cache');
-    res.sendFile(path.join(CLIENT_DIST, 'index.html'));
+    if (page.robots.startsWith('noindex')) res.setHeader('X-Robots-Tag', page.robots);
+    res.type('html').send(page.html);
   });
 }
 
@@ -182,5 +236,6 @@ bootstrapAccounts().finally(() => {
   server.listen(PORT, () => {
     console.log(`Sunucu http://localhost:${PORT} adresinde çalışıyor`);
     checkMailer();
+    for (const warning of productionConfigWarnings()) console.warn(`[ayar] ${warning}`);
   });
 });

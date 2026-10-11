@@ -13,7 +13,7 @@ const PUBLIC = {
   '/': { title: 'kampüs· | Doğrulanmış Üniversite Topluluğu', desc: DEFAULT_DESC, full: true },
   '/register': { title: 'Kayıt Ol', desc: 'Üniversite e-postanla ücretsiz kayıt ol, kampüsündeki öğrencilerle tanış.' },
   '/login': { title: 'Giriş Yap', desc: 'kampüs· hesabına giriş yap.' },
-  '/forgot-password': { title: 'Şifremi Unuttum', desc: 'kampüs· şifreni sıfırla.' },
+  '/forgot-password': { title: 'Şifremi Unuttum', desc: 'kampüs· şifreni sıfırla.', noindex: true },
   '/gizlilik': { title: 'Gizlilik Politikası', desc: 'kampüs· kişisel verilerini nasıl işler? KVKK aydınlatma metni.' },
   '/kullanim-sartlari': { title: 'Kullanım Şartları', desc: 'kampüs· kullanım şartları.' },
   '/topluluk-kurallari': { title: 'Topluluk Kuralları', desc: 'kampüs· topluluğunu güvenli tutan kurallar.' },
@@ -58,10 +58,12 @@ export default function PageMeta() {
 
     document.title = title;
     setMeta('meta[name="description"]', 'name', 'description', desc);
-    setMeta('meta[name="robots"]', 'name', 'robots', pub ? 'index, follow' : 'noindex, nofollow');
+    setMeta('meta[name="robots"]', 'name', 'robots', pub ? (pub.noindex ? 'noindex, follow' : 'index, follow') : 'noindex, nofollow');
     setMeta('meta[property="og:title"]', 'property', 'og:title', title);
     setMeta('meta[property="og:description"]', 'property', 'og:description', desc);
-    setMeta('meta[property="og:url"]', 'property', 'og:url', SITE.url + pathname);
+    setMeta('meta[property="og:url"]', 'property', 'og:url', SITE.url + (pub ? pathname : '/'));
+    setMeta('meta[name="twitter:title"]', 'name', 'twitter:title', title);
+    setMeta('meta[name="twitter:description"]', 'name', 'twitter:description', desc);
 
     let canonical = document.head.querySelector('link[rel="canonical"]');
     if (!canonical) {

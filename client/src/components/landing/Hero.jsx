@@ -94,6 +94,13 @@ export default function Hero() {
     animate: { opacity: 1, y: 0 },
     transition: { duration: 0.7, delay, ease: EASE },
   });
+  // Başlık ve açıklama ilk karede görünür (yalnızca hafifçe kayar): görünmez
+  // başlayıp belirmeleri sayfanın "içerik göründü" süresini (LCP) geciktiriyordu
+  const rise = (delay) => ({
+    initial: { y: 16 },
+    animate: { y: 0 },
+    transition: { duration: 0.7, delay, ease: EASE },
+  });
 
   // Geniş ekranda iki sütun: solda başlık ve düğmeler (ilk ekranda görünür),
   // sağda canlı telefon. Telefonda tek sütun, düğmeler telefondan önce.
@@ -118,7 +125,7 @@ export default function Hero() {
             {t('Yalnızca doğrulanmış üniversite öğrencileri')}
           </motion.div>
 
-          <motion.h1 {...fade(0.06)} className="landing-h1 landing-h1-hero mt-6">
+          <motion.h1 {...rise(0.06)} className="landing-h1 landing-h1-hero mt-6">
             {t('Kampüsünde')}
             <br />
             <RotatingWord />
@@ -126,7 +133,7 @@ export default function Hero() {
             {t('bul.')}
           </motion.h1>
 
-          <motion.p {...fade(0.14)} className="mt-5 max-w-[32rem] text-[1.0625rem] leading-relaxed text-paper-muted sm:text-[1.125rem]">
+          <motion.p {...rise(0.14)} className="mt-5 max-w-[32rem] text-[1.0625rem] leading-relaxed text-paper-muted sm:text-[1.125rem]">
             {t('Okul e-postanla doğrulanan, seni kendi kampüsündeki öğrencilerle buluşturan kapalı bir topluluk. Sahte hesap yok, reklam yok. Sadece gerçek öğrenciler.')}
           </motion.p>
 

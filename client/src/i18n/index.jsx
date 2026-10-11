@@ -33,7 +33,11 @@ function readStoredLang() {
   } catch {
     // depolama kapalı olabilir
   }
-  return typeof navigator !== 'undefined' && /^en\b/i.test(navigator.language || '') ? 'en' : 'tr';
+  if (typeof navigator === 'undefined') return 'tr';
+  // Arama motoru botları (Googlebot da kendini İngilizce tanıtır) sitenin asıl
+  // dili olan Türkçeyi görsün; aksi halde sayfa İngilizce dizinlenir
+  if (/bot|crawl|spider|slurp|facebookexternalhit|embedly|preview/i.test(navigator.userAgent || '')) return 'tr';
+  return /^en\b/i.test(navigator.language || '') ? 'en' : 'tr';
 }
 
 function interpolate(text, vars) {

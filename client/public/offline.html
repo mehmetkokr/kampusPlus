@@ -59,11 +59,8 @@
       </svg>
       <h1>İnternet bağlantısı yok</h1>
       <p>Bağlantın geri gelince kaldığın yerden devam edebilirsin.</p>
-      <button type="button" onclick="location.reload()">Tekrar dene</button>
+      <button type="button" id="retry">Tekrar dene</button>
     </main>
-    <script>
-      // Bağlantı dönünce kendiliğinden yenilenir
-      window.addEventListener('online', () => location.reload());
-    </script>
+    <script src="/offline.js"></script>
   </body>
 </html>

@@ -181,12 +181,12 @@ router.get('/stats/campuses', async (req, res) => {
 function userListWhere(q) {
   const now = new Date();
   const and = [];
-  const search = (q.search || '').trim();
+  const search = typeof q.search === 'string' ? q.search.trim().slice(0, 100) : '';
   if (search) and.push({ OR: [{ fullName: { contains: search } }, { email: { contains: search } }, { department: { contains: search } }] });
   if (q.university) and.push({ universityId: Number(q.university) });
   // "manual_review" kuyruğu: erişim bekleyen hesaplar + rozet (belge) başvuruları
   if (q.status === 'manual_review') and.push({ OR: [{ verificationStatus: 'manual_review' }, { studentDocStatus: 'pending' }] });
-  else if (q.status) and.push({ verificationStatus: q.status });
+  else if (typeof q.status === 'string' && q.status) and.push({ verificationStatus: q.status });
   if (['none', 'pending', 'approved', 'rejected'].includes(q.badge)) and.push({ studentDocStatus: q.badge });
   if (q.premium === 'yes') and.push({ isPremium: true, OR: [{ premiumUntil: null }, { premiumUntil: { gt: now } }] });
   if (q.premium === 'no') and.push({ OR: [{ isPremium: false }, { premiumUntil: { lte: now } }] });
@@ -248,7 +248,7 @@ router.get('/users', async (req, res) => {
           university: { select: { id: true, name: true } },
         },
         // Manuel inceleme kuyruğunda en eski talep en önce
-        orderBy: status === 'manual_review' ? { createdAt: 'asc' } : USER_SORTS[sort] || USER_SORTS.newest,
+        orderBy: status === 'manual_review' ? { createdAt: 'asc' } : (Object.hasOwn(USER_SORTS, sort) && USER_SORTS[sort]) || USER_SORTS.newest,
         take,
         skip,
       }),
@@ -278,7 +278,7 @@ router.get('/users/export.csv', async (req, res) => {
         studentDocStatus: true, isPremium: true, premiumUntil: true, isBanned: true, createdAt: true, lastSeenAt: true,
         university: { select: { name: true } },
       },
-      orderBy: USER_SORTS[req.query.sort] || USER_SORTS.newest,
+      orderBy: (Object.hasOwn(USER_SORTS, req.query.sort) && USER_SORTS[req.query.sort]) || USER_SORTS.newest,
       take: 50000,
     });
     const now = new Date();
@@ -879,7 +879,7 @@ router.post('/users/:id/notify', async (req, res) => {
 // ============================================================
 router.get('/clubs', async (req, res) => {
   try {
-    const search = (req.query.search || '').trim();
+    const search = typeof req.query.search === 'string' ? req.query.search.trim().slice(0, 100) : '';
     const where = {
       AND: [
         search ? { OR: [{ name: { contains: search } }, { university: { name: { contains: search } } }] } : {},

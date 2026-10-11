@@ -6,6 +6,7 @@ const { createNotification } = require('../lib/notifications');
 const { isBlockedEitherWay, getBlockedUserIds } = require('../lib/block');
 const { previewOf } = require('../lib/chat');
 const { isPremiumActive } = require('../lib/premium');
+const { reachCheck } = require('../lib/privacy');
 const fs = require('fs');
 const path = require('path');
 const { PRIVATE_UPLOADS } = require('../lib/paths');
@@ -25,8 +26,16 @@ router.post('/like/:userId', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'Bu kullanıcıyla etkileşime giremezsin.' });
     }
     // Kart Modu kapalıysa (beğenen ya da beğenilen) beğeni gönderilemez
-    const pair = await prisma.user.findMany({ where: { id: { in: [fromUserId, toUserId] } }, select: { id: true, swipeEnabled: true } });
-    if (pair.length < 2 || pair.some((u) => !u.swipeEnabled)) {
+    const REACH_SELECT = { id: true, swipeEnabled: true, universityId: true, profileVisibility: true, isAdmin: true, isFrozen: true, isBanned: true, isPremium: true, premiumUntil: true };
+    const [me, target] = await Promise.all([
+      prisma.user.findUnique({ where: { id: fromUserId }, select: REACH_SELECT }),
+      Number.isInteger(toUserId) ? prisma.user.findUnique({ where: { id: toUserId }, select: REACH_SELECT }) : null,
+    ]);
+    // Gizli, yönetici, askıdaki hesap ve (Premium olmadan) başka üniversite
+    // beğenilemez; karşı taraf zaten beğendiyse/eşleştiyse karşılık verilebilir
+    const reach = await reachCheck(me, target);
+    if (!reach.ok) return res.status(reach.status).json({ error: reach.error, code: reach.code });
+    if (!me.swipeEnabled || !target.swipeEnabled) {
       return res.status(403).json({ error: "Bu kullanıcı Kart Modu'nu kullanmıyor." });
     }
 

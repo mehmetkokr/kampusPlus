@@ -313,7 +313,7 @@ router.post('/2fa/setup', async (req, res) => {
     const me = await prisma.user.findUnique({ where: { id: req.userId }, select: { email: true, totpEnabled: true } });
     if (me.totpEnabled) return res.status(400).json({ error: 'İki adımlı doğrulama zaten açık.' });
     const secret = generateSecret();
-    await prisma.user.update({ where: { id: req.userId }, data: { totpSecret: secret } });
+    await prisma.user.update({ where: { id: req.userId }, data: { totpSecret: secret, totpLastStep: null } });
     const url = otpauthUrl(secret, me.email);
     res.json({ secret, otpauthUrl: url, qr: await QRCode.toDataURL(url, { margin: 1, width: 220 }) });
   } catch (err) {
@@ -324,9 +324,9 @@ router.post('/2fa/setup', async (req, res) => {
 
 router.post('/2fa/enable', async (req, res) => {
   try {
-    const me = await prisma.user.findUnique({ where: { id: req.userId }, select: { id: true, totpSecret: true, totpEnabled: true } });
+    const me = await prisma.user.findUnique({ where: { id: req.userId }, select: { id: true, totpSecret: true, totpEnabled: true, totpLastStep: true } });
     if (!me.totpSecret) return res.status(400).json({ error: 'Önce kurulumu başlat.' });
-    if (!checkTotp(me, req.body?.code)) return res.status(400).json({ error: 'Kod hatalı. Uygulamadaki güncel kodu yaz.' });
+    if (!(await checkTotp(me, req.body?.code))) return res.status(400).json({ error: 'Kod hatalı. Uygulamadaki güncel kodu yaz.' });
     await prisma.user.update({ where: { id: req.userId }, data: { totpEnabled: true } });
     res.json({ enabled: true, message: 'İki adımlı doğrulama açıldı. Bundan sonra girişte kod istenecek.' });
   } catch (err) {
@@ -338,10 +338,10 @@ router.post('/2fa/enable', async (req, res) => {
 router.post('/2fa/disable', async (req, res) => {
   try {
     if (twoFactorRequired()) return res.status(400).json({ error: 'Bu sunucuda yöneticiler için iki adımlı doğrulama zorunlu.' });
-    const me = await prisma.user.findUnique({ where: { id: req.userId }, select: { id: true, totpSecret: true, totpEnabled: true } });
+    const me = await prisma.user.findUnique({ where: { id: req.userId }, select: { id: true, totpSecret: true, totpEnabled: true, totpLastStep: true } });
     if (!me.totpEnabled) return res.status(400).json({ error: 'İki adımlı doğrulama zaten kapalı.' });
-    if (!checkTotp(me, req.body?.code)) return res.status(400).json({ error: 'Kod hatalı.' });
-    await prisma.user.update({ where: { id: req.userId }, data: { totpEnabled: false, totpSecret: null } });
+    if (!(await checkTotp(me, req.body?.code))) return res.status(400).json({ error: 'Kod hatalı.' });
+    await prisma.user.update({ where: { id: req.userId }, data: { totpEnabled: false, totpSecret: null, totpLastStep: null } });
     res.json({ enabled: false, message: 'İki adımlı doğrulama kapatıldı.' });
   } catch (err) {
     console.error(err);

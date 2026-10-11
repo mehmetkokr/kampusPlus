@@ -47,12 +47,24 @@ export function useNearViewport(margin = '200px') {
 // Telefonlarda çözünürlüğü düşür (GPU ve pil)
 export const isSmallScreen = () => typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches;
 
+// Telefon ya da zayıf cihazda (az çekirdek/bellek, veri tasarrufu) 3D sahneler
+// hiç yüklenmez: sürekli çalışan WebGL pili ve işlemciyi yorar, ~650 KB
+// JavaScript indirir ve sayfanın açılmasını geciktirir. Yerine statik görünüm.
+export function prefersLightweight() {
+  if (typeof window === 'undefined') return true;
+  const nav = window.navigator || {};
+  if (nav.connection?.saveData) return true;
+  if (isSmallScreen()) return true;
+  if ((nav.hardwareConcurrency || 8) <= 4 || (nav.deviceMemory || 8) <= 4) return true;
+  return false;
+}
+
 // Ağır 3D parçası ne zaman yüklensin: WebGL varsa, veri tasarrufu kapalıysa ve
 // sayfa ilk çizimini bitirdikten sonra (tarayıcı boşa çıkınca)
 export function useDeferredWebGL(delay = 1200) {
   const [ok, setOk] = useState(false);
   useEffect(() => {
-    if (!hasWebGL() || navigator.connection?.saveData) return undefined;
+    if (!hasWebGL() || prefersLightweight()) return undefined;
     let idle;
     const timer = setTimeout(() => {
       if ('requestIdleCallback' in window) idle = window.requestIdleCallback(() => setOk(true), { timeout: 2000 });

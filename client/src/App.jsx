@@ -6,7 +6,6 @@ import AppBackdrop from './components/AppBackdrop';
 import AnnouncementBanner from './components/AnnouncementBanner';
 import ReverifyBanner, { needsReverify } from './components/ReverifyBanner';
 import { useAuth } from './context/AuthContext';
-import AdminProtectedRoute from './admin/AdminProtectedRoute';
 import CubeLoader from './components/CubeLoader';
 import PageMeta from './components/PageMeta';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -35,6 +34,8 @@ const WelcomePage = lazy(() => import('./pages/WelcomePage'));
 // Menü (ve onunla gelen gerçek zamanlı bağlantı) yalnızca giriş yapınca yüklenir;
 // tanıtım sayfasına gelen ziyaretçi bunları indirmez
 const NavBar = lazy(() => import('./components/NavBar'));
+// Yönetim paneli (ve stil dosyası, yazı tipi) yalnızca /admin açılınca yüklenir
+const AdminProtectedRoute = lazy(() => import('./admin/AdminProtectedRoute'));
 const AdminLayout = lazy(() => import('./admin/AdminLayout'));
 const AdminOverview = lazy(() => import('./admin/pages/AdminOverview'));
 const AdminCampaigns = lazy(() => import('./admin/pages/AdminCampaigns'));

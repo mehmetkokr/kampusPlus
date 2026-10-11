@@ -5,7 +5,7 @@ const fs = require('fs');
 const prisma = require('../lib/prisma');
 const { requireAuth } = require('../middleware/auth');
 const chatUpload = require('../middleware/chatUpload');
-const { verifyFileSignature } = require('../lib/fileValidation');
+const { verifyUpload } = require('../lib/fileValidation');
 const { MESSAGE_INCLUDE, REACTIONS, announceMessage, previewOf } = require('../lib/chat');
 const { isBlockedEitherWay } = require('../lib/block');
 const { PRIVATE_UPLOADS } = require('../lib/paths');
@@ -82,11 +82,11 @@ router.put('/:matchId/read', requireAuth, async (req, res) => {
 });
 
 // Fotoğraf/ses/dosya ekli mesaj: erişim ve engel kontrolü, kayıt ve duyuru ortak
-function attachmentRoute(field, { missing, failed, data }) {
+function attachmentRoute(field, kind, { missing, failed, data }) {
   return [
     requireAuth,
     chatUpload.private.single(field),
-    verifyFileSignature,
+    verifyUpload(kind),
     async (req, res) => {
       try {
         const matchId = Number(req.params.matchId);
@@ -118,7 +118,7 @@ function attachmentRoute(field, { missing, failed, data }) {
 // POST /api/messages/:matchId/photo — sohbete fotoğraf gönder
 router.post(
   '/:matchId/photo',
-  ...attachmentRoute('photo', {
+  ...attachmentRoute('photo', 'chatPhoto', {
     missing: 'Fotoğraf gerekli.',
     failed: 'Fotoğraf gönderilemedi.',
     data: (file) => ({ photoUrl: `/api/files/${file.filename}` }),
@@ -128,7 +128,7 @@ router.post(
 // POST /api/messages/:matchId/audio — sesli mesaj gönder
 router.post(
   '/:matchId/audio',
-  ...attachmentRoute('audio', {
+  ...attachmentRoute('audio', 'audio', {
     missing: 'Ses kaydı gerekli.',
     failed: 'Sesli mesaj gönderilemedi.',
     data: (file) => ({ audioUrl: `/api/files/${file.filename}` }),
@@ -138,7 +138,7 @@ router.post(
 // POST /api/messages/:matchId/file — dosya gönder
 router.post(
   '/:matchId/file',
-  ...attachmentRoute('file', {
+  ...attachmentRoute('file', 'chatFile', {
     missing: 'Dosya gerekli.',
     failed: 'Dosya gönderilemedi.',
     data: (file) => ({ fileUrl: `/api/files/${file.filename}`, fileName: file.originalname.slice(0, 200) }),

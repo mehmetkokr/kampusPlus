@@ -1,70 +1,95 @@
 // Yüklenen dosyaların gerçek türünü, yalnızca istemcinin gönderdiği
 // Content-Type header'ına (mimetype) değil, dosyanın ikili imzasına
-// (magic number) bakarak doğrular. mimetype istemci tarafından kolayca
-// sahteleştirilebilir (ör. bir .exe dosyasını "image/png" olarak
-// işaretleyip yükleyebilir) - bu katman buna karşı ek bir güvenlik sağlar.
+// (magic number) bakarak doğrular. mimetype ve dosya adı istemci tarafından
+// kolayca sahteleştirilebilir; bu katman buna karşı korur:
+//
+//  1. Her uç yalnızca kendi türlerini kabul eder (ör. profil fotoğrafı
+//     yalnızca görsel; "photo" alanına PDF ya da HTML gönderilemez).
+//  2. İmza beyan edilen türle uyuşmalıdır.
+//  3. Dosya adı ve uzantı istemciden alınmaz: uzantı doğrulanmış türden
+//     üretilir, ad rastgeledir. Böylece içi PNG olan "x.html" gibi bir dosya
+//     tarayıcıda asla HTML olarak açılamaz (depolanmış XSS).
+//  4. Görsellerdeki GPS/cihaz bilgisi silinir (lib/stripMetadata.js).
 //
 // multer diskStorage kullandığı için dosya bu middleware çalıştığında
-// zaten diske yazılmış olur; imza uyuşmuyorsa dosya silinir ve istek
-// reddedilir.
+// zaten diske yazılmış olur; reddedilen dosya silinir.
 
-const fs = require('fs');
+const fsp = require('fs/promises');
+const path = require('path');
+const crypto = require('crypto');
 const fileTypeChecker = require('file-type-checker');
+const { stripMetadata } = require('./stripMetadata');
 
-// Beyan edilen mimetype -> file-type-checker'ın kabul edebileceği gerçek imza(lar).
-const MIME_TO_SIGNATURES = {
-  'image/jpeg': ['jpeg'],
-  'image/png': ['png'],
-  'image/webp': ['webp'],
-  'image/gif': ['gif'],
-  'audio/webm': ['webm'],
-  'audio/ogg': ['ogg'],
-  'audio/mpeg': ['mp3'],
-  'audio/mp4': ['mp4', 'm4a', 'mov'],
-  'audio/wav': ['wav'],
-  'application/pdf': ['pdf'],
-  'application/msword': ['doc'],
+// Beyan edilen mimetype -> kabul edilen imza(lar) ve diske yazılacak uzantı
+const TYPES = {
+  'image/jpeg': { signatures: ['jpeg'], ext: 'jpg' },
+  'image/png': { signatures: ['png'], ext: 'png' },
+  'image/webp': { signatures: ['webp'], ext: 'webp' },
+  'image/gif': { signatures: ['gif'], ext: 'gif' },
+  'audio/webm': { signatures: ['webm'], ext: 'webm' },
+  'audio/ogg': { signatures: ['ogg'], ext: 'ogg' },
+  'audio/mpeg': { signatures: ['mp3'], ext: 'mp3' },
+  'audio/mp4': { signatures: ['mp4', 'm4a', 'mov'], ext: 'm4a' },
+  'audio/wav': { signatures: ['wav'], ext: 'wav' },
+  'application/pdf': { signatures: ['pdf'], ext: 'pdf' },
+  'application/msword': { signatures: ['doc'], ext: 'doc' },
   // .docx aslında bir ZIP konteyneridir; imza kontrolünde 'zip' olarak görünür.
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['zip'],
-  'application/zip': ['zip'],
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': { signatures: ['zip'], ext: 'docx' },
+  'application/zip': { signatures: ['zip'], ext: 'zip' },
+  // Düz metnin ikili imzası yoktur; yalnızca .txt olarak ve indirme şeklinde sunulur
+  'text/plain': { signatures: null, ext: 'txt' },
 };
 
-// Bu türlerin güvenilir bir ikili imzası yoktur (düz metin gibi). Bu türler
-// için yalnızca multer'ın fileFilter'ındaki mimetype kontrolüyle yetinilir.
-const SIGNATURELESS_MIMETYPES = new Set(['text/plain']);
+const KINDS = {
+  photo: ['image/jpeg', 'image/png', 'image/webp'],
+  chatPhoto: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+  audio: ['audio/webm', 'audio/ogg', 'audio/mpeg', 'audio/mp4', 'audio/wav'],
+  studentDoc: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'],
+  chatFile: Object.keys(TYPES),
+};
 
-function verifyFileSignature(req, res, next) {
-  if (!req.file) return next();
+const reject = async (req, res, message) => {
+  await fsp.unlink(req.file.path).catch(() => {});
+  return res.status(400).json({ error: message });
+};
 
-  const declaredMime = req.file.mimetype;
+// kind: KINDS anahtarlarından biri
+function verifyUpload(kind) {
+  const allowed = new Set(KINDS[kind]);
+  if (!allowed.size) throw new Error(`Bilinmeyen yükleme türü: ${kind}`);
 
-  if (SIGNATURELESS_MIMETYPES.has(declaredMime)) {
-    return next();
-  }
+  return async function verifyUploadMiddleware(req, res, next) {
+    if (!req.file) return next();
+    const declared = req.file.mimetype;
+    const type = TYPES[declared];
+    if (!type || !allowed.has(declared)) return reject(req, res, 'Bu alan için desteklenmeyen dosya türü.');
 
-  const expectedSignatures = MIME_TO_SIGNATURES[declaredMime];
-  if (!expectedSignatures) {
-    fs.unlink(req.file.path, () => {});
-    return res.status(400).json({ error: 'Desteklenmeyen dosya türü.' });
-  }
+    try {
+      let buffer = await fsp.readFile(req.file.path);
+      if (type.signatures) {
+        const detected = fileTypeChecker.detectFile(buffer);
+        if (!detected || !type.signatures.includes(detected.extension)) {
+          return reject(req, res, 'Dosya içeriği beyan edilen türle uyuşmuyor. Dosya bozuk veya yanıltıcı olabilir.');
+        }
+      }
 
-  try {
-    const buffer = fs.readFileSync(req.file.path);
-    const detected = fileTypeChecker.detectFile(buffer);
+      if (['jpg', 'png', 'webp'].includes(type.ext)) {
+        const cleaned = stripMetadata(buffer, type.ext);
+        if (!cleaned) return reject(req, res, 'Görsel okunamadı. Dosya bozuk olabilir.');
+        buffer = cleaned;
+      }
 
-    if (!detected || !expectedSignatures.includes(detected.extension)) {
-      fs.unlink(req.file.path, () => {});
-      return res.status(400).json({
-        error: 'Dosya içeriği beyan edilen türle uyuşmuyor. Dosya bozuk veya yanıltıcı olabilir.',
-      });
+      const filename = `${req.file.fieldname}-${crypto.randomBytes(16).toString('hex')}.${type.ext}`;
+      const target = path.join(path.dirname(req.file.path), filename);
+      await fsp.writeFile(target, buffer);
+      await fsp.unlink(req.file.path).catch(() => {});
+      Object.assign(req.file, { filename, path: target, size: buffer.length });
+      next();
+    } catch (err) {
+      console.error('Dosya doğrulanamadı:', err);
+      return reject(req, res, 'Dosya doğrulanamadı.');
     }
-
-    next();
-  } catch (err) {
-    console.error('Dosya imzası doğrulanamadı:', err);
-    fs.unlink(req.file.path, () => {});
-    return res.status(400).json({ error: 'Dosya doğrulanamadı.' });
-  }
+  };
 }
 
-module.exports = { verifyFileSignature };
+module.exports = { verifyUpload, KINDS, TYPES };

@@ -50,7 +50,8 @@ npx prisma migrate deploy
 ```bash
 npm test           # sunucu + arayüz testleri
 npm run lint       # arayüz kod denetimi (uyarı da kabul edilmez)
-npm run test:e2e   # uçtan uca testler (gerçek tarayıcıda kayıt, eşleşme, sohbet, ayarlar)
+npm run test:e2e   # uçtan uca testler (gerçek tarayıcıda kayıt, eşleşme, sohbet, ayarlar, erişilebilirlik)
+npm run load-test --prefix server   # yük testi (geçici veritabanında)
 ```
 
 Uçtan uca testler için bir kez `npx playwright install chromium` (client
@@ -64,7 +65,7 @@ otomatik çalışır (`.github/workflows/ci.yml`).
 
 ## Özellikler
 
-- **Hesap:** okul e-postasına 6 haneli kodla kayıt, yılda bir okul e-postasıyla yeniden doğrulama (mezunlar listelerden gizlenir), şifre değiştirme, şifremi unuttum, verilerimi indir (KVKK), hesabı dondurma/silme, öğrenci belgesiyle onaylı rozet
+- **Hesap:** okul e-postasına 6 haneli kodla kayıt, yılda bir okul e-postasıyla yeniden doğrulama (mezunlar listelerden gizlenir), okul e-postasını değiştirme (aynı üniversite, kodla), şifre değiştirme, şifremi unuttum, verilerimi indir (KVKK), hesabı dondurma/silme, öğrenci belgesiyle onaylı rozet
 - **Keşfet:** liste ve Kart Modu (swipe), karşılıklı beğenide eşleşme, "Seni beğenenler", ilgi alanı ve "ne arıyorsun" etiketleri; "geç" denen kişi 30 gün gelmez, Premium'da son karar geri alınır
 - **Sohbet:** fotoğraf, sesli mesaj ve dosya eki, okundu bilgisi, yanıtlama (alıntı), emoji tepkileri, mesaj geri alma, mesaj şikâyeti, eşleşmeyi kaldırma, engelleme; sohbet listesinde son mesaj, saat ve okunmamış sayısı, menüde okunmamış rozeti
 - **Akış:** gönderi, yorum, beğeni, kaydetme, 12 saatlik hikâyeler, takip
@@ -146,9 +147,105 @@ başlatma + imzalı webhook) ve `PaymentLog` tablosu.
   kaydedilir ve gösterilir.
 - **Yönetici işlem kaydı** (`server/src/lib/audit.js`): panelden geçen her
   başarılı değişiklik otomatik kaydedilir; şifre/kod gibi alanlar yazılmaz.
+- **Yüklemeler** (`server/src/lib/fileValidation.js`, `safeServe.js`): her alan
+  yalnızca kendi türünü kabul eder (fotoğraf alanına PDF gönderilemez), içerik
+  dosya imzasıyla doğrulanır; ad rastgele, uzantı doğrulanmış türden üretilir
+  (içi PNG olan `x.html` sayfa olarak açılamaz). Dosyalar `nosniff` ve betik
+  çalıştırmayan güvenlik politikasıyla sunulur; görsel, ses ve PDF dışındaki
+  ekler indirilir. Herkese açık klasörden yalnızca görseller verilir.
+- **Konum gizliliği** (`server/src/lib/stripMetadata.js`): yüklenen JPEG/PNG/WebP
+  görsellerden GPS, cihaz modeli, tarih ve yorumlar silinir (görüntü değişmez;
+  JPEG'de yalnızca yön bilgisi kalır).
+- **Hesap varlığı gizli:** kayıt kodu, giriş ve şifremi unuttum yanıtları bir
+  adresin kayıtlı olup olmadığını ne mesajla ne süreyle belli eder. Kayıtlı
+  adrese kod yerine "zaten hesabın var" e-postası gider. E-postalardaki ad ve
+  bağlantılar HTML olarak kaçışlanır.
+- **Güvenlik politikası (CSP):** satır içi betik yok (`script-src 'self'`); tema
+  `public/theme-init.js` dosyasından yüklenir.
+- **Gerçek zamanlı bağlantı:** eksik ya da bozuk olay yükleri sunucuyu düşürmez.
+- **Kapalı kampüs ve gizlilik** (`server/src/lib/privacy.js` → `reachCheck`): profil
+  görüntüleme, takip ve beğenme aynı kurala bağlı. Yönetici, dondurulmuş ve askıya
+  alınmış hesaplar yok sayılır; profilini gizleyen ya da yalnızca kendi
+  üniversitesine açan kişiye ve (Premium olmadan) başka üniversiteden birine
+  numarayla ulaşılamaz. Aralarında eşleşme, takip ya da beğeni varsa ulaşılabilir.
+- **Çevrimiçi durumu** yalnızca eşleşilen kişilere gider (herkese yayınlanmaz).
+- **Şikâyet** yalnızca şikâyet edenin görebildiği içerik için açılabilir.
 - **İki adımlı doğrulama:** yöneticiler panel > Ayarlar'dan açar.
   `ADMIN_REQUIRE_2FA=true` ile zorunlu olur. Telefon kaybında:
   `npm run admin:reset-2fa --prefix server -- e-posta`.
+
+## Arama Motorları (SEO)
+
+- Sunucu her sayfayı kendi başlığı, açıklaması, canonical adresi ve
+  og:/twitter: etiketleriyle verir (`server/src/lib/seo.js`); paylaşım botları
+  JavaScript çalıştırmasa da doğru önizlemeyi görür.
+- Oturum gerektiren sayfalar `noindex` (ve `X-Robots-Tag`), bilinmeyen adresler
+  gerçek **404** durum koduyla döner.
+- `robots.txt` ve `sitemap.xml` yayındaki gerçek adresle üretilir (`SITE_URL`
+  ya da Railway alan adı); derlemedeki varsayılan adres kullanılmaz.
+- Arama botları siteyi her zaman Türkçe görür (Googlebot kendini İngilizce
+  tanıtsa da).
+- Ana sayfada SSS yapılandırılmış verisi (FAQPage), tüm sayfalarda kuruluş ve
+  site bilgisi (Organization, WebSite) bulunur.
+- Yayından sonra Google Search Console'a siteyi ekleyip `/sitemap.xml`
+  adresini gönderin.
+
+## İzleme ve Uyarılar
+
+- **Yönetici uyarıları** (`server/src/lib/alerts.js`): ilk kez görülen ya da
+  çok tekrarlayan sunucu hatası, başarısız yedek/dış depo yüklemesi ve yeni
+  şikâyette yöneticilere e-posta ve anlık bildirim gider (aynı tür en fazla
+  30–60 dakikada bir). Alıcılar: `ADMIN_ALERT_EMAILS` ya da tüm yöneticiler.
+- **Ayakta mı takibi** (`.github/workflows/uptime.yml`): GitHub, 15 dakikada bir
+  `/api/health` adresini yoklar; site ya da veritabanı yanıt vermezse iş
+  başarısız olur ve depo sahibine e-posta gider. Açmak için GitHub > Settings >
+  Secrets and variables > Actions > Variables > `SITE_URL`.
+- **Sağlık kontrolü** veritabanına da sorgu atar; Railway erişilemeyen sunucuyu
+  yeniden başlatır.
+
+## Felaketten Kurtarma
+
+Sunucuyu durdurup yedekten geri yükle (yedek adı panel > Sistem'de görünür ya da
+indirilen dosyanın yolu verilir):
+
+```bash
+npm run backup:restore --prefix server -- kampus-20261011-033000.db.gz --yes
+```
+
+Komut yedeği doğrular, mevcut veritabanını yanına
+`.geri-yukleme-oncesi-<zaman>` adıyla saklar, yedeği yerine koyar ve eksik
+veritabanı değişikliklerini uygular. Bu akış her test çalıştırmasında
+`server/test/restore.test.js` ile prova edilir.
+
+## Performans ve Erişilebilirlik
+
+- **Yük testi** (`npm run load-test --prefix server`): 300 öğrenci, 40 eşleşme ×
+  30 mesaj ve 500 gönderilik geçici veritabanında, 50 eşzamanlı kullanıcıyla.
+  Son ölçüm (geliştirici dizüstü, tek süreç, SQLite):
+
+  | Uç | İstek/sn | p50 | p95 |
+  |---|---|---|---|
+  | Sağlık kontrolü | 2053 | 23 ms | 35 ms |
+  | Profilim | 598 | 82 ms | 102 ms |
+  | Keşfet ana sayfa | 204 | 242 ms | 278 ms |
+  | Kart Modu destesi | 362 | 135 ms | 168 ms |
+  | Akış | 446 | 106 ms | 151 ms |
+  | Sohbet listesi | 296 | 167 ms | 193 ms |
+  | Sohbet geçmişi | 607 | 81 ms | 98 ms |
+
+  Tek kampüs için fazlasıyla yeterli. Birden çok sunucuya geçilecekse
+  çevrimiçi durumu, hız sınırları ve kulüp yavaş modu bellekte tutulduğu için
+  Redis'e, veritabanı PostgreSQL'e taşınmalı.
+- **Telefon performansı:** sunucu metin yanıtları sıkıştırır (ana JavaScript
+  270 KB yerine ~94 KB). Telefonda ve zayıf cihazda ana sayfadaki 3D renk
+  geçişi ve 3D harita yüklenmez (yerine CSS geçişi ve düz harita); yönetim
+  panelinin kodu ve yazı tipi yalnızca `/admin` açılınca iner. Lighthouse
+  (telefon): ana sayfa 75, giriş/kayıt 97–98; SEO ve erişilebilirlik 100.
+- **Erişilebilirlik** (`client/e2e/a11y.spec.js`): açık ve koyu temada tüm ana
+  sayfalar axe-core ile WCAG 2.1 A/AA'ya göre taranır; ihlal varsa CI durur.
+  Renk sistemi buna göre ayarlıdır: `--amber-soft` yazı mavisi, `--accent-fill`
+  beyaz yazılı dolu zemin mavisi (tek bir mavi iki kontrast sınırını aynı anda
+  geçemez).
 
 ## Yayın (Railway)
 
@@ -162,8 +259,8 @@ Railway > Variables:
 | `JWT_SECRET` | Zorunlu, uzun rastgele değer |
 | `DATABASE_URL` | `file:/data/kampus.db` (kalıcı disk) |
 | `STORAGE_DIR` | `/data` (yüklenen dosyalar kalıcı diskte kalsın) |
-| `CLIENT_URL` | Sitenin adresi |
-| `TRUST_PROXY` | `true` |
+| `SITE_URL` | Sitenin adresi (ör. `https://kampusplus.app`). Boşsa Railway alan adı kullanılır; e-posta bağlantıları, sitemap ve canonical buna göre yazılır |
+| `TRUST_PROXY` | Railway'de boş bırakılabilir (kendiliğinden açık) |
 | `SMTP_*`, `MAIL_FROM` | Gerçek e-posta için zorunlu |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | İlk açılışta yönetici hesabı oluşturur |
 | `SEED_DEMO_USERS` | `true` ise demo öğrenciler (gerçek kullanıcılar gelmeden kapatın) |
@@ -172,6 +269,7 @@ Railway > Variables:
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | İsteğe bağlı; boşsa anahtarlar otomatik üretilir |
 | `BACKUP_S3_*` | İsteğe bağlı (önerilir): yedeklerin S3/R2'ye de gönderilmesi |
 | `ADMIN_REQUIRE_2FA` | `true` ise yöneticiler için iki adımlı doğrulama zorunlu |
+| `ADMIN_ALERT_EMAILS` | İsteğe bağlı; uyarıların gideceği adresler (boşsa tüm yöneticiler) |
 | `VITE_SITE_URL`, `VITE_CONTACT_EMAIL` | Alan adı ve iletişim adresi; index.html, robots.txt ve sitemap.xml derlemede güncellenir |
 
 ## Bilinen Sınırlar ve Sıradaki Adımlar
@@ -187,6 +285,8 @@ Railway > Variables:
 - [x] Uçtan uca testler, yönetici iki adımlı doğrulaması ve işlem kaydı
 - [x] DAU/MAU için heartbeat (bağlı kullanıcıların son görülmesi 5 dakikada bir güncellenir)
 - [x] Yasaklı kelime filtresi ve onay kuyruğunda toplu işlem
+- [x] Yönetici uyarıları, ayakta mı takibi, geri yükleme komutu ve provası
+- [x] Okul e-postası değiştirme, erişilebilirlik taraması (WCAG AA), yük testi
 
 ## Yayın Öncesi Kontrol Listesi
 

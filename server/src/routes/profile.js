@@ -10,7 +10,7 @@ const { reverifyInfo } = require('../lib/reverify');
 const { disconnectUser } = require('../socket');
 const { requireAuth } = require('../middleware/auth');
 const upload = require('../middleware/upload');
-const { verifyFileSignature } = require('../lib/fileValidation');
+const { verifyUpload } = require('../lib/fileValidation');
 const { isPremiumActive } = require('../lib/premium');
 const { runDocumentOcr } = require('../lib/ocr');
 const fsp = require('fs/promises');
@@ -85,7 +85,7 @@ router.get('/me', requireAuth, async (req, res) => {
         swipeEnabled: true,
         theme: true,
         language: true,
-        university: { select: { id: true, name: true } },
+        university: { select: { id: true, name: true, emailDomain: true } },
         isPremium: true,
         premiumUntil: true,
         premiumAutoRenew: true,
@@ -387,7 +387,7 @@ router.delete('/me', requireAuth, async (req, res) => {
 });
 
 // Profil fotoğrafı yükle
-router.post('/me/photo', requireAuth, upload.single('photo'), verifyFileSignature, async (req, res) => {
+router.post('/me/photo', requireAuth, upload.single('photo'), verifyUpload('photo'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'Fotoğraf dosyası gerekli.' });
@@ -415,7 +415,7 @@ router.post('/me/photo', requireAuth, upload.single('photo'), verifyFileSignatur
 });
 
 // POST /api/profile/me/photos — galeriye fotoğraf ekle (sona)
-router.post('/me/photos', requireAuth, upload.single('photo'), verifyFileSignature, async (req, res) => {
+router.post('/me/photos', requireAuth, upload.single('photo'), verifyUpload('photo'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'Fotoğraf dosyası gerekli.' });
     const url = `/uploads/${req.file.filename}`;
@@ -577,7 +577,7 @@ router.post(
   '/verification-document',
   requireAuth,
   upload.private.single('studentDoc'),
-  verifyFileSignature,
+  verifyUpload('studentDoc'),
   async (req, res) => {
     try {
       if (!req.file) {

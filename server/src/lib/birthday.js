@@ -5,6 +5,7 @@
 // karşılaştırması yapmak SQLite'ta tarihten ay/gün çıkarmakla uğraşmaktan
 // daha basit ve taşınabilir.
 const prisma = require('./prisma');
+const { escapeHtml } = require('./text');
 const { createNotification } = require('./notifications');
 const { sendMail } = require('./mailer');
 
@@ -35,7 +36,7 @@ async function checkBirthdaysToday(io) {
         to: u.email,
         subject: 'İyi ki doğdun! 🎉',
         text: `Merhaba ${u.fullName},\n\nkampüs· ailesi olarak doğum günün kutlu olsun. Uygulamayı aç, kampüsteki arkadaşların seni tebrik etsin.`,
-        html: `<p>Merhaba ${u.fullName},</p><p><strong>kampüs·</strong> ailesi olarak doğum günün kutlu olsun.</p><p>Uygulamayı aç, kampüsteki arkadaşların seni tebrik etsin.</p>`,
+        html: `<p>Merhaba ${escapeHtml(u.fullName)},</p><p><strong>kampüs·</strong> ailesi olarak doğum günün kutlu olsun.</p><p>Uygulamayı aç, kampüsteki arkadaşların seni tebrik etsin.</p>`,
       }).catch((err) => console.error('Doğum günü e-postası gönderilemedi:', err));
     }
 

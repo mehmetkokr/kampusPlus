@@ -95,6 +95,17 @@ function startHeartbeat() {
   timer.unref?.();
 }
 
+// Çevrimiçi/son görülme yalnızca eşleşilen kişilere gider (bilgi yalnızca
+// sohbet ekranında kullanılır). Önceden herkese yayınlanıyordu: tüm
+// kampüslerdeki herkes kimin ne zaman çevrimiçi olduğunu izleyebiliyordu.
+async function emitPresence(io, userId, payload) {
+  const matches = await prisma.match.findMany({
+    where: { OR: [{ userAId: userId }, { userBId: userId }] },
+    select: { userAId: true, userBId: true },
+  });
+  for (const m of matches) io.to(`user_${m.userAId === userId ? m.userBId : m.userAId}`).emit('presence_update', payload);
+}
+
 function setupSocket(io) {
   ioRef = io;
   startHeartbeat();
@@ -107,7 +118,7 @@ function setupSocket(io) {
       return next(new Error('Token gerekli.'));
     }
     try {
-      const payload = jwt.verify(token, process.env.JWT_SECRET);
+      const payload = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
       if (payload.purpose) {
         return next(new Error('Geçersiz token.'));
       }
@@ -146,7 +157,7 @@ function setupSocket(io) {
       return u?.showActivityStatus !== false;
     };
     sharesPresence()
-      .then((ok) => ok && io.emit('presence_update', { userId: socket.userId, online: true }))
+      .then((ok) => ok && emitPresence(io, socket.userId, { userId: socket.userId, online: true }))
       .catch((err) => console.error(err));
 
     // Kullanıcı bir sohbet odasına katılır (her eşleşme = bir oda)
@@ -178,13 +189,15 @@ function setupSocket(io) {
     });
 
     // "Yazıyor..." göstergesi
-    socket.on('typing', ({ matchId, isTyping }) => {
+    socket.on('typing', (payload) => {
+      const { matchId, isTyping } = payload || {};
       if (!socket.rooms.has(`match_${matchId}`)) return; // yalnızca sohbetin tarafları
       socket.to(`match_${matchId}`).emit('typing', { matchId: Number(matchId), userId: socket.userId, isTyping: !!isTyping });
     });
 
     // Sohbet açıldığında karşı tarafın mesajlarını "görüldü" yap
-    socket.on('mark_read', async ({ matchId }) => {
+    socket.on('mark_read', async (payload) => {
+      const { matchId } = payload || {};
       try {
         const match = await prisma.match.findUnique({ where: { id: Number(matchId) } });
         if (!match || (match.userAId !== socket.userId && match.userBId !== socket.userId)) return;
@@ -203,7 +216,9 @@ function setupSocket(io) {
     });
 
     // Mesaj gönderme
-    socket.on('send_message', async ({ matchId, content, replyToId } = {}) => {
+    socket.on('send_message', async (payload) => {
+      // null/eksik yük sunucuyu düşürmesin
+      const { matchId, content, replyToId } = payload || {};
       try {
         const text = await cleanUserText(content, { max: LIMITS.message, required: true, label: 'Mesaj' });
         if (text.error) return socket.emit('error_message', text.error);
@@ -252,7 +267,8 @@ function setupSocket(io) {
     });
 
     // Kulüp grup sohbetine metin mesajı gönderme
-    socket.on('send_club_message', async ({ clubId, content } = {}) => {
+    socket.on('send_club_message', async (payload) => {
+      const { clubId, content } = payload || {};
       try {
         const text = await cleanUserText(content, { max: LIMITS.message, required: true, label: 'Mesaj' });
         if (text.error) return socket.emit('error_message', text.error);
@@ -298,7 +314,7 @@ function setupSocket(io) {
           select: { lastSeenAt: true, showActivityStatus: true },
         });
         if (updated.showActivityStatus !== false) {
-          io.emit('presence_update', { userId: socket.userId, online: false, lastSeenAt: updated.lastSeenAt });
+          await emitPresence(io, socket.userId, { userId: socket.userId, online: false, lastSeenAt: updated.lastSeenAt });
         }
       } catch (err) {
         console.error(err);

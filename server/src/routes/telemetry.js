@@ -14,7 +14,7 @@ function optionalUserId(req) {
   const h = req.headers.authorization;
   if (!h || !h.startsWith('Bearer ')) return null;
   try {
-    const payload = jwt.verify(h.slice(7), process.env.JWT_SECRET);
+    const payload = jwt.verify(h.slice(7), process.env.JWT_SECRET, { algorithms: ['HS256'] });
     return payload.purpose ? null : payload.userId;
   } catch {
     return null;

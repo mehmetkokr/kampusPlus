@@ -4,7 +4,7 @@ import { MapPin } from 'lucide-react';
 import api from '../../api';
 import Reveal from './Reveal';
 import { useI18n } from '../../i18n';
-import { hasWebGL, useNearViewport, useThemeMode } from '../../utils/webgl';
+import { hasWebGL, prefersLightweight, useNearViewport, useThemeMode } from '../../utils/webgl';
 import data from './turkeyMap.json';
 
 // "Türkiye genelinde" bölümü: 81 ilin hepsinde en az bir üniversite var.
@@ -38,7 +38,8 @@ export default function CampusMapSection() {
   const mode = useThemeMode();
   const reduce = useReducedMotion();
   const [boxRef, near] = useNearViewport('300px');
-  const [webgl] = useState(() => typeof window !== 'undefined' && hasWebGL());
+  // Telefonda ve zayıf cihazda düz harita kalır (3D sahne yüklenmez)
+  const [webgl] = useState(() => typeof window !== 'undefined' && hasWebGL() && !prefersLightweight());
   const [loaded, setLoaded] = useState(false);
   const [uniCount, setUniCount] = useState(null);
   const [hover, setHover] = useState(null); // { i, x, y }

@@ -1,0 +1,39 @@
+# Ayakta mı takibi: yayındaki sitenin sağlık adresi 15 dakikada bir yoklanır.
+# Site ya da veritabanı yanıt vermezse iş başarısız olur ve GitHub, depo
+# sahibine e-posta gönderir (Ayarlar > Notifications > Actions açık olmalı).
+#
+# Kurulum: GitHub > depo > Settings > Secrets and variables > Actions >
+# Variables > "SITE_URL" = https://alan-adin (sonunda / olmadan). Tanımlı
+# değilse iş hiçbir şey yapmadan geçer.
+name: Ayakta mı
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    name: Sağlık kontrolü
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Siteyi yokla
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: |
+          if [ -z "$SITE_URL" ]; then
+            echo "SITE_URL değişkeni tanımlı değil; takip atlandı."
+            exit 0
+          fi
+          for i in 1 2 3; do
+            code=$(curl -s -o body.json -w '%{http_code}' --max-time 15 "$SITE_URL/api/health" || echo 000)
+            if [ "$code" = "200" ]; then
+              echo "Ayakta: $(cat body.json)"
+              exit 0
+            fi
+            echo "Deneme $i başarısız (HTTP $code), 20 sn sonra tekrar"
+            sleep 20
+          done
+          echo "::error::Site yanıt vermiyor: $SITE_URL/api/health (son HTTP $code)"
+          exit 1

@@ -247,3 +247,37 @@ test('etkinlik hatırlatması: katılımcılara bir kez gider', async () => {
   assert.equal(await prisma.notification.count({ where: { type: 'event_reminder', targetId: club.id } }), 2);
   assert.ok((await prisma.event.findUnique({ where: { id: event.id } })).reminderSentAt);
 });
+
+test('e-posta değiştirme: aynı okulun adresi, kodla doğrulanır, eskisiyle giriş biter', async () => {
+  const u = await createUser('eski-adres@test.edu.tr');
+  const token = await tokenFor(u.email);
+  assert.equal((await api('POST', '/api/auth/email/send-code', { token, body: { newEmail: 'yeni@gmail.com', password: PASSWORD } })).status, 400, 'okul dışı adres reddedilmeli');
+  assert.equal((await api('POST', '/api/auth/email/send-code', { token, body: { newEmail: 'yeni-adres@test.edu.tr', password: 'yanlis' } })).status, 400, 'şifre doğrulanmalı');
+  await createUser('dolu-adres@test.edu.tr');
+  assert.equal((await api('POST', '/api/auth/email/send-code', { token, body: { newEmail: 'dolu-adres@test.edu.tr', password: PASSWORD } })).status, 409);
+
+  assert.equal((await api('POST', '/api/auth/email/send-code', { token, body: { newEmail: 'yeni-adres@test.edu.tr', password: PASSWORD } })).status, 200);
+  await prisma.emailVerificationCode.update({ where: { email: 'yeni-adres@test.edu.tr' }, data: { codeHash: crypto.createHash('sha256').update('112233').digest('hex') } });
+  assert.equal((await api('POST', '/api/auth/email', { token, body: { newEmail: 'yeni-adres@test.edu.tr', code: '000000' } })).status, 400);
+  const ok = await api('POST', '/api/auth/email', { token, body: { newEmail: 'yeni-adres@test.edu.tr', code: '112233' } });
+  assert.equal(ok.status, 200, JSON.stringify(ok.data));
+
+  assert.equal((await api('POST', '/api/auth/login', { body: { email: 'eski-adres@test.edu.tr', password: PASSWORD } })).status, 401);
+  assert.equal((await api('POST', '/api/auth/login', { body: { email: 'yeni-adres@test.edu.tr', password: PASSWORD } })).status, 200);
+});
+
+test('sağlık kontrolü veritabanını da yoklar', async () => {
+  const res = await api('GET', '/api/health');
+  assert.equal(res.status, 200);
+  assert.equal(res.data.db, 'ok');
+});
+
+test('yönetici uyarısı: aynı tür uyarı aralık dolmadan tekrar gönderilmez', async () => {
+  await createUser('uyari-yonetici@test.edu.tr', { isAdmin: true });
+  const { alertAdmins, resetAlertThrottle } = require('../src/lib/alerts');
+  resetAlertThrottle();
+  const alert = { subject: 'Deneme uyarısı', text: 'Test', path: '/admin/system', throttleMs: 60000 };
+  assert.equal(await alertAdmins('deneme', alert), true);
+  assert.equal(await alertAdmins('deneme', alert), false, 'ikinci uyarı bastırılmalı');
+  assert.equal(await alertAdmins('baska-tur', alert), true, 'farklı tür ayrı sayılmalı');
+});

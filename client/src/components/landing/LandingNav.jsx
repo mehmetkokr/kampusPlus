@@ -23,7 +23,8 @@ function LangSwitch() {
       type="button"
       onClick={() => setLang(next)}
       className="inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-full px-3 text-[0.8125rem] font-semibold text-paper-muted transition-colors hover:bg-black/5 hover:text-paper"
-      aria-label={next === 'en' ? 'Switch to English' : "Türkçe'ye geç"}
+      // Görünen yazı (EN/TR) erişilebilir adın başında olmalı (sesli komutla tıklanabilsin)
+      aria-label={next === 'en' ? 'EN, Switch to English' : "TR, Türkçe'ye geç"}
       lang={next}
     >
       <Globe size={15} aria-hidden="true" />

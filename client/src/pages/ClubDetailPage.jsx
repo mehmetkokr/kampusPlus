@@ -139,7 +139,7 @@ export default function ClubDetailPage() {
     const handlers = {};
     const on = (ev, fn) => {
       handlers[ev] = fn;
-      on(ev, fn);
+      socket.on(ev, fn);
     };
     on('new_club_message', (msg) => {
       if (msg.clubId === id) setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));

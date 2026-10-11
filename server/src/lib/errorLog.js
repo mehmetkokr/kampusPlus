@@ -50,12 +50,28 @@ async function recordError({ source = 'server', message, stack = null, path = nu
     };
     const fingerprint = fingerprintOf(source, data.message, data.stack);
     const update = { count: { increment: 1 }, lastSeen: new Date(), resolved: false, stack: data.stack, path: data.path, userAgent: data.userAgent };
+    let row;
+    let isNew = false;
     try {
-      await prisma.errorLog.upsert({ where: { fingerprint }, create: { ...data, fingerprint }, update });
+      const existing = await prisma.errorLog.findUnique({ where: { fingerprint }, select: { id: true } });
+      isNew = !existing;
+      row = await prisma.errorLog.upsert({ where: { fingerprint }, create: { ...data, fingerprint }, update });
     } catch (err) {
       // Aynı hata aynı anda iki kez geldiyse ikinci oluşturma çakışır: sayacı artır
       if (err?.code !== 'P2002') throw err;
-      await prisma.errorLog.update({ where: { fingerprint }, data: update });
+      isNew = false;
+      row = await prisma.errorLog.update({ where: { fingerprint }, data: update });
+    }
+    // Yöneticilere haber: ilk kez görülen sunucu hatası ya da çok tekrarlayan hata
+    if (source === 'server' && (isNew || row.count % 50 === 0)) {
+      const { alertAdmins } = require('./alerts');
+      alertAdmins(isNew ? 'error-new' : 'error-spike', {
+        subject: isNew ? 'Sunucuda yeni bir hata görüldü' : `Bir hata ${row.count} kez tekrarlandı`,
+        text: `${data.message}${data.path ? `
+Yer: ${data.path}` : ''}`,
+        path: '/admin/system',
+        throttleMs: 30 * 60 * 1000,
+      });
     }
   } catch (err) {
     // Kayıt yazılamazsa (ör. veritabanı kapalı) sonsuz döngüye girmeden yalnızca yazdır
@@ -85,6 +101,11 @@ function installErrorCapture() {
 // Express'in son hata yakalayıcısı: next(err) ile gelen ya da yakalanmamış rota hataları
 function expressErrorHandler(err, req, res, next) {
   if (res.headersSent) return next(err);
+  // Yükleme hataları (çok büyük dosya, desteklenmeyen tür) kullanıcı hatasıdır
+  if (err.name === 'MulterError') {
+    const message = err.code === 'LIMIT_FILE_SIZE' ? 'Dosya çok büyük.' : 'Dosya yüklenemedi.';
+    return res.status(400).json({ error: message });
+  }
   const status = err.status || err.statusCode || 500;
   // 4xx (ör. bozuk JSON gövdesi) istemci hatasıdır; yalnızca 5xx kayda geçer
   if (status >= 500) {

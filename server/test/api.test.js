@@ -320,3 +320,192 @@ test('anlık bildirim: açık anahtar verilir, geçersiz abonelik reddedilir, ge
   assert.equal((await api('DELETE', '/api/push/subscribe', { token, body: { endpoint: sub.endpoint } })).status, 200);
   assert.equal(await prisma.pushSubscription.count({ where: { endpoint: sub.endpoint } }), 0);
 });
+
+// ---------------------------------------------------------------
+// Güvenlik sertleştirmesi
+// ---------------------------------------------------------------
+const PNG_1PX = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+  'base64'
+);
+
+async function upload(url, token, field, buf, type, name) {
+  const form = new FormData();
+  form.append(field, new Blob([buf], { type }), name);
+  const res = await fetch(BASE + url, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form });
+  return { status: res.status, data: await res.json().catch(() => null) };
+}
+
+test('yükleme: uzantı istemciden alınmaz, yanlış tür ve sahte içerik reddedilir', async () => {
+  await createUser('yukleme@test.edu.tr');
+  const token = await tokenFor('yukleme@test.edu.tr');
+
+  const ok = await upload('/api/profile/me/photos', token, 'photo', PNG_1PX, 'image/png', 'x.html');
+  assert.equal(ok.status, 201, JSON.stringify(ok.data));
+  const url = ok.data.photos.at(-1).url;
+  assert.match(url, /^\/uploads\/photo-[0-9a-f]{32}\.png$/, 'ad rastgele, uzantı doğrulanmış türden');
+
+  const served = await fetch(BASE + url);
+  assert.equal(served.status, 200);
+  assert.equal(served.headers.get('content-type'), 'image/png');
+  assert.equal(served.headers.get('x-content-type-options'), 'nosniff');
+  assert.match(served.headers.get('content-security-policy'), /sandbox/);
+
+  const pdf = await upload('/api/profile/me/photos', token, 'photo', Buffer.from('%PDF-1.4\n%%EOF'), 'application/pdf', 'a.pdf');
+  assert.equal(pdf.status, 400, 'fotoğraf alanına PDF yüklenemez');
+  const fake = await upload('/api/profile/me/photos', token, 'photo', Buffer.from('<script>alert(1)</script>'), 'image/png', 'a.png');
+  assert.equal(fake.status, 400, 'image/png etiketli HTML reddedilmeli');
+  const big = await upload('/api/profile/me/photos', token, 'photo', Buffer.alloc(6 * 1024 * 1024), 'image/png', 'b.png');
+  assert.equal(big.status, 400, 'çok büyük dosya 400 dönmeli');
+});
+
+test('yükleme: herkese açık klasörden yalnızca görseller sunulur', async () => {
+  fs.writeFileSync(path.join(tmp, 'uploads', 'eski.html'), '<script>alert(1)</script>');
+  assert.equal((await fetch(`${BASE}/uploads/eski.html`)).status, 404);
+  assert.equal((await fetch(`${BASE}/uploads/.gitkeep`)).status, 404);
+});
+
+test('kayıt kodu: kayıtlı ve kayıtsız adrese aynı yanıt; kayıtlıya kod üretilmez', async () => {
+  const uni = await prisma.university.findFirst({ where: { emailDomain: 'test.edu.tr' } });
+  await createUser('kayitli@test.edu.tr');
+  const known = await api('POST', '/api/auth/register/send-code', { body: { email: 'kayitli@test.edu.tr', universityId: uni.id } });
+  const unknown = await api('POST', '/api/auth/register/send-code', { body: { email: 'yeni@test.edu.tr', universityId: uni.id } });
+  assert.equal(known.status, 200);
+  assert.deepEqual(Object.keys(known.data).sort(), Object.keys(unknown.data).sort());
+  assert.equal(known.data.sent, true);
+  assert.equal(await prisma.emailVerificationCode.findUnique({ where: { email: 'kayitli@test.edu.tr' } }), null);
+  assert.ok(await prisma.emailVerificationCode.findUnique({ where: { email: 'yeni@test.edu.tr' } }));
+});
+
+test('giriş ve şifremi unuttum: hatalı türde girdi 400, hesap varlığı mesajdan anlaşılmaz', async () => {
+  const obj = await api('POST', '/api/auth/login', { body: { email: { not: '' }, password: ['x'] } });
+  assert.equal(obj.status, 400);
+  const a = await api('POST', '/api/auth/forgot-password', { body: { email: 'kayitli@test.edu.tr' } });
+  const b = await api('POST', '/api/auth/forgot-password', { body: { email: 'hic-yok@test.edu.tr' } });
+  assert.equal(a.status, 200);
+  assert.deepEqual(a.data, b.data);
+});
+
+test('gerçek zamanlı bağlantı: boş/null olaylar sunucuyu düşürmez', async () => {
+  const { io } = require('socket.io-client');
+  await createUser('soket@test.edu.tr');
+  const token = await tokenFor('soket@test.edu.tr');
+  const socket = io(BASE, { auth: { token }, transports: ['websocket'] });
+  await new Promise((resolve, reject) => {
+    socket.on('connect', resolve);
+    socket.on('connect_error', reject);
+  });
+  for (const event of ['typing', 'mark_read', 'send_message', 'send_club_message']) {
+    socket.emit(event);
+    socket.emit(event, null);
+  }
+  await new Promise((r) => setTimeout(r, 500));
+  socket.close();
+  assert.equal((await fetch(`${BASE}/api/health`)).status, 200, 'sunucu ayakta kalmalı');
+});
+
+// ---------------------------------------------------------------
+// Sızma testi bulguları: gizlilik, kapalı kampüs ve askıdaki hesaplar
+// ---------------------------------------------------------------
+async function otherCampus() {
+  return (
+    (await prisma.university.findFirst({ where: { emailDomain: 'diger.edu.tr' } })) ||
+    prisma.university.create({ data: { name: 'Diğer Üniversite', emailDomain: 'diger.edu.tr' } })
+  );
+}
+const READY = { department: 'Bölüm', classYear: 2, birthDate: new Date('2003-01-01'), schoolEmailVerifiedAt: new Date() };
+
+test('profil: yönetici, askıdaki hesap ve Premium olmadan başka kampüs görüntülenemez; eşleşince görülür', async () => {
+  const viewer = await createUser('pt-izleyici@test.edu.tr', READY);
+  const admin = await createUser('pt-yonetici@test.edu.tr', { ...READY, isAdmin: true });
+  const banned = await createUser('pt-askida@test.edu.tr', { ...READY, isBanned: true });
+  const uni = await otherCampus();
+  const far = await createUser('pt-uzak@diger.edu.tr', { ...READY, universityId: uni.id });
+  const token = await tokenFor('pt-izleyici@test.edu.tr');
+
+  assert.equal((await api('GET', `/api/users/${admin.id}`, { token })).status, 404);
+  assert.equal((await api('GET', `/api/users/${banned.id}`, { token })).status, 404);
+  const farRes = await api('GET', `/api/users/${far.id}`, { token });
+  assert.equal(farRes.status, 403);
+  assert.equal(farRes.data.code, 'PREMIUM_REQUIRED');
+
+  await prisma.match.create({ data: { userAId: Math.min(viewer.id, far.id), userBId: Math.max(viewer.id, far.id) } });
+  assert.equal((await api('GET', `/api/users/${far.id}`, { token })).status, 200, 'eşleşilen kişinin profili açılmalı');
+});
+
+test('beğenme ve takip: gizli, askıdaki ve başka kampüsteki kişiye yapılamaz; karşılık vermek serbest', async () => {
+  await createUser('pt-begenen@test.edu.tr', READY);
+  const hidden = await createUser('pt-gizli@test.edu.tr', { ...READY, profileVisibility: 'nobody' });
+  const frozen = await createUser('pt-dondurulmus@test.edu.tr', { ...READY, isFrozen: true });
+  const uni = await otherCampus();
+  const far = await createUser('pt-uzak2@diger.edu.tr', { ...READY, universityId: uni.id });
+  const me = await prisma.user.findUnique({ where: { email: 'pt-begenen@test.edu.tr' } });
+  const token = await tokenFor('pt-begenen@test.edu.tr');
+
+  assert.equal((await api('POST', `/api/matches/like/${hidden.id}`, { token })).status, 403);
+  assert.equal((await api('POST', `/api/matches/like/${frozen.id}`, { token })).status, 404);
+  assert.equal((await api('POST', `/api/matches/like/${far.id}`, { token })).status, 403);
+  assert.equal((await api('POST', `/api/users/${hidden.id}/follow`, { token })).status, 403);
+  assert.equal(await prisma.like.count({ where: { fromUserId: me.id } }), 0);
+
+  // Başka kampüsten biri (Premium ile) beğendiyse karşılık verilebilir ve eşleşilir
+  await prisma.like.create({ data: { fromUserId: far.id, toUserId: me.id } });
+  const back = await api('POST', `/api/matches/like/${far.id}`, { token });
+  assert.equal(back.status, 200);
+  assert.equal(back.data.matched, true);
+});
+
+test('askıdaki hesabın gönderisi doğrudan da açılmaz, Keşfet\'te görünmez', async () => {
+  const author = await createUser('pt-yazar@test.edu.tr', { ...READY, isBanned: true });
+  await createUser('pt-okur@test.edu.tr', READY);
+  const post = await prisma.post.create({ data: { authorId: author.id, caption: 'askidaki-gonderi', visibility: 'campus' } });
+  const token = await tokenFor('pt-okur@test.edu.tr');
+  assert.equal((await api('GET', `/api/posts/${post.id}`, { token })).status, 404);
+  const home = await api('GET', '/api/discover/home', { token });
+  assert.equal(home.status, 200);
+  assert.ok(!JSON.stringify(home.data).includes('askidaki-gonderi'));
+});
+
+test('şikâyet: göremediği mesaj ya da var olmayan içerik şikâyet edilemez', async () => {
+  const a = await createUser('pt-sohbet-a@test.edu.tr', READY);
+  const b = await createUser('pt-sohbet-b@test.edu.tr', READY);
+  await createUser('pt-yabanci2@test.edu.tr', READY);
+  const match = await prisma.match.create({ data: { userAId: a.id, userBId: b.id } });
+  const msg = await prisma.message.create({ data: { matchId: match.id, senderId: a.id, content: 'ozel' } });
+  const stranger = await tokenFor('pt-yabanci2@test.edu.tr');
+  assert.equal((await api('POST', '/api/reports', { token: stranger, body: { targetType: 'message', targetId: msg.id, reason: 'spam' } })).status, 404);
+  assert.equal((await api('POST', '/api/reports', { token: stranger, body: { targetType: 'post', targetId: 999999, reason: 'spam' } })).status, 404);
+  const own = await tokenFor('pt-sohbet-b@test.edu.tr');
+  assert.equal((await api('POST', '/api/reports', { token: own, body: { targetType: 'message', targetId: msg.id, reason: 'spam' } })).status, 201);
+});
+
+test('veritabanı sınırını aşan numaralar 500 değil 404 döner', async () => {
+  await createUser('pt-buyuk@test.edu.tr', READY);
+  const token = await tokenFor('pt-buyuk@test.edu.tr');
+  for (const url of ['/api/posts/99999999999999999999', '/api/users/4294967296', '/api/clubs/12345678901']) {
+    assert.equal((await api('GET', url, { token })).status, 404, url);
+  }
+});
+
+test('çevrimiçi durumu yalnızca eşleşilen kişilere gider', async () => {
+  const { io } = require('socket.io-client');
+  const a = await createUser('pt-cevrim-a@test.edu.tr', READY);
+  const b = await createUser('pt-cevrim-b@test.edu.tr', READY);
+  await createUser('pt-cevrim-c@test.edu.tr', READY);
+  await prisma.match.create({ data: { userAId: Math.min(a.id, b.id), userBId: Math.max(a.id, b.id) } });
+  const connect = async (email) => {
+    const s = io(BASE, { auth: { token: await tokenFor(email) }, transports: ['websocket'] });
+    await new Promise((res, rej) => { s.on('connect', res); s.on('connect_error', rej); });
+    return s;
+  };
+  const partner = await connect('pt-cevrim-b@test.edu.tr');
+  const stranger = await connect('pt-cevrim-c@test.edu.tr');
+  const seen = { partner: [], stranger: [] };
+  partner.on('presence_update', (p) => seen.partner.push(p.userId));
+  stranger.on('presence_update', (p) => seen.stranger.push(p.userId));
+  const me = await connect('pt-cevrim-a@test.edu.tr');
+  await new Promise((r) => setTimeout(r, 500));
+  [me, partner, stranger].forEach((s) => s.close());
+  assert.ok(seen.partner.includes(a.id), 'eşleşilen kişi görmeli');
+  assert.ok(!seen.stranger.includes(a.id), 'yabancı görmemeli');
+});

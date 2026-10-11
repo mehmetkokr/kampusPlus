@@ -145,6 +145,8 @@ model User {
   // Yöneticiler için iki adımlı doğrulama (TOTP, ör. Google Authenticator)
   totpSecret  String?
   totpEnabled Boolean @default(false)
+  // En son kabul edilen 30 sn'lik pencere: aynı kod iki kez kullanılamasın
+  totpLastStep Int?
 
   // Profil fotoğraf galerisi (photoUrl ana fotoğraftır ve bu listede de yer alır)
   photos UserPhoto[]
