@@ -6,7 +6,7 @@
    gray-900 zemini. Uygulamanın renk değişkenleri panel içinde TailAdmin
    paletine eşlenir; böylece tüm sayfalar aynı düzene uyar.
    ========================================================================== */
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap');
+/* Outfit yazı tipi AdminLayout açılınca yüklenir (burada @import tüm sitenin açılışını bekletiyordu) */
 
 .adm {
   /* TailAdmin paleti (açık) */

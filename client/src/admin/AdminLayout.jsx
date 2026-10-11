@@ -25,6 +25,18 @@ import { useAuth } from '../context/AuthContext';
 import { Avatar } from './ui';
 import './admin.css';
 
+// Panelin yazı tipi yalnızca panel açıldığında yüklenir
+const FONT_HREF = 'https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap';
+function useAdminFont() {
+  useEffect(() => {
+    if (document.querySelector(`link[href="${FONT_HREF}"]`)) return;
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = FONT_HREF;
+    document.head.appendChild(link);
+  }, []);
+}
+
 // TailAdmin düzeni: beyaz kenar çubuğu (gruplar, rozetler), üstte arama +
 // tema + bildirim + kullanıcı menüsü olan çubuk. Geniş ekranda kenar çubuğu
 // simgelere daraltılabilir (tercih hatırlanır); telefonda çekmeceye dönüşür.
@@ -88,6 +100,7 @@ function useDropdown() {
 }
 
 export default function AdminLayout() {
+  useAdminFont();
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();

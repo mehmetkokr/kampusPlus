@@ -3097,3 +3097,18 @@ body {
   }
   .code-inputs input { font-size: 21px !important; }
 }
+
+/* Küçük simge düğmelerinin dokunma alanı görünümü değiştirmeden genişletilir
+   (telefonda parmakla ıskalanmasın; önerilen en az ~44 px) */
+.password-toggle-btn::after,
+.notification-delete-btn::after,
+.photo-slot-menu-btn::after,
+.pf-select-chip button::after {
+  content: '';
+  position: absolute;
+  inset: -9px;
+}
+.notification-delete-btn,
+.pf-select-chip button {
+  position: relative;
+}

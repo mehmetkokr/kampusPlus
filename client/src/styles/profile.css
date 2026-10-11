@@ -333,7 +333,8 @@
 }
 
 /* Sabit kaydet düğmesi: telefonda alt menünün hemen üstünde */
-.pf-savebar { position: sticky; bottom: 20px; z-index: 30; padding-top: 8px; }
+.pf-savebar { position: sticky; bottom: 20px; z-index: 30; padding-top: 8px; animation: pf-savebar-in 0.22s cubic-bezier(0.23, 1, 0.32, 1); }
+@keyframes pf-savebar-in { from { opacity: 0; transform: translateY(16px); } }
 @media (max-width: 1023px) {
   .pf-savebar { bottom: calc(env(safe-area-inset-bottom, 0px) + 88px); }
 }
@@ -370,6 +371,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .pf-ring-fill, .pf-avatar-edit, .pf-select-box, .pf-select-chevron, .pf-save, .pf-completion-link svg { transition: none; }
+  .pf-savebar { animation: none; }
 }
 
 /* Seçim kutusundaki açma düğmesi: boşken yer tutucuyu, doluyken yalnızca oku taşır */

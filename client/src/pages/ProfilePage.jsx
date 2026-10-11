@@ -297,12 +297,15 @@ export default function ProfilePage() {
         </button>
       </div>
 
-      {/* ---------- Sabit kaydet düğmesi ---------- */}
-      <div className="pf-savebar">
-        <button type="button" className="pf-save" onClick={handleSave} disabled={saving || !dirty}>
-          {saving ? t('Kaydediliyor...') : t('Değişiklikleri kaydet')}
-        </button>
-      </div>
+      {/* ---------- Sabit kaydet düğmesi: yalnızca kaydedilecek değişiklik varken ----------
+          (her zaman görünmesi küçük telefonlarda ekranın altını boşuna kapatıyordu) */}
+      {(dirty || saving) && (
+        <div className="pf-savebar">
+          <button type="button" className="pf-save" onClick={handleSave} disabled={saving}>
+            {saving ? t('Kaydediliyor...') : t('Değişiklikleri kaydet')}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
