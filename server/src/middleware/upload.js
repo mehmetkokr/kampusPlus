@@ -1,6 +1,8 @@
 // Profil fotoğrafı ve öğrenci belgesi yükleme ayarları
 const multer = require('multer');
-const path = require('path');
+
+const badRequest = (message) => Object.assign(new Error(message), { status: 400 });
+const crypto = require('crypto');
 const { PUBLIC_UPLOADS, PRIVATE_UPLOADS } = require('../lib/paths');
 const fs = require('fs');
 
@@ -18,35 +20,34 @@ for (const dir of [publicDir, privateDir]) {
 function makeStorage(destDir) {
   return multer.diskStorage({
     destination: (req, file, cb) => cb(null, destDir),
-    filename: (req, file, cb) => {
-      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-      const ext = path.extname(file.originalname);
-      cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
-    },
+    // Geçici, uzantısız rastgele ad: kalıcı adı ve uzantıyı doğrulanmış türe
+    // göre lib/fileValidation.js (verifyUpload) verir
+    filename: (req, file, cb) => cb(null, `tmp-${crypto.randomBytes(16).toString('hex')}`),
   });
 }
 
-const fileFilter = (req, file, cb) => {
-  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
-  if (allowedTypes.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error('Desteklenmeyen dosya türü. JPEG, PNG, WEBP veya PDF yükleyin.'));
-  }
+// Herkese açık klasöre yalnızca görsel yazılır; PDF yalnızca özel klasöre
+// (öğrenci belgesi) kabul edilir. Asıl kontrol imzaya bakan verifyUpload'dadır.
+const imageFilter = (req, file, cb) => {
+  if (['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) cb(null, true);
+  else cb(badRequest('Desteklenmeyen dosya türü. JPEG, PNG veya WEBP yükleyin.'));
+};
+const documentFilter = (req, file, cb) => {
+  if (['image/jpeg', 'image/png', 'image/webp', 'application/pdf'].includes(file.mimetype)) cb(null, true);
+  else cb(badRequest('Desteklenmeyen dosya türü. JPEG, PNG, WEBP veya PDF yükleyin.'));
 };
 
 const upload = multer({
   storage: makeStorage(publicDir),
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB sınır
-  fileFilter,
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 }, // 5MB sınır
+  fileFilter: imageFilter,
 });
 
-// Aynı kurallarla, ama özel klasöre yazan ayrı bir multer örneği
-// (ör. öğrenci belgesi — herkese açık olmamalı).
+// Özel klasöre yazan ayrı bir multer örneği (ör. öğrenci belgesi — herkese açık olmamalı)
 upload.private = multer({
   storage: makeStorage(privateDir),
-  limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter,
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+  fileFilter: documentFilter,
 });
 
 module.exports = upload;

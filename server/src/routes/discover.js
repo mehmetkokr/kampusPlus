@@ -248,7 +248,7 @@ router.get('/home', requireAuth, async (req, res) => {
 // ---------------------------------------------------------
 router.get('/search', requireAuth, async (req, res) => {
   try {
-    const q = (req.query.q || '').trim();
+    const q = typeof req.query.q === 'string' ? req.query.q.trim().slice(0, 100) : '';
     if (!q) return res.json({ results: [], lockedCount: 0, isPremium: false });
 
     const [me, blockedByMe, blockingMe] = await Promise.all([

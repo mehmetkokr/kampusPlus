@@ -75,15 +75,8 @@
     />
     <!-- Uygulama JavaScript'i yüklenene kadar görünen yükleme animasyonu
          (src/styles/cube-loader.css'in kopyası; React açılınca #root içeriği değişir) -->
-    <!-- Temayı ilk boyamadan önce uygula: kayıtlı seçim (kp-theme), yoksa cihazın
-         açık/koyu ayarı. Böylece sayfa açılırken yanlış renkte bir an görünmez. -->
-    <script>
-      try {
-        var saved = localStorage.getItem('kp-theme');
-        var light = saved ? saved === 'light' : window.matchMedia('(prefers-color-scheme: light)').matches;
-        document.documentElement.setAttribute('data-theme', light ? 'light' : 'dark');
-      } catch (e) {}
-    </script>
+    <!-- Temayı ilk boyamadan önce uygula (bkz. public/theme-init.js) -->
+    <script src="/theme-init.js"></script>
     <style id="boot-loader-style">
       /* Yalnızca <html>: body'nin rengi temadan (index.css --bg) gelir */
       html { background: #000000; }

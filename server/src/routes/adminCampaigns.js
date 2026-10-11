@@ -6,6 +6,8 @@
 //   banner       → uygulamanın üstünde kapatılabilir duyuru bandı (bkz. routes/announcements.js)
 //   email        → hedef kitlenin okul e-postası (SMTP yoksa sunucu konsoluna yazılır)
 const express = require('express');
+const { siteUrl } = require('../lib/siteConfig');
+const { escapeHtml } = require('../lib/text');
 const prisma = require('../lib/prisma');
 const { pushToUsers } = require('../lib/push');
 const { sendMail } = require('../lib/mailer');
@@ -41,9 +43,9 @@ function validate(body) {
 const notificationMessage = (c) => JSON.stringify({ title: c.title, body: c.text ?? c.body, link: c.link || null });
 
 function emailContent({ title, text, link, fullName }) {
-  const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+  const clientUrl = siteUrl();
   const url = link ? (link.startsWith('/') ? clientUrl + link : link) : clientUrl;
-  const esc = (s) => String(s).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]);
+  const esc = escapeHtml;
   return {
     subject: `kampüs·: ${title}`,
     text: `Merhaba ${fullName},\n\n${text}\n\n${url}\n\nBu e-postayı kampüs· hesabın olduğu için aldın.`,

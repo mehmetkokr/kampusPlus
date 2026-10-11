@@ -2,27 +2,24 @@
 // Profil fotoğrafı/öğrenci belgesi için kullanılan upload.js'den ayrı tutulur
 // çünkü burada daha geniş bir dosya türü seti ve daha büyük boyut sınırı gerekir.
 const multer = require('multer');
-const path = require('path');
-const { PUBLIC_UPLOADS, PRIVATE_UPLOADS } = require('../lib/paths');
+
+const badRequest = (message) => Object.assign(new Error(message), { status: 400 });
+const crypto = require('crypto');
+const { PRIVATE_UPLOADS } = require('../lib/paths');
 const fs = require('fs');
 
-const publicDir = PUBLIC_UPLOADS;
 // Sohbet ekleri (DM / grup / kulüp mesajları) herkese açık olmamalı — sadece
 // ilgili sohbetin üyeleri routes/files.js üzerinden indirebilir.
 const privateDir = PRIVATE_UPLOADS;
 
-for (const dir of [publicDir, privateDir]) {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-}
+if (!fs.existsSync(privateDir)) fs.mkdirSync(privateDir, { recursive: true });
 
 function makeStorage(destDir) {
   return multer.diskStorage({
     destination: (req, file, cb) => cb(null, destDir),
-    filename: (req, file, cb) => {
-      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-      const ext = path.extname(file.originalname) || '';
-      cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
-    },
+    // Geçici, uzantısız rastgele ad: kalıcı adı ve uzantıyı doğrulanmış türe
+    // göre lib/fileValidation.js (verifyUpload) verir
+    filename: (req, file, cb) => cb(null, `tmp-${crypto.randomBytes(16).toString('hex')}`),
   });
 }
 
@@ -48,21 +45,17 @@ const ALLOWED_TYPES = [
 
 const fileFilter = (req, file, cb) => {
   if (ALLOWED_TYPES.includes(file.mimetype)) cb(null, true);
-  else cb(new Error('Desteklenmeyen dosya türü.'));
+  else cb(badRequest('Desteklenmeyen dosya türü.'));
 };
 
-const chatUpload = multer({
-  storage: makeStorage(publicDir),
-  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
-  fileFilter,
-});
-
-// Gerçek kullanım: tüm sohbet ekleri buraya taşındı (bkz. routes/messages.js,
-// routes/clubs.js) — özel klasöre yazar.
-chatUpload.private = multer({
-  storage: makeStorage(privateDir),
-  limits: { fileSize: 20 * 1024 * 1024 },
-  fileFilter,
-});
+// Sohbet ekleri yalnızca özel klasöre yazılır (bkz. routes/messages.js,
+// routes/clubs.js); herkese açık klasöre sohbet eki yazan bir yol yoktur.
+const chatUpload = {
+  private: multer({
+    storage: makeStorage(privateDir),
+    limits: { fileSize: 20 * 1024 * 1024, files: 1 }, // 20MB
+    fileFilter,
+  }),
+};
 
 module.exports = chatUpload;

@@ -3,6 +3,7 @@
 // uygulama içi bildirim + (aktivite varsa) e-posta gönderir. Amaç, bir süredir
 // uygulamayı açmamış kullanıcıları "neler kaçırdın" mesajıyla geri çağırmak.
 const prisma = require('./prisma');
+const { escapeHtml } = require('./text');
 const { createNotification } = require('./notifications');
 const { sendMail } = require('./mailer');
 
@@ -46,7 +47,7 @@ async function sendWeeklySummaries(io) {
           to: u.email,
           subject: 'kampüs·: Haftalık özetin',
           text: `Merhaba ${u.fullName},\n\n${summaryText}\n\nGeri dön, neler olduğunu gör!`,
-          html: `<p>Merhaba ${u.fullName},</p><p>${summaryText}</p><p>Geri dön, neler olduğunu gör!</p>`,
+          html: `<p>Merhaba ${escapeHtml(u.fullName)},</p><p>${escapeHtml(summaryText)}</p><p>Geri dön, neler olduğunu gör!</p>`,
         }).catch((err) => console.error('Haftalık özet e-postası gönderilemedi:', err));
       }
     }

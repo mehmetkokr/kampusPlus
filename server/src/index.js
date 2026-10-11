@@ -16,6 +16,9 @@ const { Server } = require('socket.io');
 const path = require('path');
 const fs = require('fs');
 const { PUBLIC_UPLOADS } = require('./lib/paths');
+const { publicUploadGuard, publicStaticHeaders } = require('./lib/safeServe');
+const { trustProxy, allowedOrigins, productionConfigWarnings, siteUrl, configuredSiteUrl } = require('./lib/siteConfig');
+const { renderPage, robotsTxt, sitemapXml } = require('./lib/seo');
 
 const authRoutes = require('./routes/auth');
 const universityRoutes = require('./routes/universities');
@@ -39,39 +42,41 @@ const { startCronJobs } = require('./lib/cron');
 const app = express();
 const server = http.createServer(app);
 
-// Eğer sunucu bir ters proxy (nginx, Cloudflare, Render/Railway vb.) arkasında
-// çalışıyorsa, rate limiter'ın gerçek istemci IP'sini görebilmesi için bu
-// açılmalıdır. Proxy YOKSA bunu açmayın: aksi halde istemciler
-// X-Forwarded-For header'ını sahteleyerek rate limit'i by-pass edebilir.
-if (process.env.TRUST_PROXY === 'true') {
+// Sunucu bir ters proxy (Railway, nginx, Cloudflare) arkasındaysa rate
+// limiter'ın gerçek istemci IP'sini görebilmesi için açılır. Proxy YOKSA
+// açılmamalı: aksi halde istemciler X-Forwarded-For başlığını sahteleyerek
+// sınırı aşabilir. Railway'de kendiliğinden açık (bkz. lib/siteConfig.js).
+if (trustProxy()) {
   app.set('trust proxy', 1);
 }
 
-const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
+const ORIGINS = allowedOrigins();
 
 const io = new Server(server, {
   cors: {
-    origin: CLIENT_URL,
+    origin: ORIGINS,
     methods: ['GET', 'POST'],
   },
 });
 
-app.use(cors({ origin: CLIENT_URL }));
+app.use(cors({ origin: ORIGINS }));
 // Helmet, güvenlik açısından önemli HTTP başlıklarını (XSS koruması,
 // clickjacking koruması, MIME sniffing engeli vb.) otomatik olarak ekler.
 // crossOriginResourcePolicy 'cross-origin' yapılır çünkü /uploads ve
 // /api/files altındaki dosyalar frontend'in farklı origin'inden (5173)
 // <img>/<audio> etiketleriyle doğrudan yükleniyor.
-// İçerik Güvenlik Politikası: sitenin açılış betiği satır içi (tema ve
-// yükleniyor ekranı), yazı tipleri Google Fonts'tan gelir; gerçek zamanlı
-// bağlantı (socket.io) aynı adrese ws/wss ile yapılır.
+// İçerik Güvenlik Politikası: betikler yalnızca sitenin kendi dosyalarından
+// gelir (satır içi betik yok), yazı tipleri Google Fonts'tan gelir; gerçek
+// zamanlı bağlantı (socket.io) aynı adrese ws/wss ile yapılır.
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'"],
+        // Satır içi betik yok (tema: public/theme-init.js); XSS olsa bile
+        // sayfaya enjekte edilen <script> çalışmaz
+        scriptSrc: ["'self'"],
         styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
         fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
         imgSrc: ["'self'", 'data:', 'blob:', 'https://images.unsplash.com'],
@@ -119,7 +124,8 @@ const apiLimiter = rateLimit({
 app.use('/api', apiLimiter);
 
 // Yüklenen dosyalara (profil fotoğrafı, öğrenci belgesi) erişim
-app.use('/uploads', express.static(PUBLIC_UPLOADS));
+// Yalnızca görseller, sayfa olarak çalışamayacak başlıklarla (bkz. lib/safeServe.js)
+app.use('/uploads', publicUploadGuard, express.static(PUBLIC_UPLOADS, { index: false, dotfiles: 'deny', setHeaders: publicStaticHeaders }));
 
 // Sağlık kontrolü - sunucu çalışıyor mu test etmek için
 app.get('/api/health', (req, res) => {
@@ -150,11 +156,32 @@ app.use('/api', expressErrorHandler);
 // tek servis. /api, /uploads ve /socket.io dışındaki her istek index.html'e
 // düşer (React Router sayfaları).
 const CLIENT_DIST = path.join(__dirname, '..', '..', 'client', 'dist');
-if (fs.existsSync(path.join(CLIENT_DIST, 'index.html'))) {
+const CLIENT_INDEX = path.join(CLIENT_DIST, 'index.html');
+
+// Arama motorları için adresi yayındaki gerçek adresten üretilen dosyalar
+// (derlemedeki statik kopyalardan önce gelir)
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain').set('Cache-Control', 'public, max-age=3600').send(robotsTxt(siteUrl()));
+});
+app.get('/sitemap.xml', (req, res) => {
+  const lastmod = fs.existsSync(CLIENT_INDEX) ? fs.statSync(CLIENT_INDEX).mtime.toISOString().slice(0, 10) : null;
+  res.type('application/xml').set('Cache-Control', 'public, max-age=3600').send(sitemapXml(siteUrl(), lastmod));
+});
+
+if (fs.existsSync(CLIENT_INDEX)) {
+  const indexHtml = fs.readFileSync(CLIENT_INDEX, 'utf8');
+  app.get('/index.html', (req, res) => res.redirect(301, '/'));
   app.use(express.static(CLIENT_DIST, { index: false, maxAge: '7d', setHeaders: noCacheHtml }));
+  // Her sayfa kendi başlığı, açıklaması ve canonical adresiyle; bilinmeyen
+  // adresler 404 koduyla (sayfayı yine React'in "bulunamadı" ekranı çizer)
   app.get(/^\/(?!api\/|uploads\/|socket\.io\/).*/, (req, res) => {
+    // Eksik dosya (ör. eski sürümden kalan /assets/...js) sayfa değil, düz 404
+    if (/\.[a-z0-9]{1,8}$/i.test(req.path)) return res.status(404).type('text/plain').send('Bulunamadı');
+    const page = renderPage(indexHtml, req.path, configuredSiteUrl());
+    res.status(page.status);
     res.setHeader('Cache-Control', 'no-cache');
-    res.sendFile(path.join(CLIENT_DIST, 'index.html'));
+    if (page.robots.startsWith('noindex')) res.setHeader('X-Robots-Tag', page.robots);
+    res.type('html').send(page.html);
   });
 }
 
@@ -182,5 +209,6 @@ bootstrapAccounts().finally(() => {
   server.listen(PORT, () => {
     console.log(`Sunucu http://localhost:${PORT} adresinde çalışıyor`);
     checkMailer();
+    for (const warning of productionConfigWarnings()) console.warn(`[ayar] ${warning}`);
   });
 });

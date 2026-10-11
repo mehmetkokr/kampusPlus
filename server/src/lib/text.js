@@ -25,4 +25,11 @@ function normalizeEmail(value) {
   return typeof value === 'string' ? value.trim().toLowerCase() : value;
 }
 
-module.exports = { toTitleCaseTR, normalizeEmail };
+// E-posta HTML'ine yazılan her kullanıcı verisi (ad, gerekçe, bağlantı) kaçışlanır;
+// aksi halde "<a href=...>" gibi bir ad e-postada tıklanabilir bağlantıya dönüşür.
+const HTML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (ch) => HTML_ESCAPES[ch]);
+}
+
+module.exports = { toTitleCaseTR, normalizeEmail, escapeHtml };

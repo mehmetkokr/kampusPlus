@@ -9,6 +9,7 @@ const { PRIVATE_UPLOADS } = require('../lib/paths');
 const fs = require('fs');
 const jwt = require('jsonwebtoken');
 const prisma = require('../lib/prisma');
+const { sendPrivateFile } = require('../lib/safeServe');
 
 const router = express.Router();
 const privateDir = PRIVATE_UPLOADS;
@@ -29,7 +30,7 @@ async function authenticateFileRequest(req, res, next) {
   }
 
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    const payload = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
       select: { id: true, isBanned: true, tokenVersion: true },
@@ -74,7 +75,7 @@ router.get('/:filename', authenticateFileRequest, async (req, res) => {
         select: { isAdmin: true, studentDocUrl: true },
       });
       if (me?.isAdmin || me?.studentDocUrl === url) {
-        return res.sendFile(filePath);
+        return sendPrivateFile(res, filePath);
       }
       return denied();
     }
@@ -82,12 +83,12 @@ router.get('/:filename', authenticateFileRequest, async (req, res) => {
     // 2) Birebir sohbet eki mi? Yalnızca eşleşmenin iki tarafı görebilir.
     const dmMessage = await prisma.message.findFirst({
       where: { OR: [{ photoUrl: url }, { audioUrl: url }, { fileUrl: url }] },
-      select: { matchId: true },
+      select: { matchId: true, fileName: true },
     });
     if (dmMessage) {
       const match = await prisma.match.findUnique({ where: { id: dmMessage.matchId } });
       if (match && (match.userAId === req.userId || match.userBId === req.userId)) {
-        return res.sendFile(filePath);
+        return sendPrivateFile(res, filePath, dmMessage.fileName);
       }
       return denied();
     }
@@ -95,13 +96,13 @@ router.get('/:filename', authenticateFileRequest, async (req, res) => {
     // 3) Kulüp sohbeti eki mi? Yalnızca aktif üyeler görebilir.
     const clubMessage = await prisma.clubMessage.findFirst({
       where: { OR: [{ photoUrl: url }, { audioUrl: url }, { fileUrl: url }] },
-      select: { clubId: true },
+      select: { clubId: true, fileName: true },
     });
     if (clubMessage) {
       const membership = await prisma.clubMembership.findUnique({
         where: { clubId_userId: { clubId: clubMessage.clubId, userId: req.userId } },
       });
-      if (membership && membership.status === 'active') return res.sendFile(filePath);
+      if (membership && membership.status === 'active') return sendPrivateFile(res, filePath, clubMessage.fileName);
       return denied();
     }
 

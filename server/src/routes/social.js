@@ -7,7 +7,7 @@ const prisma = require('../lib/prisma');
 const { cleanUserText, maskBannedWords, LIMITS } = require('../lib/textSafety');
 const { requireAuth } = require('../middleware/auth');
 const upload = require('../middleware/upload');
-const { verifyFileSignature } = require('../lib/fileValidation');
+const { verifyUpload } = require('../lib/fileValidation');
 const { createNotification } = require('../lib/notifications');
 const { isBlockedEitherWay } = require('../lib/block');
 const { isPremiumActive } = require('../lib/premium');
@@ -260,7 +260,7 @@ router.get('/posts/user/:userId', requireAuth, async (req, res) => {
 });
 
 // POST /api/posts — yeni gönderi paylaş (fotoğraflı ya da yalnızca metin)
-router.post('/posts', requireAuth, upload.single('photo'), verifyFileSignature, async (req, res) => {
+router.post('/posts', requireAuth, upload.single('photo'), verifyUpload('photo'), async (req, res) => {
   try {
     const caption = typeof req.body.caption === 'string' ? req.body.caption.trim() || null : null;
     if (!req.file && !caption) {
@@ -635,7 +635,7 @@ router.get('/stories', requireAuth, async (req, res) => {
 });
 
 // POST /api/stories — yeni hikaye paylaş (12 saat sonra otomatik süresi dolar)
-router.post('/stories', requireAuth, upload.single('photo'), verifyFileSignature, async (req, res) => {
+router.post('/stories', requireAuth, upload.single('photo'), verifyUpload('photo'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'Fotoğraf gerekli.' });
 

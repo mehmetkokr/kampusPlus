@@ -5,7 +5,7 @@ const prisma = require('../lib/prisma');
 const { cleanUserText, maskBannedWords, LIMITS } = require('../lib/textSafety');
 const { requireAuth } = require('../middleware/auth');
 const chatUpload = require('../middleware/chatUpload');
-const { verifyFileSignature } = require('../lib/fileValidation');
+const { verifyUpload } = require('../lib/fileValidation');
 const { getBlockedUserIds } = require('../lib/block');
 const { createNotification } = require('../lib/notifications');
 const { checkCanPost, markPosted, serializePoll, loadPoll, broadcastPoll, POLL_INCLUDE, SENDER_SELECT } = require('../lib/clubChat');
@@ -400,7 +400,7 @@ router.get('/:id/messages', requireAuth, async (req, res) => {
 // ---------------------------------------------------------
 // POST /api/clubs/:id/messages/photo — kulüp sohbetine fotoğraf gönder
 // ---------------------------------------------------------
-router.post('/:id/messages/photo', requireAuth, chatUpload.private.single('photo'), verifyFileSignature, async (req, res) => {
+router.post('/:id/messages/photo', requireAuth, chatUpload.private.single('photo'), verifyUpload('chatPhoto'), async (req, res) => {
   try {
     const clubId = Number(req.params.id);
     const allowed = await checkCanPost(clubId, req.userId);

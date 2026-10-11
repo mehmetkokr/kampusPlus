@@ -107,7 +107,7 @@ function setupSocket(io) {
       return next(new Error('Token gerekli.'));
     }
     try {
-      const payload = jwt.verify(token, process.env.JWT_SECRET);
+      const payload = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
       if (payload.purpose) {
         return next(new Error('Geçersiz token.'));
       }
@@ -178,13 +178,15 @@ function setupSocket(io) {
     });
 
     // "Yazıyor..." göstergesi
-    socket.on('typing', ({ matchId, isTyping }) => {
+    socket.on('typing', (payload) => {
+      const { matchId, isTyping } = payload || {};
       if (!socket.rooms.has(`match_${matchId}`)) return; // yalnızca sohbetin tarafları
       socket.to(`match_${matchId}`).emit('typing', { matchId: Number(matchId), userId: socket.userId, isTyping: !!isTyping });
     });
 
     // Sohbet açıldığında karşı tarafın mesajlarını "görüldü" yap
-    socket.on('mark_read', async ({ matchId }) => {
+    socket.on('mark_read', async (payload) => {
+      const { matchId } = payload || {};
       try {
         const match = await prisma.match.findUnique({ where: { id: Number(matchId) } });
         if (!match || (match.userAId !== socket.userId && match.userBId !== socket.userId)) return;
@@ -203,7 +205,9 @@ function setupSocket(io) {
     });
 
     // Mesaj gönderme
-    socket.on('send_message', async ({ matchId, content, replyToId } = {}) => {
+    socket.on('send_message', async (payload) => {
+      // null/eksik yük sunucuyu düşürmesin
+      const { matchId, content, replyToId } = payload || {};
       try {
         const text = await cleanUserText(content, { max: LIMITS.message, required: true, label: 'Mesaj' });
         if (text.error) return socket.emit('error_message', text.error);
@@ -252,7 +256,8 @@ function setupSocket(io) {
     });
 
     // Kulüp grup sohbetine metin mesajı gönderme
-    socket.on('send_club_message', async ({ clubId, content } = {}) => {
+    socket.on('send_club_message', async (payload) => {
+      const { clubId, content } = payload || {};
       try {
         const text = await cleanUserText(content, { max: LIMITS.message, required: true, label: 'Mesaj' });
         if (text.error) return socket.emit('error_message', text.error);

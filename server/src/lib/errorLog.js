@@ -85,6 +85,11 @@ function installErrorCapture() {
 // Express'in son hata yakalayıcısı: next(err) ile gelen ya da yakalanmamış rota hataları
 function expressErrorHandler(err, req, res, next) {
   if (res.headersSent) return next(err);
+  // Yükleme hataları (çok büyük dosya, desteklenmeyen tür) kullanıcı hatasıdır
+  if (err.name === 'MulterError') {
+    const message = err.code === 'LIMIT_FILE_SIZE' ? 'Dosya çok büyük.' : 'Dosya yüklenemedi.';
+    return res.status(400).json({ error: message });
+  }
   const status = err.status || err.statusCode || 500;
   // 4xx (ör. bozuk JSON gövdesi) istemci hatasıdır; yalnızca 5xx kayda geçer
   if (status >= 500) {
