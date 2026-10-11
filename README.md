@@ -146,9 +146,41 @@ başlatma + imzalı webhook) ve `PaymentLog` tablosu.
   kaydedilir ve gösterilir.
 - **Yönetici işlem kaydı** (`server/src/lib/audit.js`): panelden geçen her
   başarılı değişiklik otomatik kaydedilir; şifre/kod gibi alanlar yazılmaz.
+- **Yüklemeler** (`server/src/lib/fileValidation.js`, `safeServe.js`): her alan
+  yalnızca kendi türünü kabul eder (fotoğraf alanına PDF gönderilemez), içerik
+  dosya imzasıyla doğrulanır; ad rastgele, uzantı doğrulanmış türden üretilir
+  (içi PNG olan `x.html` sayfa olarak açılamaz). Dosyalar `nosniff` ve betik
+  çalıştırmayan güvenlik politikasıyla sunulur; görsel, ses ve PDF dışındaki
+  ekler indirilir. Herkese açık klasörden yalnızca görseller verilir.
+- **Konum gizliliği** (`server/src/lib/stripMetadata.js`): yüklenen JPEG/PNG/WebP
+  görsellerden GPS, cihaz modeli, tarih ve yorumlar silinir (görüntü değişmez;
+  JPEG'de yalnızca yön bilgisi kalır).
+- **Hesap varlığı gizli:** kayıt kodu, giriş ve şifremi unuttum yanıtları bir
+  adresin kayıtlı olup olmadığını ne mesajla ne süreyle belli eder. Kayıtlı
+  adrese kod yerine "zaten hesabın var" e-postası gider. E-postalardaki ad ve
+  bağlantılar HTML olarak kaçışlanır.
+- **Güvenlik politikası (CSP):** satır içi betik yok (`script-src 'self'`); tema
+  `public/theme-init.js` dosyasından yüklenir.
+- **Gerçek zamanlı bağlantı:** eksik ya da bozuk olay yükleri sunucuyu düşürmez.
 - **İki adımlı doğrulama:** yöneticiler panel > Ayarlar'dan açar.
   `ADMIN_REQUIRE_2FA=true` ile zorunlu olur. Telefon kaybında:
   `npm run admin:reset-2fa --prefix server -- e-posta`.
+
+## Arama Motorları (SEO)
+
+- Sunucu her sayfayı kendi başlığı, açıklaması, canonical adresi ve
+  og:/twitter: etiketleriyle verir (`server/src/lib/seo.js`); paylaşım botları
+  JavaScript çalıştırmasa da doğru önizlemeyi görür.
+- Oturum gerektiren sayfalar `noindex` (ve `X-Robots-Tag`), bilinmeyen adresler
+  gerçek **404** durum koduyla döner.
+- `robots.txt` ve `sitemap.xml` yayındaki gerçek adresle üretilir (`SITE_URL`
+  ya da Railway alan adı); derlemedeki varsayılan adres kullanılmaz.
+- Arama botları siteyi her zaman Türkçe görür (Googlebot kendini İngilizce
+  tanıtsa da).
+- Ana sayfada SSS yapılandırılmış verisi (FAQPage), tüm sayfalarda kuruluş ve
+  site bilgisi (Organization, WebSite) bulunur.
+- Yayından sonra Google Search Console'a siteyi ekleyip `/sitemap.xml`
+  adresini gönderin.
 
 ## Yayın (Railway)
 
@@ -162,8 +194,8 @@ Railway > Variables:
 | `JWT_SECRET` | Zorunlu, uzun rastgele değer |
 | `DATABASE_URL` | `file:/data/kampus.db` (kalıcı disk) |
 | `STORAGE_DIR` | `/data` (yüklenen dosyalar kalıcı diskte kalsın) |
-| `CLIENT_URL` | Sitenin adresi |
-| `TRUST_PROXY` | `true` |
+| `SITE_URL` | Sitenin adresi (ör. `https://kampusplus.app`). Boşsa Railway alan adı kullanılır; e-posta bağlantıları, sitemap ve canonical buna göre yazılır |
+| `TRUST_PROXY` | Railway'de boş bırakılabilir (kendiliğinden açık) |
 | `SMTP_*`, `MAIL_FROM` | Gerçek e-posta için zorunlu |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | İlk açılışta yönetici hesabı oluşturur |
 | `SEED_DEMO_USERS` | `true` ise demo öğrenciler (gerçek kullanıcılar gelmeden kapatın) |
