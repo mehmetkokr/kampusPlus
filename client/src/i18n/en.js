@@ -1304,6 +1304,13 @@ const en = {
   "Hesabın askıya alındı. Bir yanlışlık olduğunu düşünüyorsan destek ekibine yaz.": "Your account has been suspended. If you think this is a mistake, contact support.",
   "Tüm cihazlardan çıkış yapıldı. Devam etmek için tekrar giriş yap.": "You were signed out on all devices. Sign in again to continue.",
   "Şifren değiştiği için oturumun kapandı. Yeni şifrenle giriş yap.": "Your password changed, so you were signed out. Sign in with your new password.",
+  "E-posta Adresini Değiştir": "Change Email Address",
+  "E-posta değiştirilemedi.": "Couldn't change your email.",
+  "Yeni adres de üniversitenin okul e-postası olmalı (@{domain}). Örneğin lisanstan yüksek lisansa geçince adresin değiştiyse.": "The new address must also be your university's school email (@{domain}) — for example if it changed when you moved from undergraduate to graduate studies.",
+  "Yeni okul e-postası": "New school email",
+  "Şifren": "Your password",
+  "Yeni adrese kod gönder": "Send a code to the new address",
+  "Adresi değiştir": "Change address",
 };
 
 const ORDINAL = { 1: '1st', 2: '2nd', 3: '3rd', 4: '4th' };

@@ -5,7 +5,7 @@
   "main": "src/index.js",
   "type": "commonjs",
   "scripts": {
-    "dev": "nodemon src/index.js",
+    "dev": "node --watch-path=src src/index.js",
     "start": "node src/index.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev --name init",
@@ -14,8 +14,10 @@
     "mail:test": "node scripts/mail-test.js",
     "admin:create": "node scripts/create-admin.js",
     "start:prod": "prisma migrate deploy && node prisma/seed.js --if-empty && node src/index.js",
-    "test": "node --test test/lib.test.js test/hardening.test.js test/api.test.js test/features.test.js",
-    "admin:reset-2fa": "node scripts/reset-2fa.js"
+    "test": "node --test test/lib.test.js test/hardening.test.js test/api.test.js test/features.test.js test/restore.test.js",
+    "admin:reset-2fa": "node scripts/reset-2fa.js",
+    "backup:restore": "node scripts/restore-backup.js",
+    "load-test": "node scripts/load-test.js"
   },
   "dependencies": {
     "@prisma/client": "^5.20.0",
@@ -38,7 +40,6 @@
     "web-push": "^3.6.7"
   },
   "devDependencies": {
-    "nodemon": "^3.1.7",
     "socket.io-client": "^4.8.3"
   },
   "prisma": {

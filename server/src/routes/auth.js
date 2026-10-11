@@ -184,7 +184,7 @@ router.post('/register/send-code', sendCodeLimiter, async (req, res) => {
       subject: `kampüs· doğrulama kodun: ${code}`,
       text: `Merhaba,\n\nkampüs· kaydını tamamlamak için doğrulama kodun: ${code}\n\nKod 10 dakika geçerlidir. Bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin.`,
       html: `<p>Merhaba,</p><p>kampüs· kaydını tamamlamak için doğrulama kodun:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px">${code}</p><p>Kod 10 dakika geçerlidir. Bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin.</p>`,
-    });
+    }).catch((err) => console.error('Doğrulama kodu e-postası gönderilemedi:', err));
 
     track('code_sent', { anonId: req.headers['x-anon-id'] });
 
@@ -341,7 +341,7 @@ router.post('/login', loginLimiter, async (req, res) => {
     // Yönetici iki adımlı doğrulamayı açtıysa şifreden sonra uygulamadaki kod da istenir
     if (user.isAdmin && user.totpEnabled) {
       if (!req.body.totpCode) return res.json({ twoFactorRequired: true });
-      if (!checkTotp(user, req.body.totpCode)) {
+      if (!(await checkTotp(user, req.body.totpCode))) {
         return res.status(401).json({ error: 'Doğrulama kodu hatalı.', twoFactorRequired: true });
       }
     }
@@ -541,6 +541,89 @@ router.post('/reverify', requireAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Doğrulama tamamlanamadı.' });
+  }
+});
+
+// ----------------------------
+// E-POSTA DEĞİŞTİRME (ör. lisanstan yüksek lisansa geçince okul adresi değişir)
+// ----------------------------
+// Yeni adres aynı üniversitenin okul e-postası olmalı; yeni adrese gelen kodla
+// doğrulanır. Eski adrese bilgi e-postası gider. Doğrulama yıllık süreyi de
+// yeniler (yeni adres yeni bir öğrencilik kanıtıdır).
+router.post('/email/send-code', requireAuth, sendCodeLimiter, async (req, res) => {
+  try {
+    const newEmail = normalizeEmail(req.body?.newEmail || '');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) return res.status(400).json({ error: 'Geçerli bir e-posta adresi gir.', field: 'newEmail' });
+    const user = await prisma.user.findUnique({ where: { id: req.userId }, include: { university: true } });
+    if (!(await bcrypt.compare(String(req.body?.password || ''), user.passwordHash))) {
+      return res.status(400).json({ error: 'Şifren hatalı.', field: 'password' });
+    }
+    if (newEmail === user.email) return res.status(400).json({ error: 'Bu zaten kayıtlı adresin.', field: 'newEmail' });
+    if (!isSchoolEmail(newEmail, user.university)) {
+      return res.status(400).json({ error: schoolEmailError(user.university), field: 'newEmail' });
+    }
+    if (await findUserByEmail(newEmail)) return res.status(409).json({ error: 'Bu e-posta başka bir hesapta kayıtlı.', field: 'newEmail' });
+
+    const existing = await prisma.emailVerificationCode.findUnique({ where: { email: newEmail } });
+    if (existing) {
+      const wait = CODE_RESEND_MS - (Date.now() - new Date(existing.lastSentAt).getTime());
+      if (wait > 0) return res.status(429).json({ error: `Yeni kod için ${Math.ceil(wait / 1000)} saniye bekle.`, retryAfter: Math.ceil(wait / 1000) });
+    }
+    const code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+    const now = new Date();
+    await prisma.emailVerificationCode.upsert({
+      where: { email: newEmail },
+      update: { codeHash: hashCode(code), expiresAt: new Date(now.getTime() + CODE_TTL_MS), attempts: 0, lastSentAt: now },
+      create: { email: newEmail, codeHash: hashCode(code), expiresAt: new Date(now.getTime() + CODE_TTL_MS), lastSentAt: now },
+    });
+    await sendMail({
+      to: newEmail,
+      subject: `kampüs· e-posta değişikliği kodun: ${code}`,
+      text: `Merhaba,
+
+kampüs· hesabının e-posta adresini bu adresle değiştirmek için kodun: ${code}
+
+Kod 10 dakika geçerlidir. Bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin.`,
+      html: `<p>Merhaba,</p><p>kampüs· hesabının e-posta adresini bu adresle değiştirmek için kodun:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px">${code}</p><p>Kod 10 dakika geçerlidir.</p>`,
+    });
+    res.json({ sent: true, expiresInSec: CODE_TTL_MS / 1000, devConsole: !isRealSmtpConfigured() });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Doğrulama kodu gönderilemedi.' });
+  }
+});
+
+router.post('/email', requireAuth, async (req, res) => {
+  try {
+    const newEmail = normalizeEmail(req.body?.newEmail || '');
+    const record = await prisma.emailVerificationCode.findUnique({ where: { email: newEmail } });
+    if (!record || new Date(record.expiresAt) < new Date()) return res.status(400).json({ error: 'Kodun süresi doldu. Yeni kod iste.', codeError: 'expired' });
+    if (record.attempts >= CODE_MAX_ATTEMPTS) return res.status(429).json({ error: 'Çok fazla hatalı deneme yapıldı. Yeni kod iste.', codeError: 'locked' });
+    const code = String(req.body?.code || '').trim();
+    if (!code || hashCode(code) !== record.codeHash) {
+      const updated = await prisma.emailVerificationCode.update({ where: { email: newEmail }, data: { attempts: { increment: 1 } } });
+      const left = CODE_MAX_ATTEMPTS - updated.attempts;
+      return res.status(400).json({ error: left > 0 ? `Kod hatalı. ${left} deneme hakkın kaldı.` : 'Kod hatalı. Deneme hakkın bitti, yeni kod iste.', codeError: left > 0 ? 'invalid' : 'locked' });
+    }
+    // Kod gönderildikten sonra başka bir hesap bu adresi almış olabilir
+    if (await findUserByEmail(newEmail)) return res.status(409).json({ error: 'Bu e-posta başka bir hesapta kayıtlı.' });
+
+    const before = await prisma.user.findUnique({ where: { id: req.userId }, select: { email: true, fullName: true } });
+    await prisma.user.update({ where: { id: req.userId }, data: { email: newEmail, schoolEmailVerifiedAt: new Date() } });
+    await prisma.emailVerificationCode.delete({ where: { email: newEmail } }).catch(() => {});
+    // Eski adrese bilgi: hesap ele geçirildiyse sahibi fark etsin
+    sendMail({
+      to: before.email,
+      subject: 'kampüs· e-posta adresin değiştirildi',
+      text: `Merhaba ${before.fullName},
+
+kampüs· hesabının e-posta adresi ${newEmail} olarak değiştirildi. Bunu sen yapmadıysan hemen bize yaz.`,
+      html: `<p>Merhaba ${escapeHtml(before.fullName)},</p><p>kampüs· hesabının e-posta adresi <b>${escapeHtml(newEmail)}</b> olarak değiştirildi. Bunu sen yapmadıysan hemen bize yaz.</p>`,
+    }).catch(() => {});
+    res.json({ message: 'E-posta adresin değiştirildi. Bundan sonra bu adresle giriş yapacaksın.', email: newEmail });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'E-posta değiştirilemedi.' });
   }
 });
 

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronRight, Download, Eye, EyeOff, KeyRound, X as CloseIcon } from 'lucide-react';
+import { AtSign, ChevronRight, Download, Eye, EyeOff, KeyRound, X as CloseIcon } from 'lucide-react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -14,6 +14,8 @@ export default function AccountSecurity() {
   const { t } = useI18n();
   const toast = useToast();
   const [showPassword, setShowPassword] = useState(false);
+  const [showEmail, setShowEmail] = useState(false);
+  const { user } = useAuth();
   const [exporting, setExporting] = useState(false);
 
   async function exportData() {
@@ -48,6 +50,17 @@ export default function AccountSecurity() {
         {t('Şifreni değiştir ya da hakkında tuttuğumuz verilerin bir kopyasını al.')}
       </p>
 
+      <button type="button" className="settings-link-row" onClick={() => setShowEmail(true)}>
+        <div className="settings-link-row-icon">
+          <AtSign size={16} aria-hidden="true" />
+        </div>
+        <div className="settings-link-row-text">
+          <div className="settings-row-label">{t('E-posta Adresini Değiştir')}</div>
+          <div className="settings-row-desc">{user?.email}</div>
+        </div>
+        <ChevronRight size={16} className="muted" aria-hidden="true" />
+      </button>
+
       <button type="button" className="settings-link-row" onClick={() => setShowPassword(true)}>
         <div className="settings-link-row-icon">
           <KeyRound size={16} aria-hidden="true" />
@@ -71,6 +84,7 @@ export default function AccountSecurity() {
       </button>
 
       {showPassword && <ChangePasswordModal onClose={() => setShowPassword(false)} />}
+      {showEmail && <ChangeEmailModal onClose={() => setShowEmail(false)} />}
     </div>
   );
 }
@@ -158,6 +172,105 @@ function ChangePasswordModal({ onClose }) {
             {saving ? t('Kaydediliyor...') : t('Şifreyi Değiştir')}
           </button>
         </form>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+// E-posta değiştirme: aynı üniversitenin okul adresi, yeni adrese gelen kodla
+function ChangeEmailModal({ onClose }) {
+  const { t } = useI18n();
+  const toast = useToast();
+  const { user, setUser } = useAuth();
+  const domain = user?.university?.emailDomain || user?.email?.split('@')[1];
+  const [newEmail, setNewEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [code, setCode] = useState('');
+  const [sent, setSent] = useState(false);
+  const [devConsole, setDevConsole] = useState(false);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  async function sendCode(e) {
+    e?.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      const res = await api.post('/auth/email/send-code', { newEmail, password });
+      setSent(true);
+      setDevConsole(Boolean(res.data.devConsole));
+    } catch (err) {
+      setError(err.response?.data?.error || t('Kod gönderilemedi.'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirm(e) {
+    e.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      const res = await api.post('/auth/email', { newEmail, code });
+      setUser((prev) => ({ ...prev, email: res.data.email }));
+      toast.success(res.data.message);
+      onClose();
+    } catch (err) {
+      setError(err.response?.data?.error || t('E-posta değiştirilemedi.'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return createPortal(
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-sheet" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="email-title">
+        <div className="modal-header">
+          <h3 id="email-title">{t('E-posta Adresini Değiştir')}</h3>
+          <button type="button" className="modal-close" onClick={onClose} aria-label={t('Kapat')}>
+            <CloseIcon />
+          </button>
+        </div>
+        {!sent ? (
+          <form onSubmit={sendCode} style={{ padding: '12px 4px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <p className="muted" style={{ margin: 0, lineHeight: 1.5 }}>
+              {t('Yeni adres de üniversitenin okul e-postası olmalı (@{domain}). Örneğin lisanstan yüksek lisansa geçince adresin değiştiyse.', { domain })}
+            </p>
+            <div>
+              <label htmlFor="new-email">{t('Yeni okul e-postası')}</label>
+              <input id="new-email" type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder={`ornek@${domain || 'universite.edu.tr'}`} autoComplete="email" required />
+            </div>
+            <PasswordField id="email-pw" label={t('Şifren')} value={password} onChange={setPassword} autoComplete="current-password" />
+            {error && <p className="error-text" style={{ margin: 0 }}>{error}</p>}
+            <button type="submit" className="btn" disabled={busy || !newEmail || !password}>
+              {busy ? t('Gönderiliyor...') : t('Yeni adrese kod gönder')}
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={confirm} style={{ padding: '12px 4px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <label htmlFor="email-code">{t('{email} adresine gelen kod', { email: newEmail })}</label>
+            <input
+              id="email-code"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+              placeholder="000000"
+              style={{ letterSpacing: '0.4em', fontSize: 22, textAlign: 'center' }}
+              autoFocus
+            />
+            {devConsole && <p className="field-hint">{t('Geliştirme ortamı: e-posta sunucusu (SMTP) ayarlı olmadığı için kod, sunucu konsoluna yazıldı.')}</p>}
+            {error && <p className="error-text" style={{ margin: 0 }}>{error}</p>}
+            <button type="submit" className="btn" disabled={busy || code.length !== 6}>
+              {busy ? t('Doğrulanıyor...') : t('Adresi değiştir')}
+            </button>
+            <button type="button" className="btn-secondary" onClick={sendCode} disabled={busy}>
+              {t('Kodu tekrar gönder')}
+            </button>
+          </form>
+        )}
       </div>
     </div>,
     document.body

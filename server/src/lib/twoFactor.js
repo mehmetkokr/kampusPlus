@@ -1,14 +1,19 @@
 // Yönetici iki adımlı doğrulaması: kod kontrolü ve tekrar kullanım engeli
 const { verifyTotp } = require('./totp');
 
-// Kullanıcı başına en son kabul edilen 30 sn'lik pencere (aynı kod iki kez geçmesin)
-const lastStepByUser = new Map();
+const prisma = require('./prisma');
 
-function checkTotp(user, code) {
-  const step = verifyTotp(user.totpSecret, code, { lastStep: lastStepByUser.get(user.id) ?? -1 });
+// Aynı kod iki kez geçmesin: en son kabul edilen pencere veritabanında tutulur
+// (sunucu yeniden başlasa da geçerli). Koşullu güncelleme sayesinde aynı kod
+// aynı anda iki istekte gelse de yalnızca biri kabul edilir.
+async function checkTotp(user, code) {
+  const step = verifyTotp(user.totpSecret, code, { lastStep: user.totpLastStep ?? -1 });
   if (step === null) return false;
-  lastStepByUser.set(user.id, step);
-  return true;
+  const { count } = await prisma.user.updateMany({
+    where: { id: user.id, OR: [{ totpLastStep: null }, { totpLastStep: { lt: step } }] },
+    data: { totpLastStep: step },
+  });
+  return count === 1;
 }
 
 // ADMIN_REQUIRE_2FA=true ise iki adımlı doğrulaması kapalı yöneticiler panelde

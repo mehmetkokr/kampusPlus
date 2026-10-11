@@ -48,6 +48,11 @@ async function createBackup() {
         .then(() => 'uploaded')
         .catch((err) => {
           console.error('[yedek] Dış depoya yüklenemedi:', err);
+          require('./alerts').alertAdmins('backup-offsite', {
+            subject: 'Yedek dış depoya yüklenemedi',
+            text: `Yerel yedek alındı ama S3/R2'ye yüklenemedi: ${err.message}`,
+            path: '/admin/system',
+          });
           return 'failed';
         });
     }
@@ -91,6 +96,12 @@ async function runBackup() {
     console.log(`[yedek] ${b.name} (${Math.round(b.size / 1024)} KB) alındı${b.offsite === 'uploaded' ? ', dış depoya yüklendi' : ''}.`);
   } catch (err) {
     console.error('[yedek] Veritabanı yedeği alınamadı:', err);
+    require('./alerts').alertAdmins('backup-failed', {
+      subject: 'Gece veritabanı yedeği alınamadı',
+      text: `Hata: ${err.message}
+Panelden "Şimdi yedek al" ile tekrar dene.`,
+      path: '/admin/system',
+    });
   }
 }
 

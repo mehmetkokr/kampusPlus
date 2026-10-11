@@ -135,8 +135,9 @@ export default function ProfilePage() {
             <circle cx="70" cy="70" r={R} className="pf-ring-fill" strokeDasharray={C} strokeDashoffset={C * (1 - percent / 100)} />
           </svg>
           {user.photoUrl ? <img src={`${API_BASE_URL}${user.photoUrl}`} alt={user.fullName} /> : <span className="pf-avatar-empty" aria-hidden="true" />}
-          <label className="pf-avatar-edit" aria-label={t('Profil fotoğrafını değiştir')}>
-            <Camera size={16} />
+          <label className="pf-avatar-edit">
+            <Camera size={16} aria-hidden="true" />
+            <span className="sr-only">{t('Profil fotoğrafını değiştir')}</span>
             <input type="file" accept="image/*" onChange={handlePhotoUpload} />
           </label>
         </div>

@@ -115,7 +115,8 @@ function rateLimitKey(req) {
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 600, // kullanıcı (veya IP) başına 15 dakikada 600 istek
+  // kullanıcı (veya IP) başına 15 dakikada 600 istek (API_RATE_LIMIT ile değişir; yük testi yükseltir)
+  limit: Number(process.env.API_RATE_LIMIT) || 600,
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: rateLimitKey,
@@ -128,8 +129,20 @@ app.use('/api', apiLimiter);
 app.use('/uploads', publicUploadGuard, express.static(PUBLIC_UPLOADS, { index: false, dotfiles: 'deny', setHeaders: publicStaticHeaders }));
 
 // Sağlık kontrolü - sunucu çalışıyor mu test etmek için
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Sunucu çalışıyor' });
+// Veritabanına da kısa bir sorgu atılır: sunucu açık ama veritabanı
+// erişilemiyorsa 503 döner (dış izleme ve Railway sağlık kontrolü bunu görür)
+app.get('/api/health', async (req, res) => {
+  const started = Date.now();
+  try {
+    const prisma = require('./lib/prisma');
+    await Promise.race([
+      prisma.$queryRaw`SELECT 1`,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Veritabanı 3 sn içinde yanıt vermedi')), 3000)),
+    ]);
+    res.json({ status: 'ok', message: 'Sunucu çalışıyor', db: 'ok', uptimeSec: Math.round(process.uptime()), latencyMs: Date.now() - started });
+  } catch (err) {
+    res.status(503).json({ status: 'error', message: 'Veritabanına ulaşılamıyor', db: 'error' });
+  }
 });
 
 app.use('/api/auth', authRoutes);
