@@ -95,6 +95,17 @@ function startHeartbeat() {
   timer.unref?.();
 }
 
+// Çevrimiçi/son görülme yalnızca eşleşilen kişilere gider (bilgi yalnızca
+// sohbet ekranında kullanılır). Önceden herkese yayınlanıyordu: tüm
+// kampüslerdeki herkes kimin ne zaman çevrimiçi olduğunu izleyebiliyordu.
+async function emitPresence(io, userId, payload) {
+  const matches = await prisma.match.findMany({
+    where: { OR: [{ userAId: userId }, { userBId: userId }] },
+    select: { userAId: true, userBId: true },
+  });
+  for (const m of matches) io.to(`user_${m.userAId === userId ? m.userBId : m.userAId}`).emit('presence_update', payload);
+}
+
 function setupSocket(io) {
   ioRef = io;
   startHeartbeat();
@@ -146,7 +157,7 @@ function setupSocket(io) {
       return u?.showActivityStatus !== false;
     };
     sharesPresence()
-      .then((ok) => ok && io.emit('presence_update', { userId: socket.userId, online: true }))
+      .then((ok) => ok && emitPresence(io, socket.userId, { userId: socket.userId, online: true }))
       .catch((err) => console.error(err));
 
     // Kullanıcı bir sohbet odasına katılır (her eşleşme = bir oda)
@@ -303,7 +314,7 @@ function setupSocket(io) {
           select: { lastSeenAt: true, showActivityStatus: true },
         });
         if (updated.showActivityStatus !== false) {
-          io.emit('presence_update', { userId: socket.userId, online: false, lastSeenAt: updated.lastSeenAt });
+          await emitPresence(io, socket.userId, { userId: socket.userId, online: false, lastSeenAt: updated.lastSeenAt });
         }
       } catch (err) {
         console.error(err);

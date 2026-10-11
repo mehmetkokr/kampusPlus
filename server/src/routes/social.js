@@ -10,9 +10,8 @@ const upload = require('../middleware/upload');
 const { verifyUpload } = require('../lib/fileValidation');
 const { createNotification } = require('../lib/notifications');
 const { isBlockedEitherWay } = require('../lib/block');
-const { isPremiumActive } = require('../lib/premium');
 const { withLiveAge } = require('../lib/age');
-const { discoverableUserWhere } = require('../lib/privacy');
+const { discoverableUserWhere, reachCheck } = require('../lib/privacy');
 
 const router = express.Router();
 
@@ -102,6 +101,8 @@ function visiblePostsWhere(ctx) {
 function canViewPost(post, ctx) {
   if (!post || ctx.excludeIds.has(post.authorId)) return false;
   if (post.authorId === ctx.userId) return true;
+  // Dondurulmuş ya da askıya alınmış hesabın gönderisi (listelerdeki gibi) görünmez
+  if (post.author && (post.author.isFrozen || post.author.isBanned)) return false;
   if (post.visibility === 'followers') return ctx.followingIds.has(post.authorId);
   if (post.visibility === 'mutual') return ctx.mutualIds.has(post.authorId);
   return post.author?.universityId === ctx.universityId;
@@ -116,7 +117,7 @@ async function loadVisiblePost(postId, ctx) {
   if (!Number.isInteger(postId)) return null;
   const post = await prisma.post.findUnique({
     where: { id: postId },
-    include: { author: { select: { universityId: true } } },
+    include: { author: { select: { universityId: true, isFrozen: true, isBanned: true } } },
   });
   return canViewPost(post, ctx) ? post : null;
 }
@@ -726,8 +727,11 @@ router.post('/users/:id/follow', requireAuth, async (req, res) => {
       prisma.user.findUnique({ where: { id: targetId } }),
     ]);
     if (!target) return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
-    if (me.universityId !== target.universityId && !isPremiumActive(me)) {
-      return res.status(403).json({ error: 'Yalnızca kendi üniversitenden kişileri takip edebilirsin. Farklı üniversiteler için Premium gerekir.' });
+    // Gizli/yönetici/askıdaki hesap takip edilemez; başka üniversite Premium ister
+    const reach = await reachCheck(me, target);
+    if (!reach.ok) {
+      const error = reach.code === 'PREMIUM_REQUIRED' ? 'Yalnızca kendi üniversitenden kişileri takip edebilirsin. Farklı üniversiteler için Premium gerekir.' : reach.error;
+      return res.status(reach.status).json({ error, code: reach.code });
     }
     if (await isBlockedEitherWay(req.userId, targetId)) {
       return res.status(403).json({ error: 'Bu kullanıcıyla etkileşime giremezsin.' });
@@ -864,6 +868,7 @@ const PUBLIC_PROFILE_SELECT = {
   studentDocStatus: true,
   isFrozen: true,
   isBanned: true,
+  isAdmin: true,
   photos: { orderBy: { position: 'asc' }, select: { id: true, url: true, position: true } },
   profileVisibility: true,
   universityId: true,
@@ -887,18 +892,9 @@ router.get('/users/:id', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'Bu profili görüntüleyemezsin.' });
     }
 
-    if (targetId !== req.userId && (target.isFrozen || target.isBanned)) {
-      return res.status(404).json({ error: 'Bu hesap şu anda kullanılmıyor.' });
-    }
-
-    if (targetId !== req.userId) {
-      if (target.profileVisibility === 'nobody') {
-        return res.status(403).json({ error: 'Bu kullanıcı profilini gizli tutuyor.' });
-      }
-      if (target.profileVisibility === 'university' && me.universityId !== target.universityId) {
-        return res.status(403).json({ error: 'Bu profil yalnızca kendi üniversitesindekilere açık.' });
-      }
-    }
+    // Yönetici/dondurulmuş/askıya alınmış hesap, gizlilik ve kapalı kampüs (Premium) kuralı
+    const reach = await reachCheck(me, target);
+    if (!reach.ok) return res.status(reach.status).json({ error: reach.error, code: reach.code });
 
     const [followerCount, followingCount, isFollowing] = await Promise.all([
       prisma.follow.count({ where: { followingId: targetId } }),
@@ -909,7 +905,7 @@ router.get('/users/:id', requireAuth, async (req, res) => {
     ]);
 
     // Doğum tarihinin kendisi başkalarına gösterilmez; yalnızca güncel yaş döner.
-    const { profileVisibility, universityId, birthDate: _birth, isFrozen: _f, isBanned: _b, studentDocStatus, ...publicFields } = withLiveAge(target);
+    const { profileVisibility, universityId, birthDate: _birth, isFrozen: _f, isBanned: _b, isAdmin: _a, studentDocStatus, ...publicFields } = withLiveAge(target);
     publicFields.isStudentVerified = studentDocStatus === 'approved';
     // Flört tercihleri yalnızca flört modundaki öğrencilere görünür
     if (targetId !== req.userId) publicFields.intent = visibleIntentFor(publicFields.intent, me.intent);

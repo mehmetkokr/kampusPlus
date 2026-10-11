@@ -8,6 +8,7 @@ installErrorCapture();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const { ipKeyGenerator } = require('express-rate-limit');
 const jwt = require('jsonwebtoken');
@@ -90,6 +91,10 @@ app.use(
     },
   })
 );
+// Metin yanıtlar (HTML, JS, CSS, JSON) sıkıştırılır: ana JavaScript 270 KB
+// yerine ~90 KB iner; telefonda sayfa belirgin hızlı açılır. Görseller zaten
+// sıkıştırılmış olduğu için atlanır (compression yalnızca metin türlerine uygulanır).
+app.use(compression());
 app.use(express.json());
 
 // Genel API isteklerini sınırlar (kaba kuvvet / otomatik istismar araçlarına
@@ -123,6 +128,15 @@ const apiLimiter = rateLimit({
   message: { error: 'Çok fazla istek gönderildi. Lütfen biraz sonra tekrar deneyin.' },
 });
 app.use('/api', apiLimiter);
+
+// Adresteki numaralar veritabanının tamsayı sınırını aşarsa (ör. /api/posts/99999999999)
+// sorgu hata verip 500 dönüyordu; böyle bir kayıt olamayacağı için doğrudan 404
+const MAX_DB_INT = 2147483647;
+app.use('/api', (req, res, next) => {
+  const tooBig = req.path.split('/').some((part) => /^\d+$/.test(part) && (part.length > 10 || Number(part) > MAX_DB_INT));
+  if (tooBig) return res.status(404).json({ error: 'Bulunamadı.' });
+  next();
+});
 
 // Yüklenen dosyalara (profil fotoğrafı, öğrenci belgesi) erişim
 // Yalnızca görseller, sayfa olarak çalışamayacak başlıklarla (bkz. lib/safeServe.js)

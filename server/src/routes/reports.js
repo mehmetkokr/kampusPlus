@@ -11,6 +11,47 @@ const router = express.Router();
 const VALID_TYPES = ['user', 'post', 'comment', 'message', 'club', 'club_message', 'story'];
 const VALID_REASONS = ['spam', 'harassment', 'inappropriate_content', 'fake_profile', 'other'];
 
+// Hedef var mı ve şikâyet eden onu görebilecek konumda mı?
+async function canReport(userId, type, id) {
+  const me = await prisma.user.findUnique({ where: { id: userId }, select: { universityId: true } });
+  const sameCampus = (authorId) =>
+    prisma.user.findFirst({ where: { id: authorId, universityId: me.universityId }, select: { id: true } }).then(Boolean);
+  switch (type) {
+    case 'user': {
+      const u = await prisma.user.findUnique({ where: { id }, select: { isAdmin: true } });
+      return Boolean(u && !u.isAdmin);
+    }
+    case 'post': {
+      const p = await prisma.post.findUnique({ where: { id }, select: { authorId: true } });
+      return Boolean(p) && (p.authorId === userId || (await sameCampus(p.authorId)));
+    }
+    case 'comment': {
+      const c = await prisma.comment.findUnique({ where: { id }, select: { post: { select: { authorId: true } } } });
+      return Boolean(c) && (c.post.authorId === userId || (await sameCampus(c.post.authorId)));
+    }
+    case 'story': {
+      const st = await prisma.story.findUnique({ where: { id }, select: { authorId: true } });
+      return Boolean(st) && (await sameCampus(st.authorId));
+    }
+    case 'message': {
+      const m = await prisma.message.findUnique({ where: { id }, select: { match: { select: { userAId: true, userBId: true } } } });
+      return Boolean(m) && (m.match.userAId === userId || m.match.userBId === userId);
+    }
+    case 'club_message': {
+      const m = await prisma.clubMessage.findUnique({ where: { id }, select: { clubId: true } });
+      if (!m) return false;
+      const membership = await prisma.clubMembership.findUnique({ where: { clubId_userId: { clubId: m.clubId, userId } }, select: { status: true } });
+      return membership?.status === 'active';
+    }
+    case 'club': {
+      const club = await prisma.club.findUnique({ where: { id }, select: { universityId: true } });
+      return Boolean(club) && club.universityId === me.universityId;
+    }
+    default:
+      return false;
+  }
+}
+
 router.post('/', requireAuth, async (req, res) => {
   try {
     const { targetType, targetId, reason, description } = req.body;
@@ -24,11 +65,17 @@ router.post('/', requireAuth, async (req, res) => {
     const desc = await cleanUserText(description, { max: LIMITS.reportDescription, label: 'Açıklama', filter: false });
     if (desc.error) return res.status(400).json({ error: desc.error });
     const targetIdNum = Number(targetId);
-    if (!targetIdNum) {
+    if (!Number.isSafeInteger(targetIdNum) || targetIdNum <= 0 || targetIdNum > 2147483647) {
       return res.status(400).json({ error: 'Geçersiz hedef.' });
     }
     if (targetType === 'user' && targetIdNum === req.userId) {
       return res.status(400).json({ error: 'Kendinizi şikayet edemezsiniz.' });
+    }
+
+    // Yalnızca görebildiği şeyi şikâyet edebilir: var olmayan ya da başka
+    // kampüsteki/başkasının sohbetindeki içerik numarayla şikâyet edilemez
+    if (!(await canReport(req.userId, targetType, targetIdNum))) {
+      return res.status(404).json({ error: 'Şikâyet edilecek içerik bulunamadı.' });
     }
 
     // Aynı kişi aynı içeriği birden fazla kez şikayet ederek otomatik gizleme

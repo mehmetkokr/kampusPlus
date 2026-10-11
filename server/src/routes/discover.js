@@ -218,7 +218,8 @@ router.get('/home', requireAuth, async (req, res) => {
         const recentPostsRaw = await prisma.post.findMany({
           where: {
             visibility: 'campus',
-            author: { universityId: me.universityId, id: { notIn: [...blockedByMe.map((b) => b.blockedId), ...blockingMe.map((b) => b.blockerId)] } },
+            // Dondurulmuş ya da askıya alınmış hesapların gönderileri görünmez
+            author: { universityId: me.universityId, isFrozen: false, isBanned: false, id: { notIn: [...blockedByMe.map((b) => b.blockedId), ...blockingMe.map((b) => b.blockerId)] } },
           },
           orderBy: { createdAt: 'desc' },
           take: 10,
