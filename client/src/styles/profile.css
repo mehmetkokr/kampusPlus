@@ -268,7 +268,7 @@
   color: #fff;
   transition: background-color 0.15s ease, border-color 0.15s ease;
 }
-.pf-select-option.is-on .pf-select-check { border-color: var(--amber-soft); background: var(--amber-soft); }
+.pf-select-option.is-on .pf-select-check { border-color: var(--amber-soft); background: var(--accent-fill); }
 .pf-select-note { margin: 6px 10px; font-size: 12.5px; line-height: 1.45; color: var(--text-faint); }
 .pf-select-done {
   display: block;
@@ -277,7 +277,7 @@
   margin-top: 6px;
   border: 0;
   border-radius: 11px;
-  background: var(--amber-soft);
+  background: var(--accent-fill);
   color: #fff;
   font: inherit;
   font-size: 14.5px;
@@ -370,4 +370,25 @@
 
 @media (prefers-reduced-motion: reduce) {
   .pf-ring-fill, .pf-avatar-edit, .pf-select-box, .pf-select-chevron, .pf-save, .pf-completion-link svg { transition: none; }
+}
+
+/* Seçim kutusundaki açma düğmesi: boşken yer tutucuyu, doluyken yalnızca oku taşır */
+.pf-select-toggle {
+  display: flex;
+  align-items: center;
+  min-height: 34px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.pf-select-toggle.is-empty { flex: 1; }
+.pf-select-toggle:focus-visible { outline: none; }
+.pf-select-box:has(.pf-select-toggle:focus-visible) {
+  border-color: var(--amber-soft);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber-soft) 20%, transparent);
 }

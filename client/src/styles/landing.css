@@ -107,11 +107,11 @@
 /* Birincil: sistem mavisi (uygulamadaki ana düğmeyle aynı) */
 .landing-btn-primary {
   color: #ffffff;
-  background: var(--amber-soft);
+  background: var(--accent-fill);
   box-shadow: none;
 }
 @media (hover: hover) and (pointer: fine) {
-  .landing-btn-primary:hover { background: var(--amber); }
+  .landing-btn-primary:hover { background: var(--accent-fill); }
 }
 .landing-btn-primary:active { transform: scale(0.98); }
 
@@ -192,7 +192,7 @@
 
 /* ---------- Nasıl çalışır ---------- */
 
-.landing-progress { background: var(--amber-soft); }
+.landing-progress { background: var(--accent-fill); }
 
 .landing-step-icon {
   color: var(--color-amber);
@@ -231,7 +231,7 @@
   height: 1em;
   margin-left: 1px;
   vertical-align: -0.15em;
-  background: var(--amber-soft);
+  background: var(--accent-fill);
   animation: landing-blink 1s steps(1) infinite;
 }
 @keyframes landing-blink { 50% { opacity: 0; } }

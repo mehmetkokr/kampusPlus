@@ -16,6 +16,7 @@ const { Server } = require('socket.io');
 const path = require('path');
 const fs = require('fs');
 const { PUBLIC_UPLOADS } = require('./lib/paths');
+const { setUploadHeaders } = require('./lib/uploadNames');
 
 const authRoutes = require('./routes/auth');
 const universityRoutes = require('./routes/universities');
@@ -110,7 +111,8 @@ function rateLimitKey(req) {
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 600, // kullanıcı (veya IP) başına 15 dakikada 600 istek
+  // kullanıcı (veya IP) başına 15 dakikada 600 istek (API_RATE_LIMIT ile değişir; yük testi yükseltir)
+  limit: Number(process.env.API_RATE_LIMIT) || 600,
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: rateLimitKey,
@@ -119,11 +121,25 @@ const apiLimiter = rateLimit({
 app.use('/api', apiLimiter);
 
 // Yüklenen dosyalara (profil fotoğrafı, öğrenci belgesi) erişim
-app.use('/uploads', express.static(PUBLIC_UPLOADS));
+// Herkese açık yüklemeler: görseller uzun süre önbellekte kalır (adları
+// benzersiz); güvenli olmayan türler indirilir, hiçbiri betik çalıştıramaz
+app.use('/uploads', express.static(PUBLIC_UPLOADS, { maxAge: '30d', immutable: true, setHeaders: setUploadHeaders }));
 
 // Sağlık kontrolü - sunucu çalışıyor mu test etmek için
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Sunucu çalışıyor' });
+// Veritabanına da kısa bir sorgu atılır: sunucu açık ama veritabanı
+// erişilemiyorsa 503 döner (dış izleme ve Railway sağlık kontrolü bunu görür)
+app.get('/api/health', async (req, res) => {
+  const started = Date.now();
+  try {
+    const prisma = require('./lib/prisma');
+    await Promise.race([
+      prisma.$queryRaw`SELECT 1`,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Veritabanı 3 sn içinde yanıt vermedi')), 3000)),
+    ]);
+    res.json({ status: 'ok', message: 'Sunucu çalışıyor', db: 'ok', uptimeSec: Math.round(process.uptime()), latencyMs: Date.now() - started });
+  } catch (err) {
+    res.status(503).json({ status: 'error', message: 'Veritabanına ulaşılamıyor', db: 'error' });
+  }
 });
 
 app.use('/api/auth', authRoutes);

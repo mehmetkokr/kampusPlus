@@ -85,7 +85,7 @@ router.get('/me', requireAuth, async (req, res) => {
         swipeEnabled: true,
         theme: true,
         language: true,
-        university: { select: { id: true, name: true } },
+        university: { select: { id: true, name: true, emailDomain: true } },
         isPremium: true,
         premiumUntil: true,
         premiumAutoRenew: true,

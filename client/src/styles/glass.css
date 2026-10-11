@@ -114,7 +114,7 @@
   letter-spacing: -0.02em;
 }
 
-.side-nav-wordmark .dot { color: var(--amber); }
+.side-nav-wordmark .dot { color: var(--amber-soft); }
 
 .side-nav-plus {
   margin-left: auto;
@@ -187,7 +187,7 @@
   bottom: 28%;
   width: 3px;
   border-radius: 0 3px 3px 0;
-  background: var(--accent);
+  background: var(--accent-fill);
   box-shadow: 0 0 12px transparent;
 }
 
@@ -205,7 +205,7 @@
 }
 
 .side-nav-item.active .side-nav-icon {
-  background: color-mix(in srgb, var(--accent) 85%, white);
+  background: var(--accent-fill);
   border-color: transparent;
   color: var(--on-accent);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 18px -8px rgba(0, 0, 0, 0.35);
@@ -295,7 +295,7 @@
   padding: 2px;
   border-radius: 50%;
   flex-shrink: 0;
-  background: var(--amber);
+  background: var(--accent-fill);
 }
 
 .side-nav-avatar-ring img,
@@ -312,7 +312,7 @@
   font-size: 14px;
 }
 
-.side-nav-crown { color: var(--amber); flex-shrink: 0; }
+.side-nav-crown { color: var(--amber-soft); flex-shrink: 0; }
 
 /* ---------- Mobil cam dock ---------- */
 
@@ -367,7 +367,7 @@
   position: absolute;
   inset: 0;
   border-radius: 20px;
-  background: color-mix(in srgb, var(--accent) 80%, white);
+  background: var(--accent-fill);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.45),
     0 10px 24px -8px rgba(0, 0, 0, 0.35);
@@ -697,7 +697,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--accent-fill);
   box-shadow: 0 0 10px transparent;
 }
 
@@ -760,7 +760,7 @@
 .intent-toggle.active {
   color: var(--on-accent);
   border-color: transparent;
-  background: color-mix(in srgb, var(--accent) 80%, white);
+  background: var(--accent-fill);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 20px -10px rgba(0, 0, 0, 0.35);
 }
 
@@ -1079,7 +1079,7 @@
 
 /* iMessage gibi: benim mesajım düz mavi + beyaz yazı, karşı taraf gri */
 .message-mine {
-  background: var(--amber-soft);
+  background: var(--accent-fill);
   border: 0;
   color: #ffffff;
   box-shadow: none;
@@ -1166,7 +1166,7 @@ img:not([src]) {
   font-size: 20px;
   font-weight: 700;
   color: #fff;
-  background: var(--amber-soft);
+  background: var(--accent-fill);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 12px 26px -10px rgba(0, 0, 0, 0.35);
 }
 
@@ -1202,10 +1202,10 @@ img:not([src]) {
 .likes-row .icon-btn-amber { width: 38px; height: 38px; }
 .likes-row .icon-btn-amber.is-primary {
   color: #fff;
-  background: var(--amber-soft);
+  background: var(--accent-fill);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 10px 22px -10px rgba(0, 0, 0, 0.35);
 }
-.likes-row .icon-btn-amber.is-primary:hover { color: #fff; background: var(--amber-soft); }
+.likes-row .icon-btn-amber.is-primary:hover { color: #fff; background: var(--accent-fill); }
 
 /* Kart Modu'ndaki "X kişi seni beğendi" şeridi */
 .likes-teaser {
@@ -1242,7 +1242,7 @@ img:not([src]) {
   place-items: center;
   flex-shrink: 0;
   color: #fff;
-  background: var(--amber-soft);
+  background: var(--accent-fill);
 }
 
 .likes-teaser-text { flex: 1; min-width: 0; }
@@ -1306,7 +1306,7 @@ img:not([src]) {
 /* Hikayeler */
 .story-bar { gap: 12px; padding: 2px 2px 16px; }
 .story-ring {
-  background: var(--amber);
+  background: var(--accent-fill);
   transition: transform 0.2s;
 }
 .story-ring:hover, .story-add-btn:hover { transform: scale(1.05); }
@@ -1349,7 +1349,7 @@ img:not([src]) {
 .post-action-btn:hover { background: var(--glass-soft-hover); color: var(--text); }
 .post-action-btn:active { transform: scale(0.94); }
 .post-action-btn.liked { color: var(--amber-soft); }
-.post-action-btn.saved { color: var(--amber); }
+.post-action-btn.saved { color: var(--amber-soft); }
 .post-header .post-action-btn { padding: 0; }
 
 .post-caption { font-size: 14px; margin: 10px 2px 0; line-height: 1.5; }
@@ -1561,7 +1561,7 @@ img:not([src]) {
 .club-field-head label { margin-bottom: 7px; }
 .club-optional { text-transform: none; letter-spacing: 0; font-weight: 600; color: var(--text-faint); }
 .club-counter { font-size: 11.5px; font-weight: 700; color: var(--text-faint); font-variant-numeric: tabular-nums; }
-.club-counter.warn { color: var(--amber); }
+.club-counter.warn { color: var(--amber-soft); }
 
 .club-studio-section input,
 .club-studio-section textarea { margin-bottom: 0; }
@@ -2913,7 +2913,7 @@ select option:disabled {
 
 .page-hero-icon {
   color: #ffffff;
-  background: var(--amber-soft);
+  background: var(--accent-fill);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), 0 6px 14px -8px rgba(0, 0, 0, 0.6);
 }
 
@@ -3776,7 +3776,7 @@ select option:disabled {
   min-height: 218px;
   border: 0;
   background:
-    var(--amber-soft);
+    var(--accent-fill);
   color: #ffffff;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 20px 40px -24px rgba(0, 0, 0, 0.48);
 }
@@ -3786,7 +3786,8 @@ select option:disabled {
   gap: 5px;
   padding: 4px 9px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.18);
+  /* Zemini koyulaştırır (açmak beyaz yazının kontrastını düşürüyordu) */
+  background: rgba(0, 0, 0, 0.22);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.06em;
@@ -3799,7 +3800,7 @@ select option:disabled {
   line-height: 1.15;
   letter-spacing: -0.01em;
 }
-.quick-sub { font-size: 12.5px; opacity: 0.88; max-width: 70%; }
+.quick-sub { font-size: 12.5px; max-width: 70%; }
 .quick-swipe-stack {
   position: absolute;
   right: 16px;
@@ -4508,7 +4509,7 @@ button.announcement-main { cursor: pointer; }
   display: grid;
   place-items: center;
   color: #fff;
-  background: var(--amber-soft);
+  background: var(--accent-fill);
 }
 .announcement-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .announcement-text b { font-size: 0.9rem; font-weight: 650; }
@@ -4832,7 +4833,7 @@ button.announcement-main { cursor: pointer; }
   cursor: pointer;
   transition: transform 0.12s ease, opacity 0.15s ease;
 }
-.match-primary { border: 0; background: var(--amber-soft); color: #fff; }
+.match-primary { border: 0; background: var(--accent-fill); color: #fff; }
 .match-secondary { border: 1px solid var(--border); background: var(--surface); color: var(--text); }
 .match-primary:active, .match-secondary:active { transform: scale(0.97); }
 .match-primary:disabled { opacity: 0.6; cursor: default; }
@@ -4969,3 +4970,9 @@ button.announcement-main { cursor: pointer; }
   text-decoration: none;
 }
 .profile-social-link:hover { border-color: var(--amber-soft); }
+
+/* Açık temada altın rozet yazısı yeterli kontrastta (WCAG AA) */
+[data-theme='light'] .quick-badge { color: #8a3d00; }
+
+/* Açık temada altın Premium düğmesi beyaz yazıyla (koyu yazı turuncu zeminde okunmuyordu) */
+[data-theme='light'] .btn-premium-cta { color: #ffffff; }

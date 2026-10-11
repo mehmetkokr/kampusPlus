@@ -10,6 +10,7 @@
 
 const fs = require('fs');
 const fileTypeChecker = require('file-type-checker');
+const { stripFileMetadata } = require('./stripMetadata');
 
 // Beyan edilen mimetype -> file-type-checker'ın kabul edebileceği gerçek imza(lar).
 const MIME_TO_SIGNATURES = {
@@ -38,6 +39,13 @@ function verifyFileSignature(req, res, next) {
 
   const declaredMime = req.file.mimetype;
 
+  // Alan adı türü belirler: "photo" alanına yalnızca görsel, "audio" alanına yalnızca ses
+  const field = req.file.fieldname;
+  if ((field === 'photo' && !declaredMime.startsWith('image/')) || (field === 'audio' && !declaredMime.startsWith('audio/'))) {
+    fs.unlink(req.file.path, () => {});
+    return res.status(400).json({ error: field === 'photo' ? 'Yalnızca fotoğraf yükleyebilirsin.' : 'Yalnızca ses kaydı yükleyebilirsin.' });
+  }
+
   if (SIGNATURELESS_MIMETYPES.has(declaredMime)) {
     return next();
   }
@@ -59,6 +67,8 @@ function verifyFileSignature(req, res, next) {
       });
     }
 
+    // Fotoğraflardaki GPS konumu ve cihaz bilgisi (EXIF/XMP) silinir
+    stripFileMetadata(req.file.path, declaredMime);
     next();
   } catch (err) {
     console.error('Dosya imzası doğrulanamadı:', err);

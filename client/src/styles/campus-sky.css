@@ -111,7 +111,7 @@
   height: calc(var(--s) * 1.7px);
 }
 .sky-star.is-node i {
-  background: var(--amber-soft);
+  background: var(--accent-fill);
   box-shadow: 0 0 calc(var(--s) * 5px) color-mix(in srgb, var(--amber-soft) 70%, transparent);
 }
 

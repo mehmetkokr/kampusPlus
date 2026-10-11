@@ -14,6 +14,7 @@
 
   --color-amber: var(--amber-soft);
   --color-amber-soft: var(--amber-soft);
+  --color-accent-fill: var(--accent-fill);
   --color-amber-dim: color-mix(in srgb, var(--amber-soft) 14%, transparent);
 
   --color-teal: var(--teal);
@@ -29,7 +30,7 @@
   --animate-rise: auth-rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
 
   /* shadcn/ui belirteçleri (components/ui): uygulamanın açık/koyu paletine bağlı */
-  --color-primary: var(--amber-soft);
+  --color-primary: var(--accent-fill);
   --color-primary-foreground: #ffffff;
   --color-secondary: var(--surface-2);
   --color-secondary-foreground: var(--text);
@@ -61,13 +62,18 @@
 
   --text: #f5f5f7;
   --text-muted: #a1a1a6;
-  --text-faint: #6e6e73;
+  /* WCAG AA: koyu yüzeylerde (en açığı #2c2c2e) en az 4,5:1 */
+  --text-faint: #98989d;
 
   /* Ana renk: kiremit (değişken adı geriye dönük uyumluluk için "amber") */
   /* Değişken adları eski kalsa da anlamları: amber = vurgu mavisi,
      teal = onay yeşili, coral = uyarı kırmızısı, sky = çivit */
-  --amber: #0a84ff;
-  --amber-soft: #0a84ff;
+  /* Vurgu iki rolde: --amber-soft yazı/kenar mavisi (koyu zeminde okunur),
+     --accent-fill beyaz yazılı dolu zemin mavisi. Tek bir mavi iki kontrast
+     sınırını (≥4,5:1) aynı anda geçemediği için ayrıdır. */
+  --amber: #0068d6;
+  --amber-soft: #409cff;
+  --accent-fill: #0068d6;
   --amber-dim: rgba(10, 132, 255, 0.16);
 
   /* Yardımcı: adaçayı yeşili (doğrulama, çevrimiçi, başarı) */
@@ -78,7 +84,7 @@
   --coral-dim: rgba(255, 69, 58, 0.15);
 
   /* Yardımcı: mürekkep mavisi */
-  --sky: #5e5ce6;
+  --sky: #8e8cff;
   --sky-dim: rgba(94, 92, 230, 0.16);
 
   --violet: #bf5af2;
@@ -119,7 +125,7 @@ body {
 }
 
 a {
-  color: var(--amber);
+  color: var(--amber-soft);
   text-decoration: none;
 }
 
@@ -170,7 +176,7 @@ p {
   width: 38px;
   height: 38px;
   border-radius: 12px;
-  background: var(--amber);
+  background: var(--accent-fill);
   color: #ffffff;
   border: none;
   display: flex;
@@ -276,7 +282,7 @@ textarea {
   gap: 8px;
   width: 100%;
   padding: 14px 20px;
-  background: var(--amber-soft);
+  background: var(--accent-fill);
   color: #ffffff;
   border: none;
   border-radius: 14px;
@@ -371,7 +377,7 @@ textarea {
 }
 
 .auth-wordmark .dot {
-  color: var(--amber);
+  color: var(--amber-soft);
 }
 
 .auth-tagline {
@@ -542,7 +548,7 @@ textarea {
 }
 
 .intent-toggle.active {
-  background: var(--amber);
+  background: var(--accent-fill);
   border-color: var(--amber);
   color: #ffffff;
 }
@@ -588,7 +594,7 @@ textarea {
   box-shadow: none;
 }
 .btn-pass:hover { background: var(--coral-dim); }
-.btn-like { background: var(--amber-soft); color: #ffffff; }
+.btn-like { background: var(--accent-fill); color: #ffffff; }
 
 /* Kart Modu karar düğmeleri: yuvarlak, simgeli; altta kısa yazı */
 .swipe-action {
@@ -625,7 +631,7 @@ textarea {
   width: 76px;
   height: 76px;
   border: 0;
-  background: var(--amber-soft);
+  background: var(--accent-fill);
   color: #fff;
   box-shadow: 0 14px 30px -12px color-mix(in srgb, var(--amber-soft) 70%, transparent);
 }
@@ -831,7 +837,7 @@ textarea {
 }
 
 .message-mine {
-  background: var(--amber-soft);
+  background: var(--accent-fill);
   border: 0;
   color: #ffffff;
   border-bottom-right-radius: 6px;
@@ -939,7 +945,7 @@ textarea {
 }
 
 .chat-send-btn.has-text {
-  background: var(--amber);
+  background: var(--accent-fill);
   color: #ffffff;
   transform: scale(1.04);
 }
@@ -960,7 +966,7 @@ textarea {
 
 .badge-pending {
   background: var(--amber-dim);
-  color: var(--amber);
+  color: var(--amber-soft);
 }
 
 .badge-verified {
@@ -1014,7 +1020,7 @@ textarea {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: var(--amber);
+  background: var(--accent-fill);
   color: #ffffff;
   display: flex;
   align-items: center;
@@ -1087,7 +1093,7 @@ textarea {
 }
 
 .category-pill.active {
-  background: var(--amber);
+  background: var(--accent-fill);
   border-color: var(--amber);
   color: #ffffff;
 }
@@ -1525,7 +1531,7 @@ textarea {
   height: 60px;
   border-radius: 50%;
   padding: 2.5px;
-  background: var(--amber);
+  background: var(--accent-fill);
   border: none;
   cursor: pointer;
   flex-shrink: 0;
@@ -1556,7 +1562,7 @@ textarea {
   width: 19px;
   height: 19px;
   border-radius: 50%;
-  background: var(--amber);
+  background: var(--accent-fill);
   color: #ffffff;
   display: flex;
   align-items: center;
@@ -1832,7 +1838,7 @@ textarea {
 }
 
 .post-action-btn.saved {
-  color: var(--amber);
+  color: var(--amber-soft);
 }
 
 .post-like-count {
@@ -2000,7 +2006,7 @@ textarea {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: var(--amber);
+  background: var(--accent-fill);
   color: #ffffff;
   border: none;
   display: flex;
@@ -2024,7 +2030,7 @@ textarea {
 
 .voice-bubble.message-mine {
   margin-left: auto;
-  background: var(--amber);
+  background: var(--accent-fill);
   color: #ffffff;
   border-bottom-right-radius: 4px;
 }
@@ -2102,7 +2108,7 @@ textarea {
 
 .file-bubble.message-mine {
   margin-left: auto;
-  background: var(--amber);
+  background: var(--accent-fill);
   color: #ffffff;
   border-bottom-right-radius: 4px;
 }
@@ -2170,7 +2176,7 @@ textarea {
 .toast-success { border-left: 3px solid var(--teal); }
 .toast-success .toast-icon { color: var(--teal); }
 .toast-info { border-left: 3px solid var(--amber); }
-.toast-info .toast-icon { color: var(--amber); }
+.toast-info .toast-icon { color: var(--amber-soft); }
 
 /* ---------- Şifre görünürlük ikonu ---------- */
 .password-field-wrap {
@@ -2219,7 +2225,7 @@ textarea {
 
 .forgot-password-link {
   font-size: 13px;
-  color: var(--amber);
+  color: var(--amber-soft);
   text-decoration: none;
   font-weight: 600;
 }
@@ -2228,7 +2234,7 @@ textarea {
 
 /* ---------- Mesajlaşma: yazıyor / çevrimiçi / görüldü / emoji ---------- */
 .chat-header-status.online { color: var(--teal); }
-.chat-header-status.typing { color: var(--amber); font-style: italic; }
+.chat-header-status.typing { color: var(--amber-soft); font-style: italic; }
 
 .message-seen {
   font-size: 11px;
@@ -2249,7 +2255,7 @@ textarea {
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: var(--amber);
+  background: var(--accent-fill);
   animation: typing-bounce 1.2s infinite ease-in-out;
 }
 
@@ -2375,7 +2381,7 @@ textarea {
   transition: 0.2s;
 }
 
-.switch input:checked + .switch-track { background: var(--amber); }
+.switch input:checked + .switch-track { background: var(--accent-fill); }
 .switch input:checked + .switch-track::before { transform: translateX(18px); }
 
 /* ---------- Ayarlar sayfası: menü satırları, tema seçici, tehlike bölgesi ---------- */
@@ -2440,7 +2446,7 @@ textarea {
 .theme-toggle-option.active {
   border-color: var(--amber);
   background: var(--amber-dim);
-  color: var(--amber);
+  color: var(--amber-soft);
 }
 
 .danger-zone-card {
@@ -2575,7 +2581,7 @@ textarea {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--amber);
+  background: var(--accent-fill);
   flex-shrink: 0;
 }
 
@@ -2606,13 +2612,15 @@ textarea {
   --border-soft: rgba(0, 0, 0, 0.08);
 
   --text: #1d1d1f;
-  --text-muted: #6e6e73;
-  --text-faint: #86868b;
+  /* WCAG AA: açık gri yüzeylerde (#e8e8eb) de en az 4,5:1 */
+  --text-muted: #545458;
+  --text-faint: #636366;
 
-  --amber: #0066cc;
-  --amber-soft: #0071e3;
+  --amber: #0071e3;
+  --amber-soft: #0066cc;
+  --accent-fill: #0071e3;
   --amber-dim: rgba(0, 113, 227, 0.12);
-  --teal: #248a3d;
+  --teal: #1a7330;
   --teal-dim: rgba(52, 199, 89, 0.14);
   --coral: #d70015;
   --coral-dim: rgba(255, 59, 48, 0.12);
@@ -2793,7 +2801,7 @@ textarea {
   gap: 4px;
   padding: 2px 8px;
   border-radius: 999px;
-  background: var(--amber);
+  background: var(--accent-fill);
   color: var(--bg);
   font-size: 10.5px;
   font-weight: 800;
@@ -2864,7 +2872,7 @@ textarea {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--amber);
+  background: var(--accent-fill);
   color: var(--bg);
   margin-bottom: 2px;
 }
@@ -2896,7 +2904,7 @@ textarea {
   height: 42px;
   border-radius: 50%;
   background: var(--amber-dim);
-  color: var(--amber);
+  color: var(--amber-soft);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2920,7 +2928,7 @@ textarea {
   padding: 10px 22px;
   border-radius: 999px;
   border: none;
-  background: var(--amber);
+  background: var(--accent-fill);
   color: var(--bg);
   font-weight: 800;
   font-size: 13px;
@@ -2942,7 +2950,7 @@ textarea {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: var(--amber);
+  background: var(--accent-fill);
   color: var(--bg);
   display: flex;
   align-items: center;

@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const prisma = require('../lib/prisma');
+const { escapeHtml } = require('../lib/html');
 const { signFileToken } = require('../lib/fileToken');
 const { disconnectUser } = require('../socket');
 const { requireAuth } = require('../middleware/auth');
@@ -30,6 +31,9 @@ const CODE_TTL_MS = 10 * 60 * 1000;
 const CODE_RESEND_MS = 60 * 1000;
 const CODE_MAX_ATTEMPTS = 5;
 const PASSWORD_MIN = 8;
+
+// Hesap yokken karşılaştırılacak sabit özet (giriş yanıt süresini eşitlemek için)
+const DUMMY_HASH = bcrypt.hashSync('kampus-olmayan-hesap', 10);
 
 const hashCode = (code) => crypto.createHash('sha256').update(String(code)).digest('hex');
 
@@ -116,7 +120,17 @@ router.post('/register/send-code', sendCodeLimiter, async (req, res) => {
       return res.status(400).json({ error: schoolEmailError(university), field: 'email' });
     }
     if (await findUserByEmail(email)) {
-      return res.status(409).json({ error: 'Bu e-posta ile zaten bir hesap var.' });
+      // "Bu e-posta kayıtlı" demek, kimin üye olduğunu herkese söylemek olurdu.
+      // Yanıt kod gönderilmiş gibidir; gerçek sahibine giriş yapmasını söyleyen
+      // bir e-posta gider.
+      const loginUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/login`;
+      sendMail({
+        to: email,
+        subject: 'kampüs·: Bu e-postayla zaten bir hesabın var',
+        text: `Merhaba,\n\nBu adresle yeni hesap açılmak istendi ama zaten bir kampüs· hesabın var. Giriş yapmak için: ${loginUrl}\nŞifreni hatırlamıyorsan giriş ekranındaki "Şifremi Unuttum" bağlantısını kullan.\n\nBu isteği sen yapmadıysan bu e-postayı yok sayabilirsin.`,
+        html: `<p>Merhaba,</p><p>Bu adresle yeni hesap açılmak istendi ama zaten bir kampüs· hesabın var.</p><p><a href="${escapeHtml(loginUrl)}">Giriş yap</a> · Şifreni hatırlamıyorsan giriş ekranındaki “Şifremi Unuttum” bağlantısını kullan.</p><p>Bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin.</p>`,
+      }).catch((err) => console.error('Hesap bilgilendirme e-postası gönderilemedi:', err));
+      return res.json({ sent: true, expiresInSec: CODE_TTL_MS / 1000, resendInSec: CODE_RESEND_MS / 1000, devConsole: !isRealSmtpConfigured() });
     }
 
     const existing = await prisma.emailVerificationCode.findUnique({ where: { email } });
@@ -135,12 +149,13 @@ router.post('/register/send-code', sendCodeLimiter, async (req, res) => {
       create: { email, codeHash: hashCode(code), expiresAt: new Date(now.getTime() + CODE_TTL_MS), lastSentAt: now },
     });
 
-    await sendMail({
+    // Beklenmeden gönderilir: kayıtlı/kayıtsız adres için yanıt süresi aynı olsun
+    sendMail({
       to: email,
       subject: `kampüs· doğrulama kodun: ${code}`,
       text: `Merhaba,\n\nkampüs· kaydını tamamlamak için doğrulama kodun: ${code}\n\nKod 10 dakika geçerlidir. Bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin.`,
       html: `<p>Merhaba,</p><p>kampüs· kaydını tamamlamak için doğrulama kodun:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px">${code}</p><p>Kod 10 dakika geçerlidir. Bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin.</p>`,
-    });
+    }).catch((err) => console.error('Doğrulama kodu e-postası gönderilemedi:', err));
 
     track('code_sent', { anonId: req.headers['x-anon-id'] });
 
@@ -285,11 +300,13 @@ router.post('/login', loginLimiter, async (req, res) => {
     }
 
     const user = await findUserByEmail(email);
+    // Hesap yoksa da aynı sürede yanıt verilir: yanıt süresinden hangi
+    // e-postaların kayıtlı olduğu anlaşılamasın
+    const passwordOk = await bcrypt.compare(String(password), user ? user.passwordHash : DUMMY_HASH);
     if (!user) {
       return res.status(401).json({ error: 'E-posta veya şifre hatalı.' });
     }
 
-    const passwordOk = await bcrypt.compare(password, user.passwordHash);
     if (!passwordOk) {
       return res.status(401).json({ error: 'E-posta veya şifre hatalı.' });
     }
@@ -301,7 +318,7 @@ router.post('/login', loginLimiter, async (req, res) => {
     // Yönetici iki adımlı doğrulamayı açtıysa şifreden sonra uygulamadaki kod da istenir
     if (user.isAdmin && user.totpEnabled) {
       if (!req.body.totpCode) return res.json({ twoFactorRequired: true });
-      if (!checkTotp(user, req.body.totpCode)) {
+      if (!(await checkTotp(user, req.body.totpCode))) {
         return res.status(401).json({ error: 'Doğrulama kodu hatalı.', twoFactorRequired: true });
       }
     }
@@ -360,12 +377,12 @@ router.post('/forgot-password', forgotPasswordLimiter, async (req, res) => {
       const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
       const resetLink = `${clientUrl}/reset-password?token=${resetToken}`;
 
-      await sendMail({
+      sendMail({
         to: user.email,
         subject: 'kampüs·: Şifre sıfırlama',
         text: `Şifreni sıfırlamak için bu bağlantıyı kullan (30 dakika geçerlidir): ${resetLink}`,
-        html: `<p>Merhaba ${user.fullName},</p><p>Şifreni sıfırlamak için aşağıdaki bağlantıya tıkla. Bu bağlantı 30 dakika geçerlidir.</p><p><a href="${resetLink}">${resetLink}</a></p><p>Bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin.</p>`,
-      });
+        html: `<p>Merhaba ${escapeHtml(user.fullName)},</p><p>Şifreni sıfırlamak için aşağıdaki bağlantıya tıkla. Bu bağlantı 30 dakika geçerlidir.</p><p><a href="${resetLink}">${resetLink}</a></p><p>Bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin.</p>`,
+      }).catch((err) => console.error('Şifre sıfırlama e-postası gönderilemedi:', err));
     }
 
     // Güvenlik amacıyla hesabın var olup olmadığını belli etmeden aynı mesajı döneriz.
@@ -496,6 +513,89 @@ router.post('/reverify', requireAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Doğrulama tamamlanamadı.' });
+  }
+});
+
+// ----------------------------
+// E-POSTA DEĞİŞTİRME (ör. lisanstan yüksek lisansa geçince okul adresi değişir)
+// ----------------------------
+// Yeni adres aynı üniversitenin okul e-postası olmalı; yeni adrese gelen kodla
+// doğrulanır. Eski adrese bilgi e-postası gider. Doğrulama yıllık süreyi de
+// yeniler (yeni adres yeni bir öğrencilik kanıtıdır).
+router.post('/email/send-code', requireAuth, sendCodeLimiter, async (req, res) => {
+  try {
+    const newEmail = normalizeEmail(req.body?.newEmail || '');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) return res.status(400).json({ error: 'Geçerli bir e-posta adresi gir.', field: 'newEmail' });
+    const user = await prisma.user.findUnique({ where: { id: req.userId }, include: { university: true } });
+    if (!(await bcrypt.compare(String(req.body?.password || ''), user.passwordHash))) {
+      return res.status(400).json({ error: 'Şifren hatalı.', field: 'password' });
+    }
+    if (newEmail === user.email) return res.status(400).json({ error: 'Bu zaten kayıtlı adresin.', field: 'newEmail' });
+    if (!isSchoolEmail(newEmail, user.university)) {
+      return res.status(400).json({ error: schoolEmailError(user.university), field: 'newEmail' });
+    }
+    if (await findUserByEmail(newEmail)) return res.status(409).json({ error: 'Bu e-posta başka bir hesapta kayıtlı.', field: 'newEmail' });
+
+    const existing = await prisma.emailVerificationCode.findUnique({ where: { email: newEmail } });
+    if (existing) {
+      const wait = CODE_RESEND_MS - (Date.now() - new Date(existing.lastSentAt).getTime());
+      if (wait > 0) return res.status(429).json({ error: `Yeni kod için ${Math.ceil(wait / 1000)} saniye bekle.`, retryAfter: Math.ceil(wait / 1000) });
+    }
+    const code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+    const now = new Date();
+    await prisma.emailVerificationCode.upsert({
+      where: { email: newEmail },
+      update: { codeHash: hashCode(code), expiresAt: new Date(now.getTime() + CODE_TTL_MS), attempts: 0, lastSentAt: now },
+      create: { email: newEmail, codeHash: hashCode(code), expiresAt: new Date(now.getTime() + CODE_TTL_MS), lastSentAt: now },
+    });
+    await sendMail({
+      to: newEmail,
+      subject: `kampüs· e-posta değişikliği kodun: ${code}`,
+      text: `Merhaba,
+
+kampüs· hesabının e-posta adresini bu adresle değiştirmek için kodun: ${code}
+
+Kod 10 dakika geçerlidir. Bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin.`,
+      html: `<p>Merhaba,</p><p>kampüs· hesabının e-posta adresini bu adresle değiştirmek için kodun:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px">${code}</p><p>Kod 10 dakika geçerlidir.</p>`,
+    });
+    res.json({ sent: true, expiresInSec: CODE_TTL_MS / 1000, devConsole: !isRealSmtpConfigured() });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Doğrulama kodu gönderilemedi.' });
+  }
+});
+
+router.post('/email', requireAuth, async (req, res) => {
+  try {
+    const newEmail = normalizeEmail(req.body?.newEmail || '');
+    const record = await prisma.emailVerificationCode.findUnique({ where: { email: newEmail } });
+    if (!record || new Date(record.expiresAt) < new Date()) return res.status(400).json({ error: 'Kodun süresi doldu. Yeni kod iste.', codeError: 'expired' });
+    if (record.attempts >= CODE_MAX_ATTEMPTS) return res.status(429).json({ error: 'Çok fazla hatalı deneme yapıldı. Yeni kod iste.', codeError: 'locked' });
+    const code = String(req.body?.code || '').trim();
+    if (!code || hashCode(code) !== record.codeHash) {
+      const updated = await prisma.emailVerificationCode.update({ where: { email: newEmail }, data: { attempts: { increment: 1 } } });
+      const left = CODE_MAX_ATTEMPTS - updated.attempts;
+      return res.status(400).json({ error: left > 0 ? `Kod hatalı. ${left} deneme hakkın kaldı.` : 'Kod hatalı. Deneme hakkın bitti, yeni kod iste.', codeError: left > 0 ? 'invalid' : 'locked' });
+    }
+    // Kod gönderildikten sonra başka bir hesap bu adresi almış olabilir
+    if (await findUserByEmail(newEmail)) return res.status(409).json({ error: 'Bu e-posta başka bir hesapta kayıtlı.' });
+
+    const before = await prisma.user.findUnique({ where: { id: req.userId }, select: { email: true, fullName: true } });
+    await prisma.user.update({ where: { id: req.userId }, data: { email: newEmail, schoolEmailVerifiedAt: new Date() } });
+    await prisma.emailVerificationCode.delete({ where: { email: newEmail } }).catch(() => {});
+    // Eski adrese bilgi: hesap ele geçirildiyse sahibi fark etsin
+    sendMail({
+      to: before.email,
+      subject: 'kampüs· e-posta adresin değiştirildi',
+      text: `Merhaba ${before.fullName},
+
+kampüs· hesabının e-posta adresi ${newEmail} olarak değiştirildi. Bunu sen yapmadıysan hemen bize yaz.`,
+      html: `<p>Merhaba ${escapeHtml(before.fullName)},</p><p>kampüs· hesabının e-posta adresi <b>${escapeHtml(newEmail)}</b> olarak değiştirildi. Bunu sen yapmadıysan hemen bize yaz.</p>`,
+    }).catch(() => {});
+    res.json({ message: 'E-posta adresin değiştirildi. Bundan sonra bu adresle giriş yapacaksın.', email: newEmail });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'E-posta değiştirilemedi.' });
   }
 });
 

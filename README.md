@@ -50,7 +50,8 @@ npx prisma migrate deploy
 ```bash
 npm test           # sunucu + arayüz testleri
 npm run lint       # arayüz kod denetimi (uyarı da kabul edilmez)
-npm run test:e2e   # uçtan uca testler (gerçek tarayıcıda kayıt, eşleşme, sohbet, ayarlar)
+npm run test:e2e   # uçtan uca testler (gerçek tarayıcıda kayıt, eşleşme, sohbet, ayarlar, erişilebilirlik)
+npm run load-test --prefix server   # yük testi (geçici veritabanında)
 ```
 
 Uçtan uca testler için bir kez `npx playwright install chromium` (client
@@ -64,7 +65,7 @@ otomatik çalışır (`.github/workflows/ci.yml`).
 
 ## Özellikler
 
-- **Hesap:** okul e-postasına 6 haneli kodla kayıt, yılda bir okul e-postasıyla yeniden doğrulama (mezunlar listelerden gizlenir), şifre değiştirme, şifremi unuttum, verilerimi indir (KVKK), hesabı dondurma/silme, öğrenci belgesiyle onaylı rozet
+- **Hesap:** okul e-postasına 6 haneli kodla kayıt, yılda bir okul e-postasıyla yeniden doğrulama (mezunlar listelerden gizlenir), okul e-postasını değiştirme (aynı üniversite, kodla), şifre değiştirme, şifremi unuttum, verilerimi indir (KVKK), hesabı dondurma/silme, öğrenci belgesiyle onaylı rozet
 - **Keşfet:** liste ve Kart Modu (swipe), karşılıklı beğenide eşleşme, "Seni beğenenler", ilgi alanı ve "ne arıyorsun" etiketleri; "geç" denen kişi 30 gün gelmez, Premium'da son karar geri alınır
 - **Sohbet:** fotoğraf, sesli mesaj ve dosya eki, okundu bilgisi, yanıtlama (alıntı), emoji tepkileri, mesaj geri alma, mesaj şikâyeti, eşleşmeyi kaldırma, engelleme; sohbet listesinde son mesaj, saat ve okunmamış sayısı, menüde okunmamış rozeti
 - **Akış:** gönderi, yorum, beğeni, kaydetme, 12 saatlik hikâyeler, takip
@@ -150,6 +151,58 @@ başlatma + imzalı webhook) ve `PaymentLog` tablosu.
   `ADMIN_REQUIRE_2FA=true` ile zorunlu olur. Telefon kaybında:
   `npm run admin:reset-2fa --prefix server -- e-posta`.
 
+## İzleme ve Uyarılar
+
+- **Yönetici uyarıları** (`server/src/lib/alerts.js`): ilk kez görülen ya da
+  çok tekrarlayan sunucu hatası, başarısız yedek/dış depo yüklemesi ve yeni
+  şikâyette yöneticilere e-posta ve anlık bildirim gider (aynı tür en fazla
+  30–60 dakikada bir). Alıcılar: `ADMIN_ALERT_EMAILS` ya da tüm yöneticiler.
+- **Ayakta mı takibi** (`.github/workflows/uptime.yml`): GitHub, 15 dakikada bir
+  `/api/health` adresini yoklar; site ya da veritabanı yanıt vermezse iş
+  başarısız olur ve depo sahibine e-posta gider. Açmak için GitHub > Settings >
+  Secrets and variables > Actions > Variables > `SITE_URL`.
+- **Sağlık kontrolü** veritabanına da sorgu atar; Railway erişilemeyen sunucuyu
+  yeniden başlatır.
+
+## Felaketten Kurtarma
+
+Sunucuyu durdurup yedekten geri yükle (yedek adı panel > Sistem'de görünür ya da
+indirilen dosyanın yolu verilir):
+
+```bash
+npm run backup:restore --prefix server -- kampus-20261011-033000.db.gz --yes
+```
+
+Komut yedeği doğrular, mevcut veritabanını yanına
+`.geri-yukleme-oncesi-<zaman>` adıyla saklar, yedeği yerine koyar ve eksik
+veritabanı değişikliklerini uygular. Bu akış her test çalıştırmasında
+`server/test/restore.test.js` ile prova edilir.
+
+## Performans ve Erişilebilirlik
+
+- **Yük testi** (`npm run load-test --prefix server`): 300 öğrenci, 40 eşleşme ×
+  30 mesaj ve 500 gönderilik geçici veritabanında, 50 eşzamanlı kullanıcıyla.
+  Son ölçüm (geliştirici dizüstü, tek süreç, SQLite):
+
+  | Uç | İstek/sn | p50 | p95 |
+  |---|---|---|---|
+  | Sağlık kontrolü | 2053 | 23 ms | 35 ms |
+  | Profilim | 598 | 82 ms | 102 ms |
+  | Keşfet ana sayfa | 204 | 242 ms | 278 ms |
+  | Kart Modu destesi | 362 | 135 ms | 168 ms |
+  | Akış | 446 | 106 ms | 151 ms |
+  | Sohbet listesi | 296 | 167 ms | 193 ms |
+  | Sohbet geçmişi | 607 | 81 ms | 98 ms |
+
+  Tek kampüs için fazlasıyla yeterli. Birden çok sunucuya geçilecekse
+  çevrimiçi durumu, hız sınırları ve kulüp yavaş modu bellekte tutulduğu için
+  Redis'e, veritabanı PostgreSQL'e taşınmalı.
+- **Erişilebilirlik** (`client/e2e/a11y.spec.js`): açık ve koyu temada tüm ana
+  sayfalar axe-core ile WCAG 2.1 A/AA'ya göre taranır; ihlal varsa CI durur.
+  Renk sistemi buna göre ayarlıdır: `--amber-soft` yazı mavisi, `--accent-fill`
+  beyaz yazılı dolu zemin mavisi (tek bir mavi iki kontrast sınırını aynı anda
+  geçemez).
+
 ## Yayın (Railway)
 
 Tek servis: sunucu, derlenmiş arayüzü (`client/dist`) de verir. `railway.json`
@@ -172,6 +225,7 @@ Railway > Variables:
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | İsteğe bağlı; boşsa anahtarlar otomatik üretilir |
 | `BACKUP_S3_*` | İsteğe bağlı (önerilir): yedeklerin S3/R2'ye de gönderilmesi |
 | `ADMIN_REQUIRE_2FA` | `true` ise yöneticiler için iki adımlı doğrulama zorunlu |
+| `ADMIN_ALERT_EMAILS` | İsteğe bağlı; uyarıların gideceği adresler (boşsa tüm yöneticiler) |
 | `VITE_SITE_URL`, `VITE_CONTACT_EMAIL` | Alan adı ve iletişim adresi; index.html, robots.txt ve sitemap.xml derlemede güncellenir |
 
 ## Bilinen Sınırlar ve Sıradaki Adımlar
@@ -187,6 +241,8 @@ Railway > Variables:
 - [x] Uçtan uca testler, yönetici iki adımlı doğrulaması ve işlem kaydı
 - [x] DAU/MAU için heartbeat (bağlı kullanıcıların son görülmesi 5 dakikada bir güncellenir)
 - [x] Yasaklı kelime filtresi ve onay kuyruğunda toplu işlem
+- [x] Yönetici uyarıları, ayakta mı takibi, geri yükleme komutu ve provası
+- [x] Okul e-postası değiştirme, erişilebilirlik taraması (WCAG AA), yük testi
 
 ## Yayın Öncesi Kontrol Listesi
 

@@ -3,6 +3,7 @@
 const express = require('express');
 const prisma = require('../lib/prisma');
 const { cleanUserText, LIMITS } = require('../lib/textSafety');
+const { alertAdmins } = require('../lib/alerts');
 const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
@@ -48,6 +49,19 @@ router.post('/', requireAuth, async (req, res) => {
         description: desc.value,
       },
     });
+
+    // Yöneticilere haber (yarım saatte en fazla bir kez, bekleyen sayısıyla)
+    prisma.report
+      .count({ where: { status: 'pending' } })
+      .then((pending) =>
+        alertAdmins('report-new', {
+          subject: `Yeni şikâyet (${pending} bekleyen)`,
+          text: `Yeni bir ${targetType === 'user' ? 'kullanıcı' : 'içerik'} şikâyeti geldi. Bekleyen şikâyet sayısı: ${pending}.`,
+          path: '/admin/reports',
+          throttleMs: 30 * 60 * 1000,
+        })
+      )
+      .catch(() => {});
 
     res.status(201).json({ message: 'Şikayetiniz alındı, incelenecek.', report });
   } catch (err) {

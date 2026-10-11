@@ -9,6 +9,7 @@ const { PRIVATE_UPLOADS } = require('../lib/paths');
 const fs = require('fs');
 const jwt = require('jsonwebtoken');
 const prisma = require('../lib/prisma');
+const { setUploadHeaders } = require('../lib/uploadNames');
 
 const router = express.Router();
 const privateDir = PRIVATE_UPLOADS;
@@ -63,6 +64,9 @@ router.get('/:filename', authenticateFileRequest, async (req, res) => {
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ error: 'Dosya bulunamadı.' });
     }
+    // Özel dosyalar hiçbir durumda sitenin kendi adresinden sayfa gibi çalışamaz
+    setUploadHeaders(res, filePath);
+    res.setHeader('Cache-Control', 'private, no-store');
 
     const url = `/api/files/${filename}`;
     const denied = () => res.status(403).json({ error: 'Bu dosyaya erişim yetkiniz yok.' });

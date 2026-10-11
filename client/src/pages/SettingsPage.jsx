@@ -252,6 +252,7 @@ export default function SettingsPage() {
           <label className="switch">
             <input
               type="checkbox"
+              aria-label={t("Yeni Eşleşme Bildirimleri")}
               checked={notifyMatches}
               disabled={saving}
               onChange={(e) => {
@@ -271,6 +272,7 @@ export default function SettingsPage() {
           <label className="switch">
             <input
               type="checkbox"
+              aria-label={t("Yeni Mesaj Bildirimleri")}
               checked={notifyMessages}
               disabled={saving}
               onChange={(e) => {
@@ -290,6 +292,7 @@ export default function SettingsPage() {
           <label className="switch">
             <input
               type="checkbox"
+              aria-label={t("Beğeni ve Yorum Bildirimleri")}
               checked={notifyPostActivity}
               disabled={saving}
               onChange={(e) => {
@@ -309,6 +312,7 @@ export default function SettingsPage() {
           <label className="switch">
             <input
               type="checkbox"
+              aria-label={t("Haftalık Özet")}
               checked={weeklySummaryEnabled}
               disabled={saving}
               onChange={(e) => {
@@ -328,8 +332,9 @@ export default function SettingsPage() {
           {t("Profilini kimlerin görebileceğini kontrol et.")}
         </p>
 
-        <label>{t("Profil Görünürlüğü")}</label>
+        <label htmlFor="settings-visibility">{t("Profil Görünürlüğü")}</label>
         <select
+          id="settings-visibility"
           value={profileVisibility}
           disabled={saving}
           onChange={(e) => {
@@ -353,6 +358,7 @@ export default function SettingsPage() {
           <label className="switch">
             <input
               type="checkbox"
+              aria-label={t("Çevrimiçi Durumunu Göster")}
               checked={showActivityStatus}
               disabled={saving}
               onChange={(e) => {
@@ -375,6 +381,7 @@ export default function SettingsPage() {
           <label className="switch">
             <input
               type="checkbox"
+              aria-label={t("Kart Modu")}
               checked={swipeEnabled}
               disabled={saving}
               onChange={(e) => {
@@ -459,8 +466,9 @@ export default function SettingsPage() {
           </button>
         </div>
 
-        <label>{t("Dil")}</label>
+        <label htmlFor="settings-language">{t("Dil")}</label>
         <select
+          id="settings-language"
           value={language}
           disabled={saving}
           onChange={(e) => {

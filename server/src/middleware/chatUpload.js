@@ -2,9 +2,9 @@
 // Profil fotoğrafı/öğrenci belgesi için kullanılan upload.js'den ayrı tutulur
 // çünkü burada daha geniş bir dosya türü seti ve daha büyük boyut sınırı gerekir.
 const multer = require('multer');
-const path = require('path');
 const { PUBLIC_UPLOADS, PRIVATE_UPLOADS } = require('../lib/paths');
 const fs = require('fs');
+const { safeUploadName } = require('../lib/uploadNames');
 
 const publicDir = PUBLIC_UPLOADS;
 // Sohbet ekleri (DM / grup / kulüp mesajları) herkese açık olmamalı — sadece
@@ -18,11 +18,8 @@ for (const dir of [publicDir, privateDir]) {
 function makeStorage(destDir) {
   return multer.diskStorage({
     destination: (req, file, cb) => cb(null, destDir),
-    filename: (req, file, cb) => {
-      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-      const ext = path.extname(file.originalname) || '';
-      cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
-    },
+    // Uzantı kabul edilen türden üretilir, kullanıcının dosya adından değil (lib/uploadNames.js)
+    filename: (req, file, cb) => cb(null, safeUploadName(file)),
   });
 }
 
