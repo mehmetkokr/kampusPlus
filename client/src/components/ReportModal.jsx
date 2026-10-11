@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X as CloseIcon } from 'lucide-react';
 import api from '../api';
 import { useI18n } from '../i18n';
@@ -35,7 +36,8 @@ export default function ReportModal({ targetType, targetId, onClose }) {
     }
   }
 
-  return (
+  // Sayfa katmanından bağımsız açılsın: cam efektli kartların içinde kalmasın
+  return createPortal(
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
@@ -75,6 +77,7 @@ export default function ReportModal({ targetType, targetId, onClose }) {
           </form>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

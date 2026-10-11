@@ -14,8 +14,8 @@ const HeroGradient = lazy(() => import('./HeroGradient'));
 
 // Ortalanmış, sade hero: büyük serif başlık, kısa açıklama, gerçek bir güven
 // satırı (sistemin tanıdığı üniversite sayısı) ve iki büyük düğme. Mağaza
-// uygulamaları henüz olmadığı için sahte mağaza düğmesi yok; aynı biçimde
-// "Ücretsiz katıl" / "Giriş yap" var ve altında dürüst bir "yakında" notu.
+// uygulaması yok; site telefona uygulama gibi yüklenebildiği (PWA) için
+// altında bunu anlatan kısa bir not var.
 const ROTATING = ['ders arkadaşını', 'kulübünü', 'yeni arkadaşlarını', 'kahve arkadaşını'];
 const EASE = [0.16, 1, 0.3, 1];
 
@@ -156,7 +156,7 @@ export default function Hero() {
           </motion.p>
           <motion.p {...fade(0.3)} className="mt-2 max-w-[24rem] text-[0.8125rem] leading-relaxed text-paper-faint">
             <Smartphone size={14} className="mr-1 inline-block align-[-2px]" />
-            {t('iOS ve Android uygulamaları yakında · şimdilik tarayıcından kullan')}
+            {t('Telefonuna uygulama gibi yükle: tarayıcıda “Ana Ekrana Ekle” yeter, bildirimler de gelir')}
           </motion.p>
         </div>
 

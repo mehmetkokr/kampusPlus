@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ClubIcon from '../components/ClubIcon';
-import { io } from 'socket.io-client';
+import { Flag as FlagIcon } from 'lucide-react';
+import ReportModal from '../components/ReportModal';
+import { onEveryConnect, useSocket } from '../lib/socket';
 import api, { buildFileUrl } from '../api';
 import { API_BASE_URL } from '../config';
 import {
@@ -81,7 +83,8 @@ export default function ClubDetailPage() {
   const [showManage, setShowManage] = useState(false);
   const [attendeesOpenFor, setAttendeesOpenFor] = useState(null);
 
-  const socketRef = useRef(null);
+  const socket = useSocket();
+  const [reportMsgId, setReportMsgId] = useState(null);
   const bottomRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const skipAutoScrollRef = useRef(false);
@@ -122,46 +125,58 @@ export default function ClubDetailPage() {
       })
       .catch(() => {});
 
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-    const socket = io(API_BASE_URL || undefined, { auth: { token } });
-    socketRef.current = socket;
-    const id = Number(clubId);
+    // loadClub/loadEvents her render'da yeniden oluşuyor; sadece clubId değişince
+    // yeniden çalışması amaçlandığı için dep listesine eklenmiyor.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clubId]);
 
-    socket.emit('join_club', clubId);
-    socket.on('new_club_message', (msg) => {
+  // Paylaşılan gerçek zamanlı bağlantı: bu ekran yalnızca dinleyici ekler/kaldırır
+  useEffect(() => {
+    if (!socket) return undefined;
+    const id = Number(clubId);
+    // Bağlantı her (yeniden) kurulduğunda kulüp odasına katıl
+    const stopJoin = onEveryConnect(socket, () => socket.emit('join_club', clubId));
+    const handlers = {};
+    const on = (ev, fn) => {
+      handlers[ev] = fn;
+      on(ev, fn);
+    };
+    on('new_club_message', (msg) => {
       if (msg.clubId === id) setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
     });
-    socket.on('club_message_deleted', ({ clubId: c, messageId, unpinned }) => {
+    on('club_message_deleted', ({ clubId: c, messageId, unpinned }) => {
       if (c !== id) return;
       setMessages((prev) => prev.filter((m) => m.id !== messageId));
       if (unpinned) setClub((cl) => (cl ? { ...cl, pinnedMessage: null } : cl));
     });
-    socket.on('club_poll_updated', ({ clubId: c, poll }) => {
+    on('club_poll_updated', ({ clubId: c, poll }) => {
       if (c !== id) return;
       setMessages((prev) => prev.map((m) => (m.poll?.id === poll.id ? { ...m, poll } : m)));
     });
-    socket.on('club_pinned', ({ clubId: c, message }) => {
+    on('club_pinned', ({ clubId: c, message }) => {
       if (c === id) setClub((cl) => (cl ? { ...cl, pinnedMessage: message } : cl));
     });
-    socket.on('club_updated', ({ clubId: c, ...rest }) => {
+    on('club_updated', ({ clubId: c, ...rest }) => {
       if (c === id) setClub((cl) => (cl ? { ...cl, ...rest } : cl));
     });
-    socket.on('club_muted', ({ clubId: c, mutedUntil }) => {
+    on('club_muted', ({ clubId: c, mutedUntil }) => {
       if (c === id) setClub((cl) => (cl ? { ...cl, myMembership: { ...cl.myMembership, mutedUntil } } : cl));
     });
-    socket.on('club_closed', ({ clubId: c }) => {
+    on('club_closed', ({ clubId: c }) => {
       if (c !== id) return;
       toast.error('Bu kulüp başkanı tarafından kapatıldı.');
       navigate('/clubs');
     });
     // Sunucu bir mesajı reddederse (duyuru modu, susturma, yavaş mod) nedenini göster
-    socket.on('error_message', (msg) => toast.error(msg));
+    on('error_message', (msg) => toast.error(msg));
 
-    return () => socket.disconnect();
-    // loadClub/loadEvents her render'da yeniden oluşuyor; sadece clubId değişince
-    // yeniden çalışması amaçlandığı için dep listesine eklenmiyor.
+    return () => {
+      stopJoin();
+      Object.entries(handlers).forEach(([ev, fn]) => socket.off(ev, fn));
+    };
+    // navigate ve toast sabit; yalnızca kulüp ya da bağlantı değişince yeniden kurulur
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clubId]);
+  }, [clubId, socket]);
 
   useEffect(() => {
     if (tab === TABS.CHAT) {
@@ -198,7 +213,7 @@ export default function ClubDetailPage() {
   function sendMessage(e) {
     e.preventDefault();
     if (!text.trim()) return;
-    socketRef.current.emit('send_club_message', { clubId, content: text });
+    socket?.emit('send_club_message', { clubId, content: text });
     setText('');
   }
 
@@ -419,7 +434,7 @@ export default function ClubDetailPage() {
                     ) : (
                       <div className={`message-bubble ${mine ? 'message-mine' : 'message-theirs'}`}>{m.content}</div>
                     )}
-                    {(canDelete || canManage) && (
+                    {(canDelete || canManage || !mine) && (
                       <div className="club-msg-menu-wrap">
                         <button type="button" className="club-msg-menu-btn" onClick={() => setMsgMenuFor(msgMenuFor === m.id ? null : m.id)} aria-label={t('Mesaj seçenekleri')}>
                           <DotsIcon width={16} height={16} />
@@ -434,6 +449,17 @@ export default function ClubDetailPage() {
                             {canDelete && (
                               <button className="danger" onClick={() => deleteMessage(m)}>
                                 <TrashIcon width={14} height={14} /> {t('Mesajı sil')}
+                              </button>
+                            )}
+                            {!mine && (
+                              <button
+                                className="danger"
+                                onClick={() => {
+                                  setMsgMenuFor(null);
+                                  setReportMsgId(m.id);
+                                }}
+                              >
+                                <FlagIcon width={14} height={14} /> {t('Şikayet et')}
                               </button>
                             )}
                           </div>
@@ -711,6 +737,7 @@ export default function ClubDetailPage() {
           onClosed={() => navigate('/clubs')}
         />
       )}
+      {reportMsgId && <ReportModal targetType="club_message" targetId={reportMsgId} onClose={() => setReportMsgId(null)} />}
     </div>
   );
 }

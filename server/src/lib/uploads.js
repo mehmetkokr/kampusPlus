@@ -125,7 +125,13 @@ async function runUploadCleanup() {
   try {
     const stories = await cleanupExpiredStories();
     const orphans = await sweepOrphanUploads();
-    if (stories || orphans) console.log(`[temizlik] ${stories} eski hikaye, ${orphans} yetim dosya silindi.`);
+    // Hata kayıtları ve analitik olayları da süresi dolunca silinir
+    const { pruneErrorLogs } = require('./errorLog');
+    const { pruneAnalytics } = require('./analytics');
+    const [errors, events] = await Promise.all([pruneErrorLogs(), pruneAnalytics()]);
+    if (stories || orphans || errors || events) {
+      console.log(`[temizlik] ${stories} eski hikaye, ${orphans} yetim dosya, ${errors} eski hata kaydı, ${events} eski analitik olayı silindi.`);
+    }
   } catch (err) {
     console.error('[temizlik] Dosya temizliği başarısız:', err);
   }

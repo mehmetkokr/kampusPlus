@@ -59,7 +59,6 @@ export default function DiscoverPage() {
   const [loading, setLoading] = useState(true);
   const [hiddenIds, setHiddenIds] = useState(new Set());
   const [followedIds, setFollowedIds] = useState(new Set());
-  const [openMenuId, setOpenMenuId] = useState(null);
   const [reportingUserId, setReportingUserId] = useState(null);
 
   const [query, setQuery] = useState('');
@@ -137,11 +136,7 @@ export default function DiscoverPage() {
   }
 
   async function handleBlock(userId) {
-    if (!await confirm('Bu kullanıcıyı engellemek istediğine emin misin?')) {
-      setOpenMenuId(null);
-      return;
-    }
-    setOpenMenuId(null);
+    if (!await confirm('Bu kullanıcıyı engellemek istediğine emin misin?')) return;
     try {
       await api.post(`/users/${userId}/block`);
       setHiddenIds((prev) => new Set(prev).add(userId));

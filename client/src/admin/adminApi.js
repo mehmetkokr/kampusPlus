@@ -39,6 +39,23 @@ export const adminApi = {
 
   getAdmins: () => api.get('/admin/admins'),
   addAdmin: (email) => api.post('/admin/admins', { email }),
+
+  getAnalytics: (days) => api.get('/admin/analytics', { params: { days } }),
+  getSystem: () => api.get('/admin/system'),
+  getBackups: () => api.get('/admin/backups'),
+  createBackup: () => api.post('/admin/backups'),
+  downloadBackup: (name) => api.get(`/admin/backups/${encodeURIComponent(name)}`, { responseType: 'blob' }),
+  getErrors: (params) => api.get('/admin/errors', { params }),
+  updateError: (id, data) => api.patch(`/admin/errors/${id}`, data),
+  clearResolvedErrors: () => api.delete('/admin/errors'),
+  getAudit: (params) => api.get('/admin/audit', { params }),
+  get2fa: () => api.get('/admin/2fa'),
+  setup2fa: () => api.post('/admin/2fa/setup'),
+  enable2fa: (code) => api.post('/admin/2fa/enable', { code }),
+  disable2fa: (code) => api.post('/admin/2fa/disable', { code }),
+  getBannedWords: () => api.get('/admin/banned-words'),
+  addBannedWord: (word) => api.post('/admin/banned-words', { word }),
+  deleteBannedWord: (id) => api.delete(`/admin/banned-words/${id}`),
 };
 
 // Kuyruk/şikayet kararından sonra kenar çubuğu rozetlerini tazele

@@ -4,9 +4,10 @@
 
 const jwt = require('jsonwebtoken');
 const prisma = require('./lib/prisma');
-const { createNotification } = require('./lib/notifications');
 const { isBlockedEitherWay } = require('./lib/block');
 const { checkCanPost, markPosted } = require('./lib/clubChat');
+const { cleanUserText, LIMITS } = require('./lib/textSafety');
+const { MESSAGE_INCLUDE, announceMessage, validReplyTo } = require('./lib/chat');
 
 // O anda bağlı olan kullanıcıların id seti (çevrimiçi durumu için).
 // Not: Tek sunucu instance'ı için yeterlidir; çoklu instance'da Redis gibi
@@ -60,7 +61,43 @@ function getOnlineUserIds() {
   return [...onlineUsers];
 }
 
+let ioRef = null;
+
+// Askıya alma, "tüm cihazlardan çıkış", şifre değişikliği ya da hesap silme
+// sonrası kullanıcının açık gerçek zamanlı bağlantıları hemen kesilir; aksi
+// halde sayfayı yenileyene kadar mesaj göndermeye devam edebilirdi.
+// exceptSocketId: işlemi yapan cihazın bağlantısı (ör. şifresini değiştiren
+// kişinin açık sekmesi) kapatılmaz; o cihaz yeni oturum anahtarını alır.
+async function disconnectUser(userId, reason = 'session_ended', { exceptSocketId } = {}) {
+  if (!ioRef) return;
+  const sockets = await ioRef.in(`user_${userId}`).fetchSockets();
+  for (const s of sockets) {
+    if (exceptSocketId && s.id === exceptSocketId) continue;
+    s.emit('session_ended', { reason });
+    s.disconnect(true);
+  }
+}
+
+// "Son görülme" yalnızca bağlantı kopunca yazılıyordu; uygulamayı uzun süre
+// açık tutanlar aktif sayılmıyordu. Bağlı kullanıcıların zamanı 5 dakikada bir
+// güncellenir (DAU/MAU ve "son görülme" daha doğru olur).
+const HEARTBEAT_MS = 5 * 60 * 1000;
+function startHeartbeat() {
+  const timer = setInterval(async () => {
+    const ids = [...onlineUsers];
+    if (!ids.length) return;
+    try {
+      await prisma.user.updateMany({ where: { id: { in: ids } }, data: { lastSeenAt: new Date() } });
+    } catch (err) {
+      console.error('[socket] Son görülme güncellenemedi:', err);
+    }
+  }, HEARTBEAT_MS);
+  timer.unref?.();
+}
+
 function setupSocket(io) {
+  ioRef = io;
+  startHeartbeat();
   // Bağlantı kurulurken token doğrulama.
   // JWT imzası geçerli olsa bile, kullanıcı sonradan yasaklanmış olabilir
   // (token 7 gün geçerli kalır) — bu yüzden veritabanından da doğruluyoruz.
@@ -158,15 +195,18 @@ function setupSocket(io) {
         });
 
         io.to(`match_${matchId}`).emit('messages_read', { matchId: Number(matchId), readerId: socket.userId });
+        // Okuyanın diğer sekmeleri/cihazları ve alt menü rozeti güncellensin
+        io.to(`user_${socket.userId}`).emit('chat_read', { matchId: Number(matchId) });
       } catch (err) {
         console.error(err);
       }
     });
 
     // Mesaj gönderme
-    socket.on('send_message', async ({ matchId, content }) => {
+    socket.on('send_message', async ({ matchId, content, replyToId } = {}) => {
       try {
-        if (!content || !content.trim()) return;
+        const text = await cleanUserText(content, { max: LIMITS.message, required: true, label: 'Mesaj' });
+        if (text.error) return socket.emit('error_message', text.error);
         if (isRateLimited(socket.userId)) {
           return socket.emit('error_message', 'Çok hızlı mesaj gönderiyorsun, biraz yavaşla.');
         }
@@ -185,26 +225,16 @@ function setupSocket(io) {
 
         const message = await prisma.message.create({
           data: {
-            matchId: Number(matchId),
+            matchId: match.id,
             senderId: socket.userId,
-            content: content.trim(),
+            content: text.value,
+            replyToId: replyToId ? await validReplyTo(match.id, replyToId) : null,
           },
-          include: { sender: { select: { id: true, fullName: true } } },
+          include: MESSAGE_INCLUDE,
         });
 
-        // Odadaki herkese (her iki taraf) yeni mesajı yayınla
-        io.to(`match_${matchId}`).emit('new_message', message);
-
-        // Karşı tarafa bildirim oluştur (sohbet penceresi kapalıysa Bildirim
-        // Merkezi'nden görsün)
-        const otherUserId = match.userAId === socket.userId ? match.userBId : match.userAId;
-        await createNotification(io, {
-          userId: otherUserId,
-          type: 'message',
-          actorId: socket.userId,
-          targetType: 'match',
-          targetId: match.id,
-        });
+        // Odaya, iki tarafın sohbet listesine ve (sohbet kapalıysa) bildirimlere
+        await announceMessage(io, match, message);
       } catch (err) {
         console.error(err);
         socket.emit('error_message', 'Mesaj gönderilemedi.');
@@ -222,9 +252,10 @@ function setupSocket(io) {
     });
 
     // Kulüp grup sohbetine metin mesajı gönderme
-    socket.on('send_club_message', async ({ clubId, content }) => {
+    socket.on('send_club_message', async ({ clubId, content } = {}) => {
       try {
-        if (!content || !content.trim()) return;
+        const text = await cleanUserText(content, { max: LIMITS.message, required: true, label: 'Mesaj' });
+        if (text.error) return socket.emit('error_message', text.error);
         if (isRateLimited(socket.userId)) {
           return socket.emit('error_message', 'Çok hızlı mesaj gönderiyorsun, biraz yavaşla.');
         }
@@ -238,7 +269,7 @@ function setupSocket(io) {
           data: {
             clubId: Number(clubId),
             senderId: socket.userId,
-            content: content.trim(),
+            content: text.value,
           },
           include: { sender: { select: { id: true, fullName: true, photoUrl: true } } },
         });
@@ -276,4 +307,4 @@ function setupSocket(io) {
   });
 }
 
-module.exports = { setupSocket, getOnlineUserIds };
+module.exports = { setupSocket, getOnlineUserIds, disconnectUser };

@@ -11,7 +11,8 @@ kampüslerindeki kişileri görür (Premium ile tüm üniversiteler).
 - **Veritabanı:** SQLite (Prisma ORM)
 - **Gerçek zamanlı:** Socket.io (birebir ve kulüp sohbeti, çevrimiçi durumu)
 - **Kimlik doğrulama:** JWT (7 gün; şifre sıfırlama ve "tüm cihazlardan çıkış" eski oturumları geçersiz kılar)
-- **Diğer:** nodemailer (e-posta), tesseract.js (öğrenci belgesi OCR ipucu), node-cron (zamanlanmış görevler)
+- **Diğer:** nodemailer (e-posta), tesseract.js (öğrenci belgesi OCR ipucu), node-cron (zamanlanmış görevler), web-push (anlık bildirim)
+- **Kalite:** node:test (sunucu), Vitest + Testing Library ve ESLint (arayüz), Playwright (uçtan uca, gerçek tarayıcı), GitHub Actions
 
 ## Kurulum (Kendi Bilgisayarında)
 
@@ -47,21 +48,30 @@ npx prisma migrate deploy
 ### Testler
 
 ```bash
-npm test
+npm test           # sunucu + arayüz testleri
+npm run lint       # arayüz kod denetimi (uyarı da kabul edilmez)
+npm run test:e2e   # uçtan uca testler (gerçek tarayıcıda kayıt, eşleşme, sohbet, ayarlar)
 ```
 
+Uçtan uca testler için bir kez `npx playwright install chromium` (client
+klasöründe) gerekir; Windows'ta yüklü Edge ile de çalışır:
+`E2E_CHANNEL=msedge npm run test:e2e --prefix client`. Testler kendi geçici
+veritabanını ve deneme hesaplarını kurar.
+
 Sunucu testleri geçici bir veritabanı ve klasör kullanır, mevcut verine dokunmaz.
-GitHub'a gönderilen her değişiklikte testler ve arayüz derlemesi otomatik çalışır
-(`.github/workflows/ci.yml`).
+GitHub'a gönderilen her değişiklikte testler, kod denetimi ve arayüz derlemesi
+otomatik çalışır (`.github/workflows/ci.yml`).
 
 ## Özellikler
 
-- **Hesap:** okul e-postasına 6 haneli kodla kayıt, şifremi unuttum, hesabı dondurma/silme, öğrenci belgesiyle onaylı rozet
-- **Keşfet:** liste ve Kart Modu (swipe), karşılıklı beğenide eşleşme, "Seni beğenenler", ilgi alanı ve "ne arıyorsun" etiketleri
-- **Sohbet:** fotoğraf, sesli mesaj ve dosya eki, okundu bilgisi, mesaj geri alma, eşleşmeyi kaldırma, engelleme
+- **Hesap:** okul e-postasına 6 haneli kodla kayıt, yılda bir okul e-postasıyla yeniden doğrulama (mezunlar listelerden gizlenir), şifre değiştirme, şifremi unuttum, verilerimi indir (KVKK), hesabı dondurma/silme, öğrenci belgesiyle onaylı rozet
+- **Keşfet:** liste ve Kart Modu (swipe), karşılıklı beğenide eşleşme, "Seni beğenenler", ilgi alanı ve "ne arıyorsun" etiketleri; "geç" denen kişi 30 gün gelmez, Premium'da son karar geri alınır
+- **Sohbet:** fotoğraf, sesli mesaj ve dosya eki, okundu bilgisi, yanıtlama (alıntı), emoji tepkileri, mesaj geri alma, mesaj şikâyeti, eşleşmeyi kaldırma, engelleme; sohbet listesinde son mesaj, saat ve okunmamış sayısı, menüde okunmamış rozeti
 - **Akış:** gönderi, yorum, beğeni, kaydetme, 12 saatlik hikâyeler, takip
-- **Kulüpler:** roller (başkan/yönetici), atma/yasaklama/susturma, kulüp sohbeti, sabitleme, anketler, etkinlikler ve katılım
-- **Bildirimler, şikâyet sistemi, gizlilik ayarları, açık/koyu tema, Türkçe/İngilizce**
+- **Kulüpler:** roller (başkan/yönetici), atma/yasaklama/susturma, kulüp sohbeti, sabitleme, anketler, etkinlikler ve katılım, etkinlikten önce katılımcılara hatırlatma
+- **Bildirimler:** uygulama içinde anlık; bildirim izni verilen cihazlara uygulama kapalıyken de (Web Push). iPhone'da uygulama ana ekrana eklenince çalışır
+- **Telefona yükleme (PWA):** ana ekrana eklenir, tam ekran açılır, internet yokken bilgi ekranı gösterir
+- **Şikâyet sistemi, gizlilik ayarları, açık/koyu tema, Türkçe/İngilizce**
 - **Premium:** tüm üniversitelerdeki kişilere erişim (aylık/yıllık)
 
 ## Yönetim Paneli (`/admin`)
@@ -71,7 +81,11 @@ GitHub'a gönderilen her değişiklikte testler ve arayüz derlemesi otomatik ç
 - **Onay kuyruğu:** öğrenci belgelerini önizleme, OCR ipucu, tek tıkla onay/red (red gerekçesi öğrenciye e-postayla gider)
 - **İçerik ve şikâyetler:** gönderi/hikâye/mesaj silme, şikâyetten içerik silme veya kullanıcıyı askıya alma
 - **Kampüsler:** üniversite ve e-posta alan adı yönetimi
-- **Kampanyalar:** hedef kitle seçerek bildirim, e-posta ve duyuru bandı
+- **Kampanyalar:** hedef kitle seçerek bildirim (uygulama kapalıysa telefona da), e-posta ve duyuru bandı
+- **Analitik:** tekil ziyaretçi, en çok açılan sayfalar, ziyaretten ilk beğeniye kayıt hunisi, Premium dönüşümü
+- **Onay kuyruğu:** toplu seçim, toplu onay/red
+- **Sistem:** veritabanı yedekleri (alma/indirme, dış depo durumu), hata kayıtları, yönetici işlem kaydı, bildirim alan cihaz sayısı
+- **Ayarlar:** yöneticiler, iki adımlı doğrulama (TOTP), yasaklı kelimeler
 
 OCR sonucu yalnızca admin'e ipucudur; hiçbir hesabı tek başına doğrulamaz.
 
@@ -99,6 +113,43 @@ başlatma + imzalı webhook) ve `PaymentLog` tablosu.
   dolmuş hikâyeler (bekleyen şikâyeti olanlar hariç) ve hiçbir kayda bağlı olmayan
   dosyalar silinir.
 
+## Yedek, Hata Takibi, Bildirim ve Analitik
+
+- **Yedek** (`server/src/lib/backup.js`): her gece 03:30'da veritabanının tutarlı
+  bir kopyası sıkıştırılıp `STORAGE_DIR/backups` altına yazılır; son 14 tanesi
+  (`BACKUP_KEEP`) saklanır. Yönetim paneli > Sistem'den elle alınıp indirilebilir.
+  Yedekler sunucuyla aynı diskte durduğu için ara sıra indirip ayrıca saklayın.
+  Geri yükleme: dosyayı açın (`gunzip`), sunucuyu durdurun, `DATABASE_URL`'deki
+  dosyanın yerine koyun, sunucuyu başlatın.
+- **Hata takibi** (`server/src/lib/errorLog.js`, `client/src/lib/telemetry.js`):
+  sunucu ve tarayıcı hataları `ErrorLog` tablosuna yazılır, aynı hata tek satırda
+  sayılır; panelde Sistem sayfasında görünür. `SENTRY_DSN` / `VITE_SENTRY_DSN`
+  tanımlanırsa ayrıca Sentry'ye gider.
+- **Anlık bildirim** (`server/src/lib/push.js`, `client/public/sw.js`): her
+  bildirim kaydı, kullanıcı o an uygulamada değilse kayıtlı cihazlarına da
+  gönderilir. Kilit ekranında mesaj içeriği gösterilmez. Anahtarlar ilk açılışta
+  `STORAGE_DIR/vapid-keys.json` dosyasına üretilir; **bu dosyayı silmeyin**.
+- **Analitik** (`server/src/lib/analytics.js`): sayfa görüntüleme ve kayıt
+  adımları kendi veritabanımızda tutulur; IP, konum, cihaz bilgisi tutulmaz.
+  Olaylar 180 gün, hata kayıtları 90 gün saklanır.
+
+## Güvenlik ve Moderasyon
+
+- **Metin kuralları** (`server/src/lib/textSafety.js`): mesaj 2000, hakkımda 300,
+  gönderi/yorum 280 karakter; sınırlar sunucuda da uygulanır. Yaygın küfürler
+  (ve panelden eklenen kelimeler) ilk harfi kalacak şekilde yıldızlanır.
+- **Oturumlar:** askıya alma, tüm cihazlardan çıkış, şifre değişikliği ya da
+  hesap silmede açık gerçek zamanlı bağlantılar hemen kapanır.
+- **Özel dosyalar** adreste oturum anahtarıyla değil, yalnızca dosya açmaya
+  yarayan 24 saatlik anahtarla (`?ft=`) açılır.
+- **Sosyal bağlantılar** yalnızca geçerli Instagram/X kullanıcı adı olarak
+  kaydedilir ve gösterilir.
+- **Yönetici işlem kaydı** (`server/src/lib/audit.js`): panelden geçen her
+  başarılı değişiklik otomatik kaydedilir; şifre/kod gibi alanlar yazılmaz.
+- **İki adımlı doğrulama:** yöneticiler panel > Ayarlar'dan açar.
+  `ADMIN_REQUIRE_2FA=true` ile zorunlu olur. Telefon kaybında:
+  `npm run admin:reset-2fa --prefix server -- e-posta`.
+
 ## Yayın (Railway)
 
 Tek servis: sunucu, derlenmiş arayüzü (`client/dist`) de verir. `railway.json`
@@ -116,13 +167,53 @@ Railway > Variables:
 | `SMTP_*`, `MAIL_FROM` | Gerçek e-posta için zorunlu |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | İlk açılışta yönetici hesabı oluşturur |
 | `SEED_DEMO_USERS` | `true` ise demo öğrenciler (gerçek kullanıcılar gelmeden kapatın) |
+| `SENTRY_DSN`, `VITE_SENTRY_DSN` | İsteğe bağlı, Sentry hata takibi |
+| `BACKUP_KEEP` | İsteğe bağlı, saklanacak yedek sayısı (varsayılan 14) |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | İsteğe bağlı; boşsa anahtarlar otomatik üretilir |
+| `BACKUP_S3_*` | İsteğe bağlı (önerilir): yedeklerin S3/R2'ye de gönderilmesi |
+| `ADMIN_REQUIRE_2FA` | `true` ise yöneticiler için iki adımlı doğrulama zorunlu |
+| `VITE_SITE_URL`, `VITE_CONTACT_EMAIL` | Alan adı ve iletişim adresi; index.html, robots.txt ve sitemap.xml derlemede güncellenir |
 
 ## Bilinen Sınırlar ve Sıradaki Adımlar
 
 - [ ] Gerçek ödeme sağlayıcısı (iyzico) entegrasyonu
 - [ ] PostgreSQL'e geçiş; çevrimiçi durumu ve socket hız sınırı için Redis (şu an tek sunucu varsayılır)
-- [ ] Web Push bildirimleri (bildirimler şu an yalnızca uygulama açıkken gelir)
-- [ ] DAU/MAU için gerçek "heartbeat" (`lastSeenAt` yalnızca bağlantı kopunca güncelleniyor)
-- [ ] Otomatik içerik taraması / yasaklı kelime filtresi
-- [ ] Onay kuyruğunda toplu işlem
-- [ ] Veritabanı yedekleme ve hata izleme (ör. Sentry)
+- [x] Web Push bildirimleri ve telefona yükleme (PWA)
+- [ ] Otomatik fotoğraf taraması (şimdilik şikâyet sistemi)
+- [x] Veritabanı yedekleme ve hata izleme (isteğe bağlı Sentry)
+- [x] Kendi analitiğimiz (kayıt hunisi, sayfa görüntüleme)
+- [x] Arayüz testleri ve kod denetimi
+- [x] Yedeklerin dış depoya (S3/R2) otomatik gönderilmesi (`BACKUP_S3_*` ayarlarıyla)
+- [x] Uçtan uca testler, yönetici iki adımlı doğrulaması ve işlem kaydı
+- [x] DAU/MAU için heartbeat (bağlı kullanıcıların son görülmesi 5 dakikada bir güncellenir)
+- [x] Yasaklı kelime filtresi ve onay kuyruğunda toplu işlem
+
+## Yayın Öncesi Kontrol Listesi
+
+**Ödeme (iyzico ya da Stripe)** — işyeri hesabı açıldığında:
+
+1. Sağlayıcının test (sandbox) anahtarlarını alın; bana iletmeyin, Railway >
+   Variables'a kendiniz ekleyin.
+2. `server/src/routes/premium.js`: `activate` yerine ödeme başlatma (sağlayıcının
+   ödeme sayfasına yönlendirme) ve imzası doğrulanan bir webhook ucu eklenir.
+   Premium yalnızca webhook "ödeme başarılı" dediğinde açılır; her ödeme
+   `PaymentLog`'a yazılır.
+3. Otomatik yenileme sağlayıcının abonelik özelliğiyle yapılır; `premiumAutoRenew`
+   kapatılınca abonelik sağlayıcıda da iptal edilir.
+4. Test kartlarıyla uçtan uca denenir, sonra `MOCK_PAYMENTS` kapalı kalacak
+   şekilde canlı anahtarlara geçilir.
+5. Mesafeli satış sözleşmesi, ön bilgilendirme formu ve iade/cayma koşulları
+   ödeme sayfasından önce gösterilir (hukukçu metni).
+
+**Hukuki metinler** (`client/src/pages/LegalPage.jsx`) — hukukçuya sorulacaklar:
+
+- Veri sorumlusunun unvanı, adresi, iletişim bilgisi; gerekiyorsa VERBİS kaydı.
+- Öğrenci belgesi ve doğum tarihi için açık rıza gerekip gerekmediği; gerekiyorsa
+  kayıt ekranına ayrı onay kutusu.
+- Yurt dışına aktarım: sunucu (Railway), e-posta sağlayıcısı, bildirim servisleri
+  (Google/Apple/Mozilla) ve Sentry yurt dışında. KVKK m.9 kapsamında gereken
+  dayanak ve aydınlatma.
+- Yedeklerde silinen hesap verilerinin 14 gün kalması, analitik (180 gün) ve
+  hata kayıtları (90 gün) saklama süreleri.
+- Premium: mesafeli satış sözleşmesi, cayma hakkı, otomatik yenileme bildirimi.
+- 18 yaş sınırı ve kullanıcılar arası buluşmalarda sorumluluk maddesi.

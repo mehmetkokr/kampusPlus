@@ -4,6 +4,7 @@
 
 const jwt = require('jsonwebtoken');
 const prisma = require('../lib/prisma');
+const { twoFactorRequired } = require('../lib/twoFactor');
 
 async function requireAdmin(req, res, next) {
   const authHeader = req.headers.authorization;
@@ -21,7 +22,7 @@ async function requireAdmin(req, res, next) {
     }
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
-      select: { id: true, isAdmin: true, isBanned: true, tokenVersion: true },
+      select: { id: true, isAdmin: true, isBanned: true, tokenVersion: true, totpEnabled: true },
     });
 
     if (!user || user.isBanned) {
@@ -34,6 +35,12 @@ async function requireAdmin(req, res, next) {
 
     if (!user.isAdmin) {
       return res.status(403).json({ error: 'Bu işlem için admin yetkisi gerekiyor.' });
+    }
+
+    // Zorunlu iki adımlı doğrulama açıksa, kurmamış yönetici yalnızca kurulum
+    // uçlarını kullanabilir (lib/twoFactor.js)
+    if (twoFactorRequired() && !user.totpEnabled && !req.path.startsWith('/2fa')) {
+      return res.status(403).json({ error: 'Panele devam etmek için iki adımlı doğrulamayı aç.', code: 'TWO_FACTOR_SETUP_REQUIRED' });
     }
 
     req.userId = user.id;

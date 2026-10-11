@@ -1,0 +1,180 @@
+/* Sohbet: mesaj eylemleri (tepki, yanıt, şikâyet), alıntı ve yanıt çubuğu */
+
+/* Yanıt çubuğu mesaj kutusunun üstünde dursun */
+.chat-input-bar {
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.msg-tap {
+  display: flex;
+  flex-direction: column;
+  align-items: inherit;
+  gap: 4px;
+  max-width: 100%;
+  border-radius: 18px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.msg-tap:focus-visible {
+  outline: 2px solid var(--amber-soft);
+  outline-offset: 3px;
+}
+.msg-row.is-active .message-bubble,
+.msg-row.is-active .message-photo,
+.msg-row.is-active .file-bubble {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--amber-soft) 55%, transparent);
+}
+
+/* Yanıtlanan mesaj (alıntı) */
+.msg-quote {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-width: 100%;
+  padding: 8px 12px;
+  border: 0;
+  border-left: 3px solid var(--amber-soft);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-2) 80%, transparent);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 12.5px;
+  line-height: 1.35;
+  text-align: left;
+  cursor: pointer;
+}
+.msg-quote strong { color: var(--text); font-size: 12px; font-weight: 650; }
+.msg-quote span {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+.msg-quote:disabled { cursor: default; font-style: italic; }
+
+/* Tepki çipleri */
+.msg-reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: -2px;
+}
+.msg-reaction {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  min-height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+.msg-reaction span { font-size: 12px; font-weight: 600; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.msg-reaction.mine {
+  border-color: color-mix(in srgb, var(--amber-soft) 60%, transparent);
+  background: color-mix(in srgb, var(--amber-soft) 14%, var(--surface));
+}
+
+/* Mesaja dokununca açılan eylem çubuğu */
+.msg-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 12px 32px -18px rgba(0, 0, 0, 0.55);
+  animation: msg-actions-in 0.16s cubic-bezier(0.23, 1, 0.32, 1);
+}
+@keyframes msg-actions-in {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+}
+.msg-actions-emoji { display: flex; gap: 2px; }
+.msg-actions-emoji button {
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  font-size: 22px;
+  cursor: pointer;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.msg-actions-emoji button:hover,
+.msg-actions-emoji button:focus-visible { background: var(--surface-2); transform: scale(1.12); outline: none; }
+.msg-actions-row { display: flex; gap: 4px; flex-wrap: wrap; }
+.msg-actions-row button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.msg-actions-row button.danger { color: var(--coral); }
+
+/* Alıntıya dokununca hedef mesaj kısa süre vurgulanır */
+.msg-flash .message-bubble,
+.msg-flash .message-photo,
+.msg-flash .file-bubble {
+  animation: msg-flash 1.2s ease;
+}
+@keyframes msg-flash {
+  0%, 60% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber-soft) 70%, transparent); }
+  100% { box-shadow: none; }
+}
+
+/* Yanıt çubuğu (mesaj kutusunun üstünde) */
+.reply-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 448px;
+  padding: 8px 8px 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--amber-soft);
+}
+.reply-bar-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.reply-bar-text strong { color: var(--text); font-size: 12.5px; font-weight: 650; }
+.reply-bar-text span {
+  color: var(--text-muted);
+  font-size: 12.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.reply-bar button {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.reply-bar button:hover { background: var(--surface-2); color: var(--text); }
+
+@media (prefers-reduced-motion: reduce) {
+  .msg-actions, .msg-flash .message-bubble, .msg-flash .message-photo, .msg-flash .file-bubble { animation: none; }
+  .msg-actions-emoji button { transition: none; }
+}

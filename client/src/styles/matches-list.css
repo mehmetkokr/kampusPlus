@@ -1,0 +1,41 @@
+/* Sohbet listesi: son mesaj önizlemesi, saat ve okunmamış sayısı */
+.match-link { display: block; color: inherit; text-decoration: none; border-radius: var(--radius); }
+.match-link:focus-visible { outline: 2px solid var(--amber-soft); outline-offset: 2px; }
+.match-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.match-top, .match-bottom { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.match-top .match-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.match-time {
+  flex-shrink: 0;
+  color: var(--text-faint);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.match-preview {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-size: 13.5px;
+}
+.match-preview.is-new { color: var(--amber-soft); font-weight: 600; }
+.match-unread {
+  flex-shrink: 0;
+  align-self: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--amber-soft);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 22px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.match-row.is-unread .match-name { font-weight: 700; }
+.match-row.is-unread .match-preview { color: var(--text); font-weight: 600; }
+.match-row.is-unread .match-time { color: var(--amber-soft); font-weight: 600; }
+.match-row .match-chevron { margin-left: 0; }

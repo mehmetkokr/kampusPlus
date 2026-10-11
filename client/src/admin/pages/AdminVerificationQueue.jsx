@@ -21,6 +21,11 @@ export default function AdminVerificationQueue() {
   const [reason, setReason] = useState('');
   const [rejecting, setRejecting] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Toplu işlem: seçili başvurular ve ilerleme
+  const [checked, setChecked] = useState(() => new Set());
+  const [bulkReason, setBulkReason] = useState('');
+  const [bulkRejecting, setBulkRejecting] = useState(false);
+  const [progress, setProgress] = useState(null); // { done, total }
 
   const load = useCallback(() => {
     adminApi
@@ -61,6 +66,43 @@ export default function AdminVerificationQueue() {
     }
   }
 
+  function toggle(id) {
+    setChecked((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  // Seçilenleri tek tek aynı uçla değerlendirir: öğrenciye bildirim/e-posta ve
+  // yönetici işlem kaydı tekli kararla aynı şekilde oluşur
+  async function bulkDecide(verificationStatus) {
+    const ids = users.filter((u) => checked.has(u.id)).map((u) => u.id);
+    if (!ids.length) return;
+    setProgress({ done: 0, total: ids.length });
+    const failed = [];
+    for (const [i, id] of ids.entries()) {
+      try {
+        await adminApi.updateUser(id, verificationStatus === 'rejected' ? { verificationStatus, rejectionReason: bulkReason.trim() } : { verificationStatus });
+      } catch {
+        failed.push(id);
+      }
+      setProgress({ done: i + 1, total: ids.length });
+    }
+    const ok = ids.length - failed.length;
+    if (ok) toast.success(verificationStatus === 'verified' ? `${ok} başvuru onaylandı.` : `${ok} başvuru reddedildi.`);
+    if (failed.length) toast.error(`${failed.length} başvuruda işlem yapılamadı.`);
+    setUsers((prev) => prev.filter((u) => !ids.includes(u.id) || failed.includes(u.id)));
+    setChecked(new Set(failed));
+    if (selected && ids.includes(selected.id) && !failed.includes(selected.id)) setSelected(null);
+    setBulkRejecting(false);
+    setBulkReason('');
+    setProgress(null);
+    refreshCounts();
+  }
+
+  const allChecked = users?.length > 0 && users.every((u) => checked.has(u.id));
+
   const doc = selected?.studentDocUrl ? buildFileUrl(selected.studentDocUrl) : null;
   const isPdf = selected?.studentDocUrl?.toLowerCase().endsWith('.pdf');
 
@@ -73,6 +115,54 @@ export default function AdminVerificationQueue() {
       <div className="adm-grid adm-grid-main" style={{ alignItems: 'start' }}>
         <section className="adm-card">
           <h2 className="adm-card-title">Bekleyenler {users && <span className="adm-badge">{users.length}</span>}</h2>
+          {users?.length > 0 && (
+            <div className="adm-bulk">
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                <button
+                  type="button"
+                  className="adm-btn ghost small"
+                  onClick={() => setChecked(new Set(users.filter((u) => u.ocrAutoCheckPassed === true).map((u) => u.id)))}
+                >
+                  OCR örtüşenleri seç
+                </button>
+                {checked.size > 0 && <span className="adm-muted">{checked.size} seçili</span>}
+              </div>
+              {checked.size > 0 &&
+                (progress ? (
+                  <p className="adm-muted" role="status" style={{ margin: 0 }}>
+                    İşleniyor… {progress.done}/{progress.total}
+                  </p>
+                ) : bulkRejecting ? (
+                  <div className="adm-grid" style={{ gap: 8 }}>
+                    <div className="adm-chips">
+                      {REJECT_REASONS.map((r) => (
+                        <button key={r} type="button" className={`adm-chip ${bulkReason === r ? 'on' : ''}`} onClick={() => setBulkReason(r)}>
+                          {r.split(',')[0].split(';')[0]}
+                        </button>
+                      ))}
+                    </div>
+                    <textarea className="adm-textarea" value={bulkReason} onChange={(e) => setBulkReason(e.target.value)} placeholder="Tüm seçilenlere gönderilecek gerekçe" aria-label="Toplu red gerekçesi" />
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button type="button" className="adm-btn danger" disabled={!bulkReason.trim()} onClick={() => bulkDecide('rejected')}>
+                        {checked.size} başvuruyu reddet
+                      </button>
+                      <button type="button" className="adm-btn ghost" onClick={() => setBulkRejecting(false)}>
+                        Vazgeç
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button type="button" className="adm-btn" onClick={() => bulkDecide('verified')}>
+                      <BadgeCheck /> {checked.size} başvuruyu onayla
+                    </button>
+                    <button type="button" className="adm-btn danger-ghost" onClick={() => setBulkRejecting(true)}>
+                      Toplu reddet
+                    </button>
+                  </div>
+                ))}
+            </div>
+          )}
           {users === null ? (
             <Skeleton h={200} />
           ) : users.length === 0 ? (
@@ -81,7 +171,18 @@ export default function AdminVerificationQueue() {
             <div className="adm-table-wrap">
               <table className="adm-table">
                 <thead>
-                  <tr><th>Öğrenci</th><th className="hide-sm">Bölüm</th><th>OCR</th><th className="hide-sm">Kayıt</th></tr>
+                  <tr>
+                    <th style={{ width: 44 }}>
+                      <input
+                        type="checkbox"
+                        className="adm-check"
+                        checked={allChecked}
+                        onChange={() => setChecked(allChecked ? new Set() : new Set(users.map((u) => u.id)))}
+                        aria-label="Tümünü seç"
+                      />
+                    </th>
+                    <th>Öğrenci</th><th className="hide-sm">Bölüm</th><th>OCR</th><th className="hide-sm">Kayıt</th>
+                  </tr>
                 </thead>
                 <tbody>
                   {users.map((u) => (
@@ -92,6 +193,9 @@ export default function AdminVerificationQueue() {
                       tabIndex={0}
                       onKeyDown={(e) => e.key === 'Enter' && open(u.id)}
                     >
+                      <td onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                        <input type="checkbox" className="adm-check" checked={checked.has(u.id)} onChange={() => toggle(u.id)} aria-label={`${u.fullName} seç`} />
+                      </td>
                       <td><Person user={u} meta={u.university?.name} /></td>
                       <td className="hide-sm adm-muted">{u.department || '-'}</td>
                       <td>

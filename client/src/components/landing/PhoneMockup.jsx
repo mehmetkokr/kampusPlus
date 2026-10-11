@@ -663,7 +663,7 @@ function ClubsScreen({ joined, onToggle, onOpen }) {
 }
 
 // Kulüp sohbeti: sabitlenmiş duyuru, mesajlar ve canlı anket
-function ClubChatScreen({ club, votes, myVote, onVote }) {
+function ClubChatScreen({ votes, myVote, onVote }) {
   const { t } = useI18n();
   const total = votes.reduce((s, v) => s + v, 0);
   return (
@@ -1126,7 +1126,7 @@ export default function PhoneMockup({ className = '' }) {
                   )}
                   {tab === 'feed' && <FeedScreen scrollRef={feedRef} going={going} onGo={() => setGoing((g) => !g)} liked={liked} onLike={(id) => setLiked((l) => (l.includes(id) ? l.filter((x) => x !== id) : [...l, id]))} />}
                   {tab === 'clubs' && !openClub && <ClubsScreen joined={joined} onOpen={setOpenClub} onToggle={(id) => setJoined((j) => (j.includes(id) ? j.filter((x) => x !== id) : [...j, id]))} />}
-                  {tab === 'clubs' && openClub && <ClubChatScreen club={openClub} votes={votes} myVote={myVote} onVote={vote} />}
+                  {tab === 'clubs' && openClub && <ClubChatScreen votes={votes} myVote={myVote} onVote={vote} />}
                   {tab === 'chat' && <ChatScreen chats={chats} active={chatWith} typing={typing} onOpen={openChat} onSend={(text) => send(text)} />}
                   {tab === 'profile' && <ProfileScreen scrollRef={profileRef} likes={likes} joined={joined.length} />}
                 </motion.div>

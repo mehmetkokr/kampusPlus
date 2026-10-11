@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import api from '../api';
+import api, { setFileToken } from '../api';
+import { disablePush, resyncPush } from '../lib/push';
 import { applyTheme, getStoredTheme, systemTheme, takeGuestThemeChoice } from '../utils/theme';
 
 const AuthContext = createContext(null);
@@ -31,7 +32,10 @@ export function AuthProvider({ children }) {
     }
     api
       .get('/profile/me')
-      .then((res) => setUser(res.data))
+      .then((res) => {
+        setFileToken(res.data.fileToken);
+        setUser(res.data);
+      })
       .catch(() => {
         // Token geçersizse oturumu temizle
         setToken(null);
@@ -40,6 +44,11 @@ export function AuthProvider({ children }) {
       })
       .finally(() => setLoading(false));
   }, [token]);
+
+  // Bildirim izni daha önce verildiyse bu cihazın aboneliği giriş yapan hesaba bağlanır
+  useEffect(() => {
+    if (user?.id) resyncPush();
+  }, [user?.id]);
 
   // Tema: oturum açıksa hesabın tercihi; değilse (tanıtım, giriş/kayıt)
   // tarayıcıda hatırlanan seçim ya da cihazın açık/koyu ayarı. Tüm sayfalar
@@ -52,7 +61,30 @@ export function AuthProvider({ children }) {
     }
   }, [user, user?.theme, loading]);
 
-  function login(newToken, newUser, rememberMe = true) {
+  // Sunucu oturumu kapattı (askıya alma, tüm cihazlardan çıkış, şifre
+  // değişikliği): bu cihazda da çıkış yapılır ve giriş ekranına dönülür
+  useEffect(() => {
+    const onEnded = (e) => {
+      const reason = e.detail?.reason;
+      logout();
+      if (window.location.pathname !== '/login') window.location.href = `/login${reason ? `?reason=${encodeURIComponent(reason)}` : ''}`;
+    };
+    window.addEventListener('kp-session-ended', onEnded);
+    return () => window.removeEventListener('kp-session-ended', onEnded);
+    // logout yalnızca durum ayarlayıcıları kullanır; dinleyici bir kez kurulur
+  }, []);
+
+  // Dosya anahtarı 24 saat geçerli: uygulama uzun süre açık kalırsa yenilenir
+  useEffect(() => {
+    if (!token) return undefined;
+    const id = setInterval(() => {
+      api.get('/profile/me').then((res) => setFileToken(res.data.fileToken)).catch(() => {});
+    }, 6 * 60 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [token]);
+
+  function login(newToken, newUser, rememberMe = true, newFileToken = null) {
+    setFileToken(newFileToken);
     // Önce her iki depolamayı da temizle, sonra tercihe göre yaz
     localStorage.removeItem('token');
     sessionStorage.removeItem('token');
@@ -75,6 +107,11 @@ export function AuthProvider({ children }) {
   }
 
   function logout() {
+    setFileToken(null);
+    // Gerçek zamanlı bağlantı modülü ayrı parçada; yalnızca açılmışsa kapatılır
+    import('../lib/socket').then((m) => m.closeSocket()).catch(() => {});
+    // Bu cihaz artık çıkış yapan hesabın bildirimlerini almasın
+    disablePush(localStorage.getItem('token') || sessionStorage.getItem('token'));
     localStorage.removeItem('token');
     sessionStorage.removeItem('token');
     setToken(null);

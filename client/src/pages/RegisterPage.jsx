@@ -180,7 +180,7 @@ export default function RegisterPage() {
         code: joined,
       });
       await waitSuccess();
-      login(res.data.token, res.data.user, true);
+      login(res.data.token, res.data.user, true, res.data.fileToken);
       // Yeni hesap: başlangıç adımları (seni tanıyalım, fotoğraf, ilgi alanları, takip)
       navigate('/welcome');
     } catch (err) {

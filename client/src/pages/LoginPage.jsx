@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
@@ -10,6 +10,13 @@ import { minDuration } from '../utils/wait';
 import { useI18n } from '../i18n';
 import ThemeToggle from '../components/ThemeToggle';
 import { NeonCheckbox } from '@/components/ui/animated-check-box';
+
+// Sunucu oturumu kapattıysa giriş ekranında nedeni gösterilir
+const SESSION_REASONS = {
+  banned: 'Hesabın askıya alındı. Bir yanlışlık olduğunu düşünüyorsan destek ekibine yaz.',
+  logout_all: 'Tüm cihazlardan çıkış yapıldı. Devam etmek için tekrar giriş yap.',
+  password_changed: 'Şifren değiştiği için oturumun kapandı. Yeni şifrenle giriş yap.',
+};
 
 export default function LoginPage() {
   const { t } = useI18n();
@@ -22,6 +29,11 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
+  // Yönetici iki adımlı doğrulaması açıksa şifreden sonra uygulamadaki kod istenir
+  const [needsCode, setNeedsCode] = useState(false);
+  const [totpCode, setTotpCode] = useState('');
+  const [searchParams] = useSearchParams();
+  const sessionNotice = SESSION_REASONS[searchParams.get('reason')];
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -30,10 +42,15 @@ export default function LoginPage() {
     const waitError = minDuration(600);
 
     try {
-      const res = await api.post('/auth/login', { email, password });
+      const res = await api.post('/auth/login', { email, password, ...(needsCode ? { totpCode } : {}) });
+      if (res.data.twoFactorRequired) {
+        await waitError();
+        setNeedsCode(true);
+        return;
+      }
       // Giriş animasyonu görünsün; login() sayfayı hemen yönlendirdiği için önce beklenir
       await waitSuccess();
-      login(res.data.token, res.data.user, rememberMe);
+      login(res.data.token, res.data.user, rememberMe, res.data.fileToken);
       if (res.data.reactivated) {
         toast.success('Hesabın yeniden aktifleştirildi. Tekrar hoş geldin!');
       }
@@ -66,6 +83,11 @@ export default function LoginPage() {
         <div className="auth-card">
           <h2>{t("Tekrar hoş geldin")}</h2>
           <p className="muted">{t("Hesabına giriş yap")}</p>
+          {sessionNotice && (
+            <p className="auth-notice" role="status">
+              {t(sessionNotice)}
+            </p>
+          )}
 
           <form onSubmit={handleSubmit}>
             <label>{t("E-posta")}</label>
@@ -109,8 +131,29 @@ export default function LoginPage() {
               </Link>
             </div>
 
-            <button className="btn" type="submit" disabled={loading}>
-              {loading ? t("Giriş yapılıyor...") : t("Giriş Yap")}
+            {needsCode && (
+              <div className="totp-step">
+                <label htmlFor="totp-code">{t('Doğrulama kodu')}</label>
+                <p className="muted" style={{ margin: '0 0 8px', fontSize: 13.5 }}>
+                  {t('Kimlik doğrulama uygulamandaki 6 haneli kodu yaz.')}
+                </p>
+                <input
+                  id="totp-code"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  value={totpCode}
+                  onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ''))}
+                  placeholder="000000"
+                  style={{ letterSpacing: '0.4em', fontSize: 20, textAlign: 'center' }}
+                  autoFocus
+                  required
+                />
+              </div>
+            )}
+
+            <button className="btn" type="submit" disabled={loading || (needsCode && totpCode.length !== 6)}>
+              {loading ? t("Giriş yapılıyor...") : needsCode ? t('Doğrula ve giriş yap') : t("Giriş Yap")}
             </button>
           </form>
 

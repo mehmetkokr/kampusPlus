@@ -1,0 +1,249 @@
+// Güvenlik, sohbet ve yönetim özelliklerinin API testleri. api.test.js ile
+// aynı şekilde geçici veritabanı ve ayrı sunucu süreci kullanır.
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const { execFileSync, spawn } = require('node:child_process');
+const crypto = require('node:crypto');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+
+const SERVER_DIR = path.join(__dirname, '..');
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'kampus-features-'));
+const PORT = 4800 + Math.floor(Math.random() * 500);
+const BASE = `http://127.0.0.1:${PORT}`;
+
+Object.assign(process.env, {
+  DATABASE_URL: `file:${path.join(tmp, 'test.db')}`,
+  STORAGE_DIR: tmp,
+  JWT_SECRET: 'test-secret-' + Math.random(),
+  PORT: String(PORT),
+  CLIENT_URL: 'http://localhost:5173',
+  MOCK_PAYMENTS: 'true',
+  SMTP_HOST: '',
+  ADMIN_EMAIL: '',
+  SEED_DEMO_USERS: '',
+  LOGIN_RATE_LIMIT: '1000',
+});
+
+execFileSync(process.execPath, [require.resolve('prisma/build/index.js'), 'migrate', 'deploy'], {
+  cwd: SERVER_DIR,
+  env: process.env,
+  stdio: 'ignore',
+});
+
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const prisma = require('../src/lib/prisma');
+const { codeAt } = require('../src/lib/totp');
+
+let server;
+const PASSWORD = 'gizli-sifre-123';
+
+async function api(method, url, { token, body } = {}) {
+  const res = await fetch(BASE + url, {
+    method,
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const text = await res.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    data = text;
+  }
+  return { status: res.status, data };
+}
+
+async function createUser(email, extra = {}) {
+  let uni = await prisma.university.findFirst();
+  if (!uni) uni = await prisma.university.create({ data: { name: 'Test Üniversitesi', emailDomain: 'test.edu.tr' } });
+  return prisma.user.create({
+    data: {
+      email,
+      fullName: 'Test Kullanıcı',
+      passwordHash: await bcrypt.hash(PASSWORD, 4),
+      universityId: uni.id,
+      verificationStatus: 'auto_verified',
+      ...extra,
+    },
+  });
+}
+
+async function tokenFor(email) {
+  const u = await prisma.user.findUnique({ where: { email } });
+  return jwt.sign({ userId: u.id, tokenVersion: u.tokenVersion }, process.env.JWT_SECRET, { expiresIn: '1h' });
+}
+
+// Keşfedilebilir iki öğrenci (aynı üniversite, başlangıç bilgileri tamam)
+async function studentPair(prefix) {
+  const extra = { department: 'Fizik', classYear: 2, birthDate: new Date('2003-01-01'), age: 23, schoolEmailVerifiedAt: new Date() };
+  const a = await createUser(`${prefix}-a@test.edu.tr`, extra);
+  const b = await createUser(`${prefix}-b@test.edu.tr`, extra);
+  return { a, b, ta: await tokenFor(a.email), tb: await tokenFor(b.email) };
+}
+
+const deckIds = (data) => (Array.isArray(data) ? data : data.users || data.candidates || []).map((u) => u.id);
+
+test.before(async () => {
+  server = spawn(process.execPath, ['src/index.js'], { cwd: SERVER_DIR, env: process.env, stdio: 'ignore' });
+  for (let i = 0; i < 100; i++) {
+    try {
+      const res = await fetch(`${BASE}/api/health`);
+      if (res.ok) return;
+    } catch {
+      // sunucu henüz açılmadı
+    }
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  throw new Error('Test sunucusu açılmadı');
+});
+
+test.after(async () => {
+  server?.kill();
+  await prisma.$disconnect();
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+test('şifre değiştirme: mevcut şifre doğrulanır, yeni oturum anahtarı verilir', async () => {
+  const u = await createUser('sifre@test.edu.tr');
+  const token = await tokenFor(u.email);
+  assert.equal((await api('PUT', '/api/auth/password', { token, body: { currentPassword: 'yanlis', newPassword: 'yeni-sifre-123' } })).status, 400);
+  assert.equal((await api('PUT', '/api/auth/password', { token, body: { currentPassword: PASSWORD, newPassword: 'kisa' } })).status, 400);
+  const ok = await api('PUT', '/api/auth/password', { token, body: { currentPassword: PASSWORD, newPassword: 'yeni-sifre-123' } });
+  assert.equal(ok.status, 200, JSON.stringify(ok.data));
+  assert.equal((await api('GET', '/api/profile/me', { token })).status, 401, 'eski anahtar geçersiz olmalı');
+  assert.equal((await api('GET', '/api/profile/me', { token: ok.data.token })).status, 200);
+});
+
+test('profil: hakkımda sınırı, sosyal bağlantı doğrulaması ve küfür gizleme', async () => {
+  const u = await createUser('profil@test.edu.tr');
+  const token = await tokenFor(u.email);
+  assert.equal((await api('PUT', '/api/profile/me', { token, body: { bio: 'x'.repeat(301) } })).status, 400);
+  assert.equal((await api('PUT', '/api/profile/me', { token, body: { instagramUrl: 'javascript:alert(1)' } })).status, 400);
+  const res = await api('PUT', '/api/profile/me', { token, body: { bio: 'Selam, siktir git', instagramUrl: '@ece.yilmaz', twitterUrl: 'https://twitter.com/ece' } });
+  assert.equal(res.status, 200, JSON.stringify(res.data));
+  const saved = await prisma.user.findUnique({ where: { id: u.id } });
+  assert.equal(saved.bio, 'Selam, s***** git');
+  assert.equal(saved.instagramUrl, 'https://instagram.com/ece.yilmaz');
+  assert.equal(saved.twitterUrl, 'https://x.com/ece');
+});
+
+test('Kart Modu: geç kaydedilir, Premium olmayan geri alamaz, Premium geri alır', async () => {
+  const { a, b, ta } = await studentPair('kart');
+  assert.ok(deckIds((await api('GET', '/api/profile/discover', { token: ta })).data).includes(b.id), 'başta destede olmalı');
+  assert.equal((await api('POST', `/api/matches/pass/${b.id}`, { token: ta })).status, 200);
+  assert.ok(!deckIds((await api('GET', '/api/profile/discover', { token: ta })).data).includes(b.id), 'geçilen kişi destede olmamalı');
+
+  const undoFree = await api('POST', `/api/matches/undo/${b.id}`, { token: ta });
+  assert.equal(undoFree.status, 403);
+  assert.equal(undoFree.data.code, 'PREMIUM_REQUIRED');
+
+  await prisma.user.update({ where: { id: a.id }, data: { isPremium: true, premiumUntil: new Date(Date.now() + 86400000) } });
+  const undo = await api('POST', `/api/matches/undo/${b.id}`, { token: ta });
+  assert.equal(undo.data.undone, 'pass');
+  assert.ok(deckIds((await api('GET', '/api/profile/discover', { token: ta })).data).includes(b.id), 'geri alınca desteye dönmeli');
+});
+
+test('sohbet: tepki, sohbet listesi önizlemesi ve okunmamış sayısı', async () => {
+  const { a, b, tb } = await studentPair('sohbet');
+  const match = await prisma.match.create({ data: { userAId: Math.min(a.id, b.id), userBId: Math.max(a.id, b.id) } });
+  const msg = await prisma.message.create({ data: { matchId: match.id, senderId: a.id, content: 'Merhaba, nasılsın?' } });
+
+  const list = await api('GET', '/api/matches', { token: tb });
+  const row = list.data.find((m) => m.matchId === match.id);
+  assert.equal(row.lastMessage.preview, 'Merhaba, nasılsın?');
+  assert.equal(row.unreadCount, 1);
+  assert.equal((await api('GET', '/api/matches/unread-count', { token: tb })).data.chats, 1);
+
+  assert.equal((await api('POST', `/api/messages/${match.id}/${msg.id}/reactions`, { token: tb, body: { emoji: '💩' } })).status, 400);
+  const r1 = await api('POST', `/api/messages/${match.id}/${msg.id}/reactions`, { token: tb, body: { emoji: '❤️' } });
+  assert.deepEqual(r1.data.reactions, [{ userId: b.id, emoji: '❤️' }]);
+  const r2 = await api('POST', `/api/messages/${match.id}/${msg.id}/reactions`, { token: tb, body: { emoji: '❤️' } });
+  assert.deepEqual(r2.data.reactions, [], 'aynı tepki tekrar gönderilince kalkmalı');
+
+  await api('PUT', `/api/messages/${match.id}/read`, { token: tb });
+  assert.equal((await api('GET', '/api/matches/unread-count', { token: tb })).data.chats, 0);
+
+  const stranger = await createUser('yabanci-sohbet@test.edu.tr');
+  const forbidden = await api('POST', `/api/messages/${match.id}/${msg.id}/reactions`, { token: await tokenFor(stranger.email), body: { emoji: '❤️' } });
+  assert.equal(forbidden.status, 403);
+});
+
+test('yıllık doğrulama: süresi geçen gizlenir, kodla yenilenir', async () => {
+  const { a, tb } = await studentPair('yillik');
+  await prisma.user.update({ where: { id: a.id }, data: { schoolEmailVerifiedAt: new Date(Date.now() - 400 * 24 * 60 * 60 * 1000) } });
+  const ta = await tokenFor(a.email);
+
+  assert.equal((await api('GET', '/api/profile/me', { token: ta })).data.reverify.status, 'expired');
+  assert.ok(!deckIds((await api('GET', '/api/profile/discover', { token: tb })).data).includes(a.id), 'süresi geçen kişi listelerde görünmemeli');
+
+  assert.equal((await api('POST', '/api/auth/reverify/send-code', { token: ta })).status, 200);
+  await prisma.emailVerificationCode.update({ where: { email: a.email }, data: { codeHash: crypto.createHash('sha256').update('654321').digest('hex') } });
+  assert.equal((await api('POST', '/api/auth/reverify', { token: ta, body: { code: '000000' } })).status, 400);
+  const ok = await api('POST', '/api/auth/reverify', { token: ta, body: { code: '654321' } });
+  assert.equal(ok.status, 200, JSON.stringify(ok.data));
+  assert.equal(ok.data.reverify.status, 'ok');
+  assert.ok(deckIds((await api('GET', '/api/profile/discover', { token: tb })).data).includes(a.id), 'doğrulayınca geri gelmeli');
+});
+
+test('yönetici: iki adımlı giriş, işlem kaydı ve yasaklı kelime', async () => {
+  const admin = await createUser('iki-adim@test.edu.tr', { isAdmin: true });
+  const token = await tokenFor(admin.email);
+
+  const setup = await api('POST', '/api/admin/2fa/setup', { token });
+  assert.ok(setup.data.qr.startsWith('data:image/png;base64,'));
+  const step = Math.floor(Date.now() / 30000);
+  assert.equal((await api('POST', '/api/admin/2fa/enable', { token, body: { code: '000000' } })).status, 400);
+  assert.equal((await api('POST', '/api/admin/2fa/enable', { token, body: { code: codeAt(setup.data.secret, step) } })).status, 200);
+
+  const first = await api('POST', '/api/auth/login', { body: { email: admin.email, password: PASSWORD } });
+  assert.equal(first.data.twoFactorRequired, true);
+  assert.equal(first.data.token, undefined, 'kodsuz oturum anahtarı verilmemeli');
+  assert.equal((await api('POST', '/api/auth/login', { body: { email: admin.email, password: PASSWORD, totpCode: '111111' } })).status, 401);
+  const good = await api('POST', '/api/auth/login', { body: { email: admin.email, password: PASSWORD, totpCode: codeAt(setup.data.secret, step + 1) } });
+  assert.ok(good.data.token, JSON.stringify(good.data));
+
+  assert.equal((await api('POST', '/api/admin/banned-words', { token, body: { word: 'yasakkelime' } })).status, 201);
+  const u = await createUser('kelime@test.edu.tr');
+  await api('PUT', '/api/profile/me', { token: await tokenFor(u.email), body: { bio: 'bu bir yasakkelime denemesi' } });
+  assert.equal((await prisma.user.findUnique({ where: { id: u.id } })).bio, 'bu bir y********** denemesi');
+
+  await new Promise((r) => setTimeout(r, 300)); // kayıt yanıttan hemen sonra yazılır
+  const audit = await api('GET', '/api/admin/audit', { token });
+  const actions = audit.data.entries.map((e) => e.action);
+  assert.ok(actions.includes('Yasaklı kelime ekledi'), JSON.stringify(actions));
+  assert.ok(actions.includes('İki adımlı doğrulamayı açtı'));
+  assert.ok(audit.data.entries.every((e) => !String(e.details || '').includes('"code"')), 'kod kayda geçmemeli');
+});
+
+test('verilerimi indir: kendi verilerini verir, şifre özeti içermez, sık istenemez', async () => {
+  const { a, ta } = await studentPair('veri');
+  const res = await fetch(`${BASE}/api/profile/me/export`, { headers: { Authorization: `Bearer ${ta}` } });
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get('content-disposition'), /kampus-verilerim-/);
+  const data = await res.json();
+  assert.equal(data.account.email, a.email);
+  assert.equal(JSON.stringify(data).includes('passwordHash'), false);
+  assert.equal((await api('GET', '/api/profile/me/export', { token: ta })).status, 429);
+});
+
+test('şikâyet açıklaması uzunluk sınırı', async () => {
+  const { b, ta } = await studentPair('rapor');
+  assert.equal((await api('POST', '/api/reports', { token: ta, body: { targetType: 'user', targetId: b.id, reason: 'spam', description: 'x'.repeat(1001) } })).status, 400);
+  assert.equal((await api('POST', '/api/reports', { token: ta, body: { targetType: 'user', targetId: b.id, reason: 'spam', description: 'Rahatsız edici' } })).status, 201);
+});
+
+test('etkinlik hatırlatması: katılımcılara bir kez gider', async () => {
+  const { a, b } = await studentPair('etkinlik');
+  const club = await prisma.club.create({ data: { name: 'Hatırlatma Kulübü', universityId: a.universityId, creatorId: a.id } });
+  const event = await prisma.event.create({
+    data: { clubId: club.id, creatorId: a.id, title: 'Kodlama gecesi', startsAt: new Date(Date.now() + 60 * 60 * 1000), rsvps: { create: [{ userId: a.id }, { userId: b.id }] } },
+  });
+  const { sendEventReminders } = require('../src/lib/eventReminders');
+  assert.equal(await sendEventReminders(null), 2);
+  assert.equal(await sendEventReminders(null), 0, 'ikinci çalıştırmada tekrar gitmemeli');
+  assert.equal(await prisma.notification.count({ where: { type: 'event_reminder', targetId: club.id } }), 2);
+  assert.ok((await prisma.event.findUnique({ where: { id: event.id } })).reminderSentAt);
+});

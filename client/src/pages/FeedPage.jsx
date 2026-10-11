@@ -923,6 +923,8 @@ function CommentsModal({ postId, onClose, onCommentAdded }) {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [replyTo, setReplyTo] = useState(null); // { id, name }
+  const [reportCommentId, setReportCommentId] = useState(null);
+  const { user: me } = useAuth();
 
   function load() {
     api
@@ -997,6 +999,7 @@ function CommentsModal({ postId, onClose, onCommentAdded }) {
             <span>{tx(timeAgo(c.createdAt))}</span>
             {canComment && <button onClick={() => setReplyTo({ id: c.id, name: c.author.fullName })}>{tx("Yanıtla")}</button>}
             {c.likeCount > 0 && <span>{c.likeCount} {tx("beğenme")}</span>}
+            {me && c.author.id !== me.id && <button onClick={() => setReportCommentId(c.id)}>{tx('Şikayet et')}</button>}
           </div>
         </div>
         <button
@@ -1011,6 +1014,7 @@ function CommentsModal({ postId, onClose, onCommentAdded }) {
   }
 
   return (
+    <>
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-sheet" onClick={(e) => e.stopPropagation()} style={{ maxHeight: '75vh' }}>
         <div className="modal-header">
@@ -1071,5 +1075,7 @@ function CommentsModal({ postId, onClose, onCommentAdded }) {
         )}
       </div>
     </div>
+    {reportCommentId && <ReportModal targetType="comment" targetId={reportCommentId} onClose={() => setReportCommentId(null)} />}
+    </>
   );
 }

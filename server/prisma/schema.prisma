@@ -117,14 +117,34 @@ model User {
   // kişileri görebilir; premium kullanıcılar tüm üniversitelerdeki kişilere
   // erişebilir. premiumUntil dolunca isPremium otomatik false sayılır
   // (bkz. lib/premium.js -> isPremiumActive), cron gerekmeden kontrol anında yapılır.
-  isPremium    Boolean   @default(false)
-  premiumUntil DateTime?
-  premiumSince DateTime?
+  isPremium        Boolean   @default(false)
+  premiumUntil     DateTime?
+  premiumSince     DateTime?
   // Otomatik yenilemeyi kapatmak erişimi hemen kesmez: premiumUntil dolana
   // kadar premium sürer, sonra yenilenmez.
-  premiumAutoRenew Boolean @default(true)
+  premiumAutoRenew Boolean   @default(true)
 
   paymentLogs PaymentLog[]
+
+  // Anlık bildirim (Web Push) abonelikleri: her cihaz/tarayıcı için bir kayıt
+  pushSubscriptions PushSubscription[]
+  analyticsEvents   AnalyticsEvent[]
+
+  // Kart Modu'nda "Geç" denen kişiler (bir süre desteye geri gelmez)
+  sentPasses       Pass[]            @relation("PassesSent")
+  receivedPasses   Pass[]            @relation("PassesReceived")
+  // Sohbet mesajlarına bırakılan emoji tepkileri
+  messageReactions MessageReaction[]
+  // Yönetici işlem kaydı (yaptığı işlemler)
+  adminActions     AdminAuditLog[]
+
+  // Okul e-postasının en son doğrulandığı an. Mezun olan ya da okuldan ayrılan
+  // öğrenciler yılda bir yeniden doğrulayamayınca Keşfet'ten gizlenir.
+  schoolEmailVerifiedAt DateTime?
+
+  // Yöneticiler için iki adımlı doğrulama (TOTP, ör. Google Authenticator)
+  totpSecret  String?
+  totpEnabled Boolean @default(false)
 
   // Profil fotoğraf galerisi (photoUrl ana fotoğraftır ve bu listede de yer alır)
   photos UserPhoto[]
@@ -239,18 +259,23 @@ model Match {
 // Mesaj
 // ----------------------------
 model Message {
-  id        Int      @id @default(autoincrement())
-  match     Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  id        Int               @id @default(autoincrement())
+  match     Match             @relation(fields: [matchId], references: [id], onDelete: Cascade)
   matchId   Int
-  sender    User     @relation("MessagesSent", fields: [senderId], references: [id], onDelete: Cascade)
+  sender    User              @relation("MessagesSent", fields: [senderId], references: [id], onDelete: Cascade)
   senderId  Int
   content   String?
   photoUrl  String?
   audioUrl  String?
   fileUrl   String?
   fileName  String?
-  isRead    Boolean  @default(false) // karşı taraf mesajı görüntüledi mi ("Görüldü")
-  createdAt DateTime @default(now())
+  // Yanıtlanan mesaj (alıntı). Asıl mesaj silinirse yanıt kalır, alıntı boşalır.
+  replyTo   Message?          @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replyToId Int?
+  replies   Message[]         @relation("MessageReplies")
+  reactions MessageReaction[]
+  isRead    Boolean           @default(false) // karşı taraf mesajı görüntüledi mi ("Görüldü")
+  createdAt DateTime          @default(now())
 
   @@index([matchId])
 }
@@ -451,18 +476,20 @@ model Follow {
 // Kulüp Etkinlikleri + Katılım (RSVP)
 // ----------------------------
 model Event {
-  id          Int      @id @default(autoincrement())
-  club        Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
-  clubId      Int
+  id             Int       @id @default(autoincrement())
+  club           Club      @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  clubId         Int
   // Kasıtlı olarak Restrict: etkinliği oluşturan kişi hesabını silmeden önce
   // etkinlik başka bir yöneticiye devredilmeli ya da etkinlik silinmeli.
-  creator     User     @relation("EventCreator", fields: [creatorId], references: [id])
-  creatorId   Int
-  title       String
-  description String?
-  location    String?
-  startsAt    DateTime
-  createdAt   DateTime @default(now())
+  creator        User      @relation("EventCreator", fields: [creatorId], references: [id])
+  creatorId      Int
+  title          String
+  description    String?
+  location       String?
+  startsAt       DateTime
+  // Katılımcılara "etkinlik yaklaşıyor" hatırlatması gönderildi mi
+  reminderSentAt DateTime?
+  createdAt      DateTime  @default(now())
 
   rsvps EventRSVP[]
 
@@ -642,4 +669,122 @@ model ClubPollVote {
 
   @@unique([optionId, userId])
   @@index([pollId, userId])
+}
+
+// ----------------------------
+// Anlık bildirim (Web Push) aboneliği. Tarayıcının verdiği uç adres ve
+// şifreleme anahtarları; gönderim 404/410 dönerse kayıt silinir.
+// ----------------------------
+model PushSubscription {
+  id         Int       @id @default(autoincrement())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     Int
+  endpoint   String    @unique
+  p256dh     String
+  auth       String
+  userAgent  String?
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+
+  @@index([userId])
+}
+
+// ----------------------------
+// Hata kaydı: sunucu ve tarayıcı hataları. Aynı hata (parmak izi) tekrar
+// gelince yeni satır açılmaz, sayaç artar.
+// ----------------------------
+model ErrorLog {
+  id          Int      @id @default(autoincrement())
+  fingerprint String   @unique
+  source      String // server | client
+  message     String
+  stack       String?
+  path        String?
+  userAgent   String?
+  userId      Int?
+  count       Int      @default(1)
+  resolved    Boolean  @default(false)
+  firstSeen   DateTime @default(now())
+  lastSeen    DateTime @default(now())
+
+  @@index([lastSeen])
+}
+
+// ----------------------------
+// Kullanım analitiği: yalnızca uygulama içi olaylar (sayfa görüntüleme, kayıt
+// adımları). IP veya cihaz bilgisi tutulmaz; giriş yapmamış ziyaretçi rastgele
+// bir anonim kimlikle sayılır. Hesap silinince olaylar anonimleşir.
+// ----------------------------
+model AnalyticsEvent {
+  id        Int      @id @default(autoincrement())
+  name      String
+  path      String?
+  props     String? // JSON
+  anonId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId    Int?
+  createdAt DateTime @default(now())
+
+  @@index([name, createdAt])
+  @@index([createdAt])
+}
+
+// ----------------------------
+// Kart Modu'nda "Geç" kararı. Geçilen kişi 30 gün desteye geri gelmez;
+// Premium'da son karar geri alınabilir.
+// ----------------------------
+model Pass {
+  id         Int      @id @default(autoincrement())
+  fromUser   User     @relation("PassesSent", fields: [fromUserId], references: [id], onDelete: Cascade)
+  fromUserId Int
+  toUser     User     @relation("PassesReceived", fields: [toUserId], references: [id], onDelete: Cascade)
+  toUserId   Int
+  createdAt  DateTime @default(now())
+
+  @@unique([fromUserId, toUserId])
+  @@index([toUserId])
+}
+
+// ----------------------------
+// Sohbet mesajına emoji tepkisi: kişi başına mesaj başına bir tepki
+// ----------------------------
+model MessageReaction {
+  id        Int      @id @default(autoincrement())
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  messageId Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int
+  emoji     String
+  createdAt DateTime @default(now())
+
+  @@unique([messageId, userId])
+}
+
+// ----------------------------
+// Yönetici işlem kaydı: kim, ne zaman, kime/neye, ne yaptı. Yönetici hesabı
+// silinse de kayıt kalır (adı anlık görüntü olarak tutulur).
+// ----------------------------
+model AdminAuditLog {
+  id         Int      @id @default(autoincrement())
+  admin      User?    @relation(fields: [adminId], references: [id], onDelete: SetNull)
+  adminId    Int?
+  adminName  String
+  action     String
+  targetType String?
+  targetId   Int?
+  details    String? // JSON
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([targetType, targetId])
+}
+
+// ----------------------------
+// Yasaklı kelimeler (yönetim panelinden eklenenler). Varsayılan liste kodda
+// (src/lib/wordFilter.js); eşleşen kelimeler metinde *** ile gizlenir.
+// ----------------------------
+model BannedWord {
+  id        Int      @id @default(autoincrement())
+  word      String   @unique
+  createdAt DateTime @default(now())
 }

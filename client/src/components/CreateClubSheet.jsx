@@ -82,9 +82,7 @@ export default function CreateClubSheet({ onClose, onCreated }) {
   }, [onClose]);
 
   function pickCategory(next) {
-    const c = CATEGORIES.find((x) => x.value === next);
     setCategory(next);
-    // Kullanıcı henüz kendi simgesini değiştirmediyse kategoriye uygun olanı öner
     // Kullanıcı kendi simgesini seçmediyse kategoriye uygun ilkini öner
     if (CATEGORIES.some((x) => iconsFor(x.value)[0] === iconEmoji)) setIconEmoji(iconsFor(next)[0]);
   }

@@ -13,15 +13,16 @@ const prisma = require('../lib/prisma');
 const router = express.Router();
 const privateDir = PRIVATE_UPLOADS;
 
-// requireAuth ortak middleware'i yalnızca Authorization header'ına bakar.
-// Ama bu dosyalar <img>/<audio>/<a> etiketleriyle doğrudan tarayıcı
-// tarafından istenecek ve bu etiketler custom header gönderemez. Bu yüzden
-// burada, yalnızca bu route için, token'ı sorgu parametresinden de kabul
-// eden hafif bir doğrulama kullanıyoruz. isBanned kontrolü burada da yapılır.
+// Bu dosyalar <img>/<audio>/<a> etiketleriyle doğrudan tarayıcı tarafından
+// istenir ve bu etiketler başlık gönderemez. Bu yüzden iki yol kabul edilir:
+//  - Authorization başlığında oturum anahtarı (indirme gibi fetch istekleri)
+//  - ?ft= sorgusunda yalnızca dosya açmaya yarayan kısa ömürlü anahtar
+//    (lib/fileToken.js). Oturum anahtarı adreste asla kabul edilmez.
 async function authenticateFileRequest(req, res, next) {
   const authHeader = req.headers.authorization;
   const headerToken = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
-  const token = headerToken || req.query.token;
+  const fileToken = typeof req.query.ft === 'string' ? req.query.ft : null;
+  const token = headerToken || fileToken;
 
   if (!token) {
     return res.status(401).json({ error: 'Giriş yapmanız gerekiyor.' });
@@ -40,8 +41,10 @@ async function authenticateFileRequest(req, res, next) {
     if (payload.tokenVersion !== undefined && payload.tokenVersion !== user.tokenVersion) {
       return res.status(401).json({ error: 'Oturum geçersiz veya süresi dolmuş.' });
     }
-    // Şifre sıfırlama bağlantısındaki token oturum token'ı yerine kullanılamaz
-    if (payload.purpose) {
+    // Başlıkta yalnızca oturum anahtarı, adreste yalnızca dosya anahtarı geçer
+    // (şifre sıfırlama anahtarı hiçbirinde geçmez)
+    const expected = headerToken ? undefined : 'file';
+    if (payload.purpose !== expected) {
       return res.status(401).json({ error: 'Oturum geçersiz veya süresi dolmuş.' });
     }
     req.userId = user.id;

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#000000" />
+    <title>Bağlantı yok · kampüs·</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <style>
+      :root {
+        --bg: #f5f5f7;
+        --text: #1d1d1f;
+        --muted: #6e6e73;
+        --accent: #0071e3;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #000;
+          --text: #f5f5f7;
+          --muted: #a1a1a6;
+          --accent: #0a84ff;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        padding: 24px max(16px, env(safe-area-inset-right)) 24px max(16px, env(safe-area-inset-left));
+        background: var(--bg);
+        color: var(--text);
+        font: 17px/1.47 -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+        text-align: center;
+      }
+      main { max-width: 340px; }
+      svg { color: var(--muted); }
+      h1 { margin: 16px 0 8px; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+      p { margin: 0 0 24px; color: var(--muted); }
+      button {
+        min-height: 44px;
+        padding: 0 22px;
+        border: 0;
+        border-radius: 999px;
+        background: var(--accent);
+        color: #fff;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: 3px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 20h.01" /><path d="M8.5 16.43a5 5 0 0 1 7 0" /><path d="M5 12.86a10 10 0 0 1 5.17-2.69" /><path d="M19 12.86a10 10 0 0 0-2.01-1.55" /><path d="M2 8.82a15 15 0 0 1 4.18-2.65" /><path d="M22 8.82a15 15 0 0 0-11.29-3.76" /><path d="m2 2 20 20" />
+      </svg>
+      <h1>İnternet bağlantısı yok</h1>
+      <p>Bağlantın geri gelince kaldığın yerden devam edebilirsin.</p>
+      <button type="button" onclick="location.reload()">Tekrar dene</button>
+    </main>
+    <script>
+      // Bağlantı dönünce kendiliğinden yenilenir
+      window.addEventListener('online', () => location.reload());
+    </script>
+  </body>
+</html>

@@ -4,6 +4,7 @@ import adminApi, { errorText } from '../adminApi';
 import { PageHead, Person, Skeleton, fmtDate, timeAgo } from '../ui';
 import { useToast } from '../../context/ToastContext';
 import { useConfirm } from '../../context/ConfirmContext';
+import { BannedWordsCard, TwoFactorCard } from './AdminSecurityCards';
 
 export default function AdminSettings() {
   const toast = useToast();
@@ -56,7 +57,7 @@ export default function AdminSettings() {
 
   return (
     <div>
-      <PageHead title="Ayarlar" sub="Panele kimlerin erişebileceğini yönet." />
+      <PageHead title="Ayarlar" sub="Panele kimlerin erişebileceğini, giriş güvenliğini ve yasaklı kelimeleri yönet." />
 
       <div className="adm-grid adm-grid-main" style={{ alignItems: 'start' }}>
         <section className="adm-card">
@@ -109,6 +110,11 @@ export default function AdminSettings() {
             </span>
           </div>
         </section>
+      </div>
+
+      <div className="adm-grid adm-grid-2" style={{ marginTop: 14, alignItems: 'start' }}>
+        <TwoFactorCard />
+        <BannedWordsCard />
       </div>
     </div>
   );

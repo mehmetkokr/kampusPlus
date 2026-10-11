@@ -50,13 +50,14 @@ export default function WelcomePage() {
   const STEPS = withAbout ? ['about', ...BASE_STEPS] : BASE_STEPS;
   const stepIndex = (key) => STEPS.indexOf(key);
 
+  const currentStep = STEPS[step];
   useEffect(() => {
-    if (STEPS[step] !== 'people' || people) return;
+    if (currentStep !== 'people' || people) return;
     api
       .get('/discover/home')
       .then((res) => setPeople((res.data.suggestedUsers || []).slice(0, 8)))
       .catch(() => setPeople([]));
-  }, [step, people]);
+  }, [currentStep, people]);
 
   function finish() {
     navigate('/discover', { replace: true });

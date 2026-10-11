@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Heart, MessageCircle, UserPlus, Users, Bell, Trash2, BadgeCheck, FileX, CalendarPlus, Megaphone } from 'lucide-react';
+import { Heart, MessageCircle, UserPlus, Users, Bell, Trash2, BadgeCheck, FileX, CalendarPlus, CalendarClock, Megaphone } from 'lucide-react';
 import api from '../api';
 import { API_BASE_URL } from '../config';
 import { useToast } from '../context/ToastContext';
@@ -20,6 +20,7 @@ const TYPE_ICON = {
   badge_approved: BadgeCheck,
   badge_rejected: FileX,
   club_event: CalendarPlus,
+  event_reminder: CalendarClock,
 };
 
 function timeAgo(dateStr) {

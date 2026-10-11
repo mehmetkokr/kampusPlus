@@ -2,6 +2,7 @@
 // üye çıkarma/engelleme ve kulüp grup sohbeti geçmişi.
 const express = require('express');
 const prisma = require('../lib/prisma');
+const { cleanUserText, maskBannedWords, LIMITS } = require('../lib/textSafety');
 const { requireAuth } = require('../middleware/auth');
 const chatUpload = require('../middleware/chatUpload');
 const { verifyFileSignature } = require('../lib/fileValidation');
@@ -78,7 +79,7 @@ router.post('/', requireAuth, async (req, res) => {
   try {
     const { name, description, category, iconEmoji } = req.body;
 
-    if (!name || !name.trim()) {
+    if (typeof name !== 'string' || !name.trim() || (description != null && typeof description !== 'string')) {
       return res.status(400).json({ error: 'Kulüp adı gerekli.' });
     }
     if (name.trim().length > 40) {
@@ -100,8 +101,8 @@ router.post('/', requireAuth, async (req, res) => {
 
     const club = await prisma.club.create({
       data: {
-        name: name.trim(),
-        description: description?.trim() || null,
+        name: await maskBannedWords(name.trim()),
+        description: description?.trim() ? await maskBannedWords(description.trim()) : null,
         category: category || 'Sosyal',
         iconEmoji: iconEmoji || '👥',
         universityId: me.universityId,
@@ -482,18 +483,23 @@ router.post('/:id/events', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'Etkinlikleri yalnızca kulüp başkanı ve yöneticiler oluşturabilir.' });
     }
 
-    const { title, description, location, startsAt } = req.body;
-    if (!title || !title.trim()) return res.status(400).json({ error: 'Etkinlik başlığı gerekli.' });
-    if (!startsAt) return res.status(400).json({ error: 'Etkinlik tarihi gerekli.' });
+    const title = await cleanUserText(req.body.title, { max: LIMITS.eventTitle, required: true, label: 'Etkinlik başlığı' });
+    if (title.error) return res.status(400).json({ error: title.error });
+    const description = await cleanUserText(req.body.description, { max: LIMITS.eventDescription, label: 'Açıklama' });
+    if (description.error) return res.status(400).json({ error: description.error });
+    const location = await cleanUserText(req.body.location, { max: LIMITS.eventLocation, label: 'Konum' });
+    if (location.error) return res.status(400).json({ error: location.error });
+    const startsAt = new Date(req.body.startsAt);
+    if (!req.body.startsAt || Number.isNaN(startsAt.getTime())) return res.status(400).json({ error: 'Etkinlik tarihi gerekli.' });
 
     const event = await prisma.event.create({
       data: {
         clubId,
         creatorId: req.userId,
-        title: title.trim(),
-        description: description?.trim() || null,
-        location: location?.trim() || null,
-        startsAt: new Date(startsAt),
+        title: title.value,
+        description: description.value,
+        location: location.value,
+        startsAt,
         rsvps: { create: { userId: req.userId } }, // oluşturan otomatik katılımcı olur
       },
     });
@@ -620,9 +626,12 @@ router.patch('/:id/settings', requireAuth, async (req, res) => {
       if (name !== undefined) {
         const clean = String(name).trim();
         if (clean.length < 3 || clean.length > 40) return res.status(400).json({ error: 'Kulüp adı 3–40 karakter olmalı.' });
-        data.name = clean;
+        data.name = await maskBannedWords(clean);
       }
-      if (description !== undefined) data.description = String(description).trim().slice(0, 500) || null;
+      if (description !== undefined) {
+        const d = String(description).trim().slice(0, 500);
+        data.description = d ? await maskBannedWords(d) : null;
+      }
     }
 
     const club = await prisma.club.update({ where: { id: clubId }, data });

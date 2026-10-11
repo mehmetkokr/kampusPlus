@@ -614,6 +614,13 @@ textarea {
   -webkit-tap-highlight-color: transparent;
 }
 .swipe-btn.pass { color: var(--coral); }
+.swipe-btn.undo {
+  width: 52px;
+  height: 52px;
+  color: var(--amber-soft);
+}
+.swipe-btn:disabled { opacity: 0.4; cursor: default; box-shadow: none; }
+.swipe-btn:disabled:hover { transform: none; }
 .swipe-btn.like {
   width: 76px;
   height: 76px;

@@ -1039,3 +1039,20 @@ html:not([data-theme='light']) .adm-denied { background: #101828; color: rgba(25
   .adm-topbar .only-mobile { display: contents; }
   .adm-topbar .only-desktop { display: none; }
 }
+
+/* Onay kuyruğu: toplu işlem */
+.adm-bulk {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+.adm-check {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--adm-brand, #465fff);
+  cursor: pointer;
+}

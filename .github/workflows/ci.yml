@@ -24,7 +24,7 @@ jobs:
       - run: npm test
 
   client:
-    name: Arayüz derlemesi
+    name: Arayüz denetimi, testleri ve derlemesi
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -37,4 +37,33 @@ jobs:
           cache: npm
           cache-dependency-path: client/package-lock.json
       - run: npm ci
+      - run: npm run lint
+      - run: npm test
       - run: npm run build
+
+  e2e:
+    name: Uçtan uca testler (gerçek tarayıcı)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            server/package-lock.json
+            client/package-lock.json
+      - run: npm ci --prefix server
+      - run: npx prisma generate
+        working-directory: server
+      - run: npm ci --prefix client
+      - run: npx playwright install --with-deps chromium
+        working-directory: client
+      - run: npm run test:e2e
+        working-directory: client
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: client/playwright-report
+          retention-days: 7

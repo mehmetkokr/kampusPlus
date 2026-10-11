@@ -1,14 +1,16 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useEffect } from 'react';
 import { Navigate, Routes, Route, useLocation } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import PublicRoute from './components/PublicRoute';
-import NavBar, { NAV_ITEMS } from './components/NavBar';
 import AppBackdrop from './components/AppBackdrop';
 import AnnouncementBanner from './components/AnnouncementBanner';
+import ReverifyBanner, { needsReverify } from './components/ReverifyBanner';
 import { useAuth } from './context/AuthContext';
 import AdminProtectedRoute from './admin/AdminProtectedRoute';
 import CubeLoader from './components/CubeLoader';
 import PageMeta from './components/PageMeta';
+import ErrorBoundary from './components/ErrorBoundary';
+import { track } from './lib/telemetry';
 
 // Sayfalar ayrı parçalar halinde, ihtiyaç olunca yüklenir (ilk açılış hızlanır;
 // tanıtım sayfasına gelen ziyaretçi uygulama ve yönetim ekranlarını indirmez).
@@ -30,6 +32,9 @@ const NotificationsPage = lazy(() => import('./pages/NotificationsPage'));
 const UserProfileViewPage = lazy(() => import('./pages/UserProfileViewPage'));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const WelcomePage = lazy(() => import('./pages/WelcomePage'));
+// Menü (ve onunla gelen gerçek zamanlı bağlantı) yalnızca giriş yapınca yüklenir;
+// tanıtım sayfasına gelen ziyaretçi bunları indirmez
+const NavBar = lazy(() => import('./components/NavBar'));
 const AdminLayout = lazy(() => import('./admin/AdminLayout'));
 const AdminOverview = lazy(() => import('./admin/pages/AdminOverview'));
 const AdminCampaigns = lazy(() => import('./admin/pages/AdminCampaigns'));
@@ -39,25 +44,33 @@ const AdminUsers = lazy(() => import('./admin/pages/AdminUsers'));
 const AdminVerificationQueue = lazy(() => import('./admin/pages/AdminVerificationQueue'));
 const AdminReports = lazy(() => import('./admin/pages/AdminReports'));
 const AdminSettings = lazy(() => import('./admin/pages/AdminSettings'));
+const AdminAnalytics = lazy(() => import('./admin/pages/AdminAnalytics'));
+const AdminSystem = lazy(() => import('./admin/pages/AdminSystem'));
 const LegalPage = lazy(() => import('./pages/LegalPage'));
 
 // Kalıcı gezinme çubuğunun görüneceği sayfalar (sohbet ekranları tam ekran kalır)
-const NAV_PATHS = [...NAV_ITEMS.map((i) => i.to), '/notifications', '/settings'];
+const NAV_PATHS = ['/discover', '/discover/swipe', '/feed', '/clubs', '/matches', '/profile', '/notifications', '/settings'];
 const NAV_PREFIXES = ['/discover/', '/users/'];
 
 export default function App() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const { pathname } = useLocation();
   const isAppRoute = Boolean(token) && !pathname.startsWith('/admin') && pathname !== '/reset-password';
   const showNav =
     isAppRoute &&
     (NAV_PATHS.includes(pathname) || NAV_PREFIXES.some((prefix) => pathname.startsWith(prefix)));
 
+  // Sayfa görüntüleme (yönetim paneli sayılmaz)
+  useEffect(() => {
+    if (!pathname.startsWith('/admin')) track('page_view');
+  }, [pathname]);
+
   return (
     <>
     {isAppRoute && <AppBackdrop />}
-    {isAppRoute && <AnnouncementBanner />}
+    {isAppRoute && (needsReverify(user) ? <ReverifyBanner /> : <AnnouncementBanner />)}
     <PageMeta />
+    <ErrorBoundary resetKey={pathname}>
     <Suspense fallback={<CubeLoader mode="fullscreen" />}>
     <Routes>
       <Route
@@ -207,7 +220,9 @@ export default function App() {
         <Route path="verification-queue" element={<AdminVerificationQueue />} />
         <Route path="content" element={<AdminContent />} />
         <Route path="reports" element={<AdminReports />} />
+        <Route path="analytics" element={<AdminAnalytics />} />
         <Route path="settings" element={<AdminSettings />} />
+        <Route path="system" element={<AdminSystem />} />
         {/* Eski adresler yeni bölümlere yönlenir */}
         <Route path="universities" element={<Navigate to="/admin/campuses" replace />} />
         <Route path="departments" element={<Navigate to="/admin/campuses" replace />} />
@@ -222,7 +237,12 @@ export default function App() {
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
     </Suspense>
-    {showNav && <NavBar />}
+    </ErrorBoundary>
+    {showNav && (
+      <Suspense fallback={null}>
+        <NavBar />
+      </Suspense>
+    )}
     </>
   );
 }

@@ -6,6 +6,8 @@ import api from '../api';
 import { API_BASE_URL } from '../config';
 import { useToast } from '../context/ToastContext';
 import ReportModal from '../components/ReportModal';
+import { InstagramGlyph, XGlyph } from '../components/SocialGlyphs';
+import { socialHandle, socialUrl } from '../utils/social';
 import { INTENT_LABEL, INTENT_CHIP_CLASS, parseIntents } from '../constants/intents';
 import { UserPlus as UserPlusIcon, UserCheck as UserCheckIcon } from 'lucide-react';
 import { useConfirm } from '../context/ConfirmContext';
@@ -144,6 +146,23 @@ export default function UserProfileViewPage() {
                 </p>
               )}
               {profile.bio && <p>{profile.bio}</p>}
+            </div>
+          )}
+
+          {(socialUrl('instagram', profile.instagramUrl) || socialUrl('x', profile.twitterUrl)) && (
+            <div className="card profile-social-links">
+              {socialUrl('instagram', profile.instagramUrl) && (
+                <a href={socialUrl('instagram', profile.instagramUrl)} target="_blank" rel="noopener noreferrer nofollow" className="profile-social-link">
+                  <InstagramGlyph size={17} />
+                  <span>@{socialHandle('instagram', profile.instagramUrl)}</span>
+                </a>
+              )}
+              {socialUrl('x', profile.twitterUrl) && (
+                <a href={socialUrl('x', profile.twitterUrl)} target="_blank" rel="noopener noreferrer nofollow" className="profile-social-link">
+                  <XGlyph size={15} />
+                  <span>@{socialHandle('x', profile.twitterUrl)}</span>
+                </a>
+              )}
             </div>
           )}
 

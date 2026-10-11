@@ -2,6 +2,12 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const prisma = require('../lib/prisma');
+const { signFileToken } = require('../lib/fileToken');
+const { cleanUserText, LIMITS } = require('../lib/textSafety');
+const { normalizeSocial } = require('../lib/social');
+const { buildUserExport } = require('../lib/dataExport');
+const { reverifyInfo } = require('../lib/reverify');
+const { disconnectUser } = require('../socket');
 const { requireAuth } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 const { verifyFileSignature } = require('../lib/fileValidation');
@@ -9,6 +15,7 @@ const { isPremiumActive } = require('../lib/premium');
 const { runDocumentOcr } = require('../lib/ocr');
 const fsp = require('fs/promises');
 const { removeUploadedFile, deleteUserWithFiles } = require('../lib/uploads');
+const { track } = require('../lib/analytics');
 const { parseBirthDate, withLiveAge } = require('../lib/age');
 const { toTitleCaseTR } = require('../lib/text');
 const { discoverableUserWhere } = require('../lib/privacy');
@@ -83,12 +90,16 @@ router.get('/me', requireAuth, async (req, res) => {
         premiumUntil: true,
         premiumAutoRenew: true,
         birthDate: true,
+        createdAt: true,
+        schoolEmailVerifiedAt: true,
         weeklySummaryEnabled: true,
       },
     });
     // isPremium alanını, süresi dolmuş olsa bile ham haliyle değil,
     // gerçek (anlık) durumuyla döndür.
-    res.json(withLiveAge({ ...user, isPremium: isPremiumActive(user) }));
+    // Özel dosyaları (sohbet ekleri, belge) açmak için kısa ömürlü anahtar
+    const fileToken = signFileToken({ id: req.userId, tokenVersion: req.tokenVersion });
+    res.json(withLiveAge({ ...user, isPremium: isPremiumActive(user), fileToken, reverify: reverifyInfo(user) }));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Profil alınamadı.' });
@@ -132,7 +143,21 @@ const PROFILE_SELECT = {
 // yaş doğum tarihinden hesaplanır. Doğum tarihi yalnızca hiç girilmemişse bir kez eklenebilir.
 router.put('/me', requireAuth, async (req, res) => {
   try {
-    const { bio, interests, hobbies, intent, instagramUrl, twitterUrl, birthDate } = req.body;
+    const { interests, hobbies, intent, instagramUrl, twitterUrl, birthDate } = req.body;
+
+    // Hakkımda: en fazla 300 karakter, yasaklı kelimeler gizlenir
+    let bio;
+    if (req.body.bio !== undefined) {
+      const clean = await cleanUserText(req.body.bio, { max: LIMITS.bio, label: 'Hakkımda yazısı' });
+      if (clean.error) return res.status(400).json({ error: clean.error, field: 'bio' });
+      bio = clean.value;
+    }
+
+    // Sosyal medya: yalnızca kullanıcı adı ya da ilgili sitenin adresi kabul edilir
+    const insta = instagramUrl === undefined ? undefined : normalizeSocial('instagram', instagramUrl);
+    const tw = twitterUrl === undefined ? undefined : normalizeSocial('x', twitterUrl);
+    if (insta && insta.error) return res.status(400).json({ error: insta.error, field: 'instagramUrl' });
+    if (tw && tw.error) return res.status(400).json({ error: tw.error, field: 'twitterUrl' });
 
     let intentValue;
     if (intent !== undefined) {
@@ -167,8 +192,8 @@ router.put('/me', requireAuth, async (req, res) => {
         intent: intentValue,
         age: ageValue,
         // Gönderilmeyen alan değişmez (kısmi güncelleme, ör. başlangıç adımları)
-        instagramUrl: instagramUrl === undefined ? undefined : instagramUrl || null,
-        twitterUrl: twitterUrl === undefined ? undefined : twitterUrl || null,
+        instagramUrl: insta === undefined ? undefined : insta.value,
+        twitterUrl: tw === undefined ? undefined : tw.value,
         birthDate: birthDateValue,
       },
       select: PROFILE_SELECT,
@@ -218,6 +243,9 @@ router.put('/me/basics', requireAuth, async (req, res) => {
     }
 
     const updated = await prisma.user.update({ where: { id: req.userId }, data, select: PROFILE_SELECT });
+    // Temel bilgiler ilk kez tamamlandıysa (kayıt sonrası adım bitti)
+    const wasMissing = !current.birthDate || !current.department || !current.classYear;
+    if (wasMissing && updated.birthDate && updated.department && updated.classYear) track('onboarding_done', { userId: req.userId });
     res.json({ user: withLiveAge(updated) });
   } catch (err) {
     console.error(err);
@@ -349,6 +377,7 @@ router.delete('/me', requireAuth, async (req, res) => {
     }
 
     // Kayıtlar cascade ile silinir; fotoğraf, belge ve sohbet ekleri de diskten kaldırılır
+    await disconnectUser(req.userId, 'deleted');
     await deleteUserWithFiles(req.userId);
     res.json({ message: 'Hesabın kalıcı olarak silindi.' });
   } catch (err) {
@@ -451,14 +480,17 @@ router.get('/discover', requireAuth, async (req, res) => {
       return res.status(403).json({ error: "Kart Modu kapalı. Ayarlar'dan açabilirsin.", swipeDisabled: true });
     }
 
-    const [alreadyLiked, blockedByMe, blockingMe] = await Promise.all([
+    const [alreadyLiked, recentlyPassed, blockedByMe, blockingMe] = await Promise.all([
       prisma.like.findMany({ where: { fromUserId: req.userId }, select: { toUserId: true } }),
+      // "Geç" denen kişi 30 gün desteye geri gelmez
+      prisma.pass.findMany({ where: { fromUserId: req.userId, createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } }, select: { toUserId: true } }),
       prisma.block.findMany({ where: { blockerId: req.userId }, select: { blockedId: true } }),
       prisma.block.findMany({ where: { blockedId: req.userId }, select: { blockerId: true } }),
     ]);
     const excludeIds = [
       req.userId,
       ...alreadyLiked.map((l) => l.toUserId),
+      ...recentlyPassed.map((p) => p.toUserId),
       ...blockedByMe.map((b) => b.blockedId),
       ...blockingMe.map((b) => b.blockerId),
     ];
@@ -529,6 +561,7 @@ router.post('/logout-all', requireAuth, async (req, res) => {
       where: { id: req.userId },
       data: { tokenVersion: { increment: 1 } },
     });
+    disconnectUser(req.userId, 'logout_all');
     res.json({ success: true, message: 'Tüm cihazlardan çıkış yapıldı.' });
   } catch (err) {
     console.error(err);
@@ -608,5 +641,26 @@ router.post(
     }
   }
 );
+
+// GET /api/profile/me/export — verilerimi indir (KVKK m.11). Kötüye kullanıma
+// karşı kullanıcı başına 10 dakikada bir.
+const lastExportAt = new Map();
+router.get('/me/export', requireAuth, async (req, res) => {
+  try {
+    const last = lastExportAt.get(req.userId) || 0;
+    if (Date.now() - last < 10 * 60 * 1000) {
+      return res.status(429).json({ error: 'Verilerini birkaç dakika önce indirdin. Lütfen 10 dakika sonra tekrar dene.' });
+    }
+    lastExportAt.set(req.userId, Date.now());
+    const data = await buildUserExport(req.userId);
+    const stamp = new Date().toISOString().slice(0, 10);
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="kampus-verilerim-${stamp}.json"`);
+    res.send(JSON.stringify(data, null, 2));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Verilerin hazırlanamadı.' });
+  }
+});
 
 module.exports = router;

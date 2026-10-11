@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { VerifiedBadge } from '@/components/ui/icon-badge';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Flag, ArrowLeft, Layers, Heart, X } from 'lucide-react';
+import { Flag, ArrowLeft, Layers, Heart, X, RotateCcw } from 'lucide-react';
+import PaywallModal from '../components/PaywallModal';
 import PageHeader from '../components/PageHeader';
 import PhotoCarousel from '../components/PhotoCarousel';
 import api from '../api';
@@ -24,6 +25,9 @@ export default function SwipeDiscoverPage() {
   const toast = useToast();
   const [candidates, setCandidates] = useState([]);
   const [index, setIndex] = useState(0);
+  // Son karar (Premium'da geri alınabilir): { userId, type: 'like' | 'pass' }
+  const [lastDecision, setLastDecision] = useState(null);
+  const [showPaywall, setShowPaywall] = useState(false);
   const [loading, setLoading] = useState(true);
   const [followedIds, setFollowedIds] = useState(new Set());
   const [reportingUserId, setReportingUserId] = useState(null);
@@ -112,6 +116,8 @@ export default function SwipeDiscoverPage() {
     advanceCard();
     try {
       const res = await api.post(`/matches/like/${targetUserId}`);
+      // Eşleşmeye dönüşen beğeni geri alınamaz
+      setLastDecision(res.data.matched ? null : { userId: targetUserId, type: 'like' });
       if (res.data.matched) {
         setCelebration({ other: target, matchId: res.data.match?.id });
         // Seni beğenen biriyle eşleştin: "seni beğendi" sayacı artık bir eksik
@@ -123,7 +129,29 @@ export default function SwipeDiscoverPage() {
   }
 
   function handlePass() {
+    const target = candidates[index];
     advanceCard();
+    if (!target) return;
+    setLastDecision({ userId: target.id, type: 'pass' });
+    // "Geç" kaydedilir: kişi 30 gün desteye geri gelmez
+    api.post(`/matches/pass/${target.id}`).catch(() => {});
+  }
+
+  async function handleUndo() {
+    if (!lastDecision || index === 0) return;
+    if (!user?.isPremium) {
+      setShowPaywall(true);
+      return;
+    }
+    try {
+      await api.post(`/matches/undo/${lastDecision.userId}`);
+      setLastDecision(null);
+      setDrag({ x: 0, active: false });
+      setPhotoIndex(0);
+      setIndex((i) => Math.max(0, i - 1));
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Geri alınamadı.');
+    }
   }
 
   function advanceCard() {
@@ -395,6 +423,19 @@ export default function SwipeDiscoverPage() {
 
           <div className="swipe-actions" role="group" aria-label={t('Bu profil için karar ver')}>
             <div className="swipe-action">
+              <button
+                type="button"
+                className="swipe-btn undo"
+                onClick={handleUndo}
+                disabled={!lastDecision}
+                aria-label={t('Son kararı geri al')}
+                title={user?.isPremium ? t('Son kararı geri al') : t("Son kararı geri al (Premium)")}
+              >
+                <RotateCcw size={22} strokeWidth={2.4} />
+              </button>
+              <span aria-hidden="true">{t('Geri al')}</span>
+            </div>
+            <div className="swipe-action">
               <button type="button" className="swipe-btn pass" onClick={handlePass} aria-label={t('Geç')} title={t('Geç (←)')}>
                 <X size={30} strokeWidth={2.6} />
               </button>
@@ -409,6 +450,8 @@ export default function SwipeDiscoverPage() {
           </div>
         </div>
       )}
+
+      {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} contextText={t('Yanlışlıkla geçtiğin ya da beğendiğin kişiyi geri getir.')} />}
 
       {reportingUserId && (
         <ReportModal

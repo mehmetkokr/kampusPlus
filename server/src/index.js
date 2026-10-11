@@ -2,6 +2,9 @@
 // Express (HTTP API) + Socket.io (gerçek zamanlı mesajlaşma) birlikte çalışır.
 
 require('dotenv').config();
+// Hata takibi en başta kurulur ki açılıştaki hatalar da kayda geçsin
+const { installErrorCapture, expressErrorHandler } = require('./lib/errorLog');
+installErrorCapture();
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -28,6 +31,8 @@ const discoverRoutes = require('./routes/discover');
 const filesRoutes = require('./routes/files');
 const premiumRoutes = require('./routes/premium');
 const announcementRoutes = require('./routes/announcements');
+const pushRoutes = require('./routes/push');
+const telemetryRoutes = require('./routes/telemetry');
 const { setupSocket } = require('./socket');
 const { startCronJobs } = require('./lib/cron');
 
@@ -71,7 +76,8 @@ app.use(
         fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
         imgSrc: ["'self'", 'data:', 'blob:', 'https://images.unsplash.com'],
         mediaSrc: ["'self'", 'blob:'],
-        connectSrc: ["'self'", 'ws:', 'wss:'],
+        // Sentry yalnızca VITE_SENTRY_DSN ile derlenmişse kullanılır
+        connectSrc: ["'self'", 'ws:', 'wss:', 'https://*.ingest.sentry.io', 'https://*.ingest.de.sentry.io', 'https://*.ingest.us.sentry.io'],
         frameSrc: ["'self'"],
         objectSrc: ["'none'"],
         frameAncestors: ["'self'"],
@@ -134,6 +140,11 @@ app.use('/api/discover', discoverRoutes);
 app.use('/api/files', filesRoutes);
 app.use('/api/premium', premiumRoutes);
 app.use('/api/announcements', announcementRoutes);
+app.use('/api/push', pushRoutes);
+app.use('/api/telemetry', telemetryRoutes);
+
+// Rotalarda yakalanmayan hatalar kayda geçer, kullanıcıya sade bir mesaj döner
+app.use('/api', expressErrorHandler);
 
 // Yayın ortamında web sitesini (client/dist) de bu sunucu verir: tek adres,
 // tek servis. /api, /uploads ve /socket.io dışındaki her istek index.html'e
@@ -147,8 +158,10 @@ if (fs.existsSync(path.join(CLIENT_DIST, 'index.html'))) {
   });
 }
 
+// HTML, service worker ve manifest her açılışta yeniden doğrulanır ki yeni
+// sürüm hemen gelsin (adı içerikle değişen /assets dosyaları uzun süre önbellekte kalır)
 function noCacheHtml(res, filePath) {
-  if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache');
+  if (/\.html$|[\\/]sw\.js$|\.webmanifest$/.test(filePath)) res.setHeader('Cache-Control', 'no-cache');
 }
 
 app.set('io', io);

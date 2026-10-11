@@ -6,7 +6,7 @@ import { SITE } from '../constants/site';
 // Yasal sayfalar: Gizlilik Politikası (KVKK aydınlatma metni), Kullanım
 // Şartları ve Topluluk Kuralları. Metinler taslaktır; yayına almadan önce bir
 // hukukçuya kontrol ettirilmeli (veri sorumlusu unvanı, adres vb. eklenmeli).
-const UPDATED = '2 Ekim 2026';
+const UPDATED = '11 Ekim 2026';
 
 const DOCS = {
   gizlilik: {
@@ -17,20 +17,26 @@ const DOCS = {
         'Hesap bilgileri: ad soyad, üniversite e-posta adresi, üniversite, bölüm, sınıf, doğum tarihi ve şifrenin geri döndürülemez özeti.',
         'Profil bilgileri: fotoğraflar, hakkında yazısı, ilgi alanları, hobiler ve "ne arıyorsun" tercihleri.',
         'Doğrulama: yüklediğin e-Devlet öğrenci belgesi. Yalnızca inceleme ekibi görür, profilinde gösterilmez.',
-        'Kullanım verileri: paylaşımlar, yorumlar, beğeniler, takipler, kulüp üyelikleri, mesajlar ve son görülme zamanı.',
+        'Kullanım verileri: paylaşımlar, yorumlar, beğeniler, Kart Modu’ndaki “geç” kararların, takipler, kulüp üyelikleri, mesajlar, mesajlara bıraktığın tepkiler ve son görülme zamanı.',
+        'Öğrencilik doğrulaması: okul e-postanın en son doğrulandığı tarih. Yılda bir aynı adrese gelen kodla yenilenir.',
+        'Uygulama istatistikleri: hangi sayfaların açıldığı ve kayıt adımları. Giriş yapmadıysan bunlar tarayıcında üretilen rastgele bir kimlikle sayılır; IP adresi, konum veya cihaz bilgisi kaydedilmez.',
+        'Hata raporları: uygulamada bir hata oluşursa hatanın teknik ayrıntısı, açık olan sayfa ve tarayıcı türü.',
+        'Anlık bildirimleri açarsan, tarayıcının bu cihaz için verdiği bildirim adresi.',
       ]],
       ['Verileri ne için kullanıyoruz?', [
-        'Öğrenci olduğunu doğrulamak ve kampüs topluluğunu yalnızca gerçek öğrencilere açık tutmak.',
+        'Öğrenci olduğunu doğrulamak ve kampüs topluluğunu yalnızca gerçek öğrencilere açık tutmak. Bu yüzden yılda bir okul e-postanla yeniden doğrulama isteriz; doğrulanmayan profil listelerden gizlenir (hesap silinmez).',
         'Seni kendi kampüsündeki öğrencilerle buluşturmak (öneriler, Kart Modu, kulüpler).',
         'Güvenliği sağlamak: şikayetleri incelemek, kötüye kullanımı engellemek.',
         'Sana bildirim ve hesabınla ilgili e-postalar göndermek.',
+        'Hataları bulup düzeltmek ve uygulamanın hangi bölümlerinin işe yaradığını anlamak.',
       ]],
       ['Hukuki sebep', [
         'Kişisel verilerin, KVKK m.5/2 (c) uyarınca üyelik sözleşmesinin kurulması ve ifası, (f) uyarınca platform güvenliği için meşru menfaat ve gerektiğinde açık rızan kapsamında işlenir.',
       ]],
       ['Kimlerle paylaşıyoruz?', [
         'Verilerini satmayız ve reklam amacıyla üçüncü taraflarla paylaşmayız.',
-        'Hizmeti sunmak için çalıştığımız altyapı sağlayıcıları (sunucu, e-posta gönderimi) verilere yalnızca bu amaçla ve sözleşmeyle bağlı olarak erişebilir.',
+        'Hizmeti sunmak için çalıştığımız altyapı sağlayıcıları (sunucu, e-posta gönderimi, hata takibi) verilere yalnızca bu amaçla ve sözleşmeyle bağlı olarak erişebilir.',
+        'Anlık bildirimler, tarayıcının bildirim servisi (ör. Google, Apple, Mozilla) üzerinden iletilir. Bildirimde yalnızca kısa bir başlık gider; mesaj içerikleri gönderilmez.',
         'Kanunen yetkili kurumların talebi halinde mevzuatın gerektirdiği ölçüde paylaşım yapılabilir.',
       ]],
       ['Profilini kimler görebilir?', [
@@ -39,13 +45,18 @@ const DOCS = {
       ]],
       ['Saklama süresi', [
         'Hesabını sildiğinde profilin, fotoğrafların, paylaşımların, mesajların ve yüklediğin belge kalıcı olarak silinir. Kanunen saklanması zorunlu kayıtlar yasal süre boyunca tutulur.',
+        'Veri kaybına karşı her gece veritabanının yalnızca yöneticilerin erişebildiği bir yedeği alınır. Silinen bir hesabın verileri yedeklerde en fazla 14 gün daha kalır, sonra yedeklerle birlikte silinir.',
+        'Uygulama istatistikleri 180 gün, hata kayıtları son görülmelerinden itibaren 90 gün saklanır. Hesabını silersen istatistikler hesabından ayrılır ve anonim kalır.',
+        'Anlık bildirim adresi, bildirimleri kapattığında ya da bu cihazda çıkış yaptığında silinir.',
+        'Kart Modu’ndaki “geç” kararın 30 gün boyunca o kişiyi sana tekrar göstermemek için kullanılır.',
       ]],
       ['Haklarını nasıl kullanırsın? (KVKK m.11)', [
         'Verilerinin işlenip işlenmediğini öğrenme, bilgi talep etme, düzeltilmesini veya silinmesini isteme ve itiraz etme haklarına sahipsin.',
         `Taleplerini ${SITE.contactEmail} adresine yazabilirsin; en geç 30 gün içinde yanıtlanır. Hesabını Ayarlar > Hesabı Sil ile kendin de silebilirsin.`,
+        'Hakkında tuttuğumuz verilerin bir kopyasını Ayarlar > Güvenlik ve Veriler > Verilerimi İndir ile hemen alabilirsin.',
       ]],
       ['Çerezler ve yerel depolama', [
-        'Oturumunu açık tutmak, tema ve dil tercihini hatırlamak için tarayıcının yerel depolamasını kullanırız. Reklam veya takip çerezi kullanmayız.',
+        'Oturumunu açık tutmak, tema ve dil tercihini hatırlamak ve ziyaretleri saymak için (rastgele üretilmiş bir kimlik) tarayıcının yerel depolamasını kullanırız. Reklam veya üçüncü taraf takip çerezi kullanmayız.',
       ]],
     ],
   },

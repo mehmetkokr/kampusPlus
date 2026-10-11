@@ -48,6 +48,7 @@ async function requireAuth(req, res, next) {
     }
 
     req.userId = user.id;
+    req.tokenVersion = user.tokenVersion;
     next();
   } catch (err) {
     return res.status(401).json({ error: 'Oturum geçersiz veya süresi dolmuş.' });

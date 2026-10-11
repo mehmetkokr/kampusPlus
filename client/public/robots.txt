@@ -1,6 +1,6 @@
 # kampüs· — arama motoru kuralları
 # Herkese açık sayfalar taranır; oturum gerektiren uygulama ve yönetim
-# ekranları taranmaz. Alan adı değişirse Sitemap satırını güncelle.
+# ekranları taranmaz. Sitemap adresi derlemede VITE_SITE_URL ile değişir.
 User-agent: *
 Allow: /
 Disallow: /admin

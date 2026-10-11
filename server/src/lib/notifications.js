@@ -2,6 +2,7 @@
 // Farklı route'lardan (takip, mesaj, eşleşme, kulüp, profil görüntüleme) ve
 // socket.js'ten çağrılır, böylece bildirim oluşturma mantığı tek yerde durur.
 const prisma = require('./prisma');
+const { pushNotification } = require('./push');
 
 // Bazı bildirim türleri kullanıcının Ayarlar sayfasındaki tercihine bağlıdır.
 const TYPE_PREFERENCE_FIELD = {
@@ -37,6 +38,9 @@ async function createNotification(io, { userId, type, actorId = null, targetType
     if (io) {
       io.to(`user_${userId}`).emit('new_notification', notification);
     }
+
+    // Uygulama kapalıysa telefona/bilgisayara anlık bildirim (beklemeden)
+    pushNotification(notification);
 
     return notification;
   } catch (err) {

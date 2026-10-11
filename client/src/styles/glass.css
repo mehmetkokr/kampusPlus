@@ -4916,3 +4916,56 @@ button.announcement-main { cursor: pointer; }
   .emoji-picker-grid button { transition: none; }
   .emoji-picker-grid button:hover, .emoji-picker-grid button:active { transform: none; }
 }
+
+/* Okunmamış sohbet rozeti (kenar çubuğu ve alt menü) */
+.nav-unread {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--coral, #ff453a);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.nav-unread.side { margin-left: auto; position: relative; z-index: 1; }
+.nav-unread.dock {
+  position: absolute;
+  top: 4px;
+  left: 26px;
+  z-index: 2;
+  box-shadow: 0 0 0 2px var(--bg);
+}
+
+/* Giriş ekranında oturum kapanma nedeni */
+.auth-notice {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--amber-soft) 12%, transparent);
+  color: var(--text);
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
+/* Profil görüntüleme: Instagram / X bağlantıları */
+.profile-social-links { display: flex; flex-wrap: wrap; gap: 8px; }
+.profile-social-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.profile-social-link:hover { border-color: var(--amber-soft); }

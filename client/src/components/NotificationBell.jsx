@@ -1,22 +1,21 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { io } from 'socket.io-client';
 import { Bell } from 'lucide-react';
 import api from '../api';
-import { API_BASE_URL } from '../config';
 import { useAuth } from '../context/AuthContext';
+import { useSocket } from '../lib/socket';
 import { useI18n } from '../i18n';
 
 // Ayarlar ikonunun yanında/pencerenin üstünde tekrar kullanılan küçük bildirim
 // zili: okunmamış sayısını rozet olarak gösterir, tıklanınca Bildirim Merkezi'ne
-// götürür. Gerçek zamanlı güncelleme için kendi soket bağlantısını açar, ayrıca
-// yedek olarak periyodik yoklama yapar.
+// götürür. Paylaşılan gerçek zamanlı bağlantıyı dinler, ayrıca yedek olarak
+// periyodik yoklama yapar.
 export default function NotificationBell() {
   const { t } = useI18n();
   const { token } = useAuth();
   const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = useState(0);
-  const socketRef = useRef(null);
+  const socket = useSocket();
 
   async function loadUnreadCount() {
     try {
@@ -32,18 +31,15 @@ export default function NotificationBell() {
     loadUnreadCount();
 
     const interval = setInterval(loadUnreadCount, 30000);
-
-    const socket = io(API_BASE_URL || undefined, { auth: { token } });
-    socketRef.current = socket;
-    socket.on('new_notification', () => {
-      setUnreadCount((c) => c + 1);
-    });
-
-    return () => {
-      clearInterval(interval);
-      socket.disconnect();
-    };
+    return () => clearInterval(interval);
   }, [token]);
+
+  useEffect(() => {
+    if (!socket) return undefined;
+    const bump = () => setUnreadCount((c) => c + 1);
+    socket.on('new_notification', bump);
+    return () => socket.off('new_notification', bump);
+  }, [socket]);
 
   return (
     <button

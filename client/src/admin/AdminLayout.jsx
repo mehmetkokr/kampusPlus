@@ -16,6 +16,8 @@ import {
   Settings,
   ShieldCheck,
   Users,
+  BarChart3,
+  Server,
 } from 'lucide-react';
 import adminApi from './adminApi';
 import ThemeToggle from '../components/ThemeToggle';
@@ -31,6 +33,7 @@ const NAV = [
     label: 'Pazarlama',
     items: [
       { to: '/admin', end: true, icon: LayoutDashboard, label: 'Genel Bakış' },
+      { to: '/admin/analytics', icon: BarChart3, label: 'Analitik' },
       { to: '/admin/campaigns', icon: Megaphone, label: 'Kampanyalar' },
       { to: '/admin/campuses', icon: GraduationCap, label: 'Kampüsler' },
     ],
@@ -46,7 +49,10 @@ const NAV = [
   },
   {
     label: 'Sistem',
-    items: [{ to: '/admin/settings', icon: Settings, label: 'Ayarlar' }],
+    items: [
+      { to: '/admin/system', icon: Server, label: 'Sistem' },
+      { to: '/admin/settings', icon: Settings, label: 'Ayarlar' },
+    ],
   },
 ];
 

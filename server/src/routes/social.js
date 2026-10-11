@@ -4,6 +4,7 @@ const express = require('express');
 const { visibleIntentFor } = require('../lib/intents');
 const { removeUploadedFile } = require('../lib/uploads');
 const prisma = require('../lib/prisma');
+const { cleanUserText, maskBannedWords, LIMITS } = require('../lib/textSafety');
 const { requireAuth } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 const { verifyFileSignature } = require('../lib/fileValidation');
@@ -261,7 +262,7 @@ router.get('/posts/user/:userId', requireAuth, async (req, res) => {
 // POST /api/posts — yeni gönderi paylaş (fotoğraflı ya da yalnızca metin)
 router.post('/posts', requireAuth, upload.single('photo'), verifyFileSignature, async (req, res) => {
   try {
-    const caption = req.body.caption?.trim() || null;
+    const caption = typeof req.body.caption === 'string' ? req.body.caption.trim() || null : null;
     if (!req.file && !caption) {
       return res.status(400).json({ error: 'Bir fotoğraf ekle ya da bir şeyler yaz.' });
     }
@@ -274,7 +275,7 @@ router.post('/posts', requireAuth, upload.single('photo'), verifyFileSignature, 
       data: {
         authorId: req.userId,
         imageUrl: req.file ? `/uploads/${req.file.filename}` : null,
-        caption,
+        caption: caption ? await maskBannedWords(caption) : null,
         visibility,
       },
       include: POST_INCLUDE(req.userId),
@@ -477,7 +478,7 @@ router.get('/posts/:id/comments', requireAuth, async (req, res) => {
 router.post('/posts/:id/comments', requireAuth, async (req, res) => {
   try {
     const { content, parentId } = req.body;
-    if (!content || !content.trim()) return res.status(400).json({ error: 'Yorum boş olamaz.' });
+    if (typeof content !== 'string' || !content.trim()) return res.status(400).json({ error: 'Yorum boş olamaz.' });
     if (content.trim().length > CAPTION_MAX) {
       return res.status(400).json({ error: `Yorum en fazla ${CAPTION_MAX} karakter olabilir.` });
     }
@@ -503,7 +504,7 @@ router.post('/posts/:id/comments', requireAuth, async (req, res) => {
       data: {
         postId: Number(req.params.id),
         authorId: req.userId,
-        content: content.trim(),
+        content: await maskBannedWords(content.trim()),
         parentId: resolvedParentId,
       },
       include: { author: { select: AUTHOR_SELECT } },

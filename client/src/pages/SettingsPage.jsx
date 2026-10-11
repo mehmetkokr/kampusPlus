@@ -7,6 +7,8 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import PaywallModal from '../components/PaywallModal';
 import PageHeader from '../components/PageHeader';
+import PushSettings from '../components/PushSettings';
+import AccountSecurity from '../components/AccountSecurity';
 import { useConfirm } from '../context/ConfirmContext';
 import { useI18n } from '../i18n';
 
@@ -240,6 +242,8 @@ export default function SettingsPage() {
           {t("Hangi durumlarda bildirim almak istediğini seç.")}
         </p>
 
+        <PushSettings />
+
         <div className="settings-row">
           <div>
             <div className="settings-row-label">{t("Yeni Eşleşme Bildirimleri")}</div>
@@ -470,6 +474,8 @@ export default function SettingsPage() {
       </div>
 
       {/* ---------- Hesap: Tehlike Bölgesi ---------- */}
+      <AccountSecurity />
+
       <div className="card danger-zone-card" style={{ marginTop: 16 }}>
         <h3 style={{ marginBottom: 4 }}>{t("Hesap")}</h3>
         <p className="muted" style={{ marginBottom: 4 }}>

@@ -11,6 +11,8 @@ import PhotoGallery from '../components/PhotoGallery';
 import StudentBadgeCard from '../components/StudentBadgeCard';
 import ProfileCompletion, { getCompletionPercent } from '../components/ProfileCompletion';
 import MultiSelectBox from '../components/MultiSelectBox';
+import { InstagramGlyph, XGlyph } from '../components/SocialGlyphs';
+import { socialHandle } from '../utils/social';
 import { INTENT_OPTIONS, parseIntents } from '../constants/intents';
 import { INTEREST_OPTIONS, HOBBY_OPTIONS, MAX_TAGS, parseTags } from '../constants/tags';
 import { useI18n } from '../i18n';
@@ -24,27 +26,14 @@ import '../styles/profile.css';
 // sosyal medya. Değişiklikler alttaki sabit düğmeyle tek seferde kaydedilir.
 const BIO_MAX = 300;
 
-// Marka simgeleri (lucide'da yok): sade çizgi hâlleri
-const InstagramGlyph = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-    <rect x="3" y="3" width="18" height="18" rx="5" />
-    <circle cx="12" cy="12" r="4" />
-    <circle cx="17.5" cy="6.5" r="0.6" fill="currentColor" />
-  </svg>
-);
-const XGlyph = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-    <path d="M17.75 3h3.07l-6.71 7.67L22 21h-6.18l-4.84-6.33L5.44 21H2.37l7.18-8.2L2 3h6.34l4.37 5.78L17.75 3Zm-1.08 16.17h1.7L7.4 4.74H5.58l11.09 14.43Z" />
-  </svg>
-);
-
 function fromUser(user) {
   return {
     bio: user.bio || '',
     interests: user.interests || '',
     hobbies: user.hobbies || '',
-    instagramUrl: user.instagramUrl || '',
-    twitterUrl: user.twitterUrl || '',
+    // Formda kullanıcı adı gösterilir; sunucu güvenli adrese çevirir
+    instagramUrl: socialHandle('instagram', user.instagramUrl) || '',
+    twitterUrl: socialHandle('x', user.twitterUrl) || '',
     intent: parseIntents(user.intent).join(','),
   };
 }

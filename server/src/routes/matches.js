@@ -3,7 +3,8 @@ const express = require('express');
 const prisma = require('../lib/prisma');
 const { requireAuth } = require('../middleware/auth');
 const { createNotification } = require('../lib/notifications');
-const { isBlockedEitherWay } = require('../lib/block');
+const { isBlockedEitherWay, getBlockedUserIds } = require('../lib/block');
+const { previewOf } = require('../lib/chat');
 const { isPremiumActive } = require('../lib/premium');
 const fs = require('fs');
 const path = require('path');
@@ -28,6 +29,9 @@ router.post('/like/:userId', requireAuth, async (req, res) => {
     if (pair.length < 2 || pair.some((u) => !u.swipeEnabled)) {
       return res.status(403).json({ error: "Bu kullanıcı Kart Modu'nu kullanmıyor." });
     }
+
+    // Önce "geç" demiş olsa bile (Premium geri alma vb.) beğeni geçerli olur
+    await prisma.pass.deleteMany({ where: { fromUserId, toUserId } });
 
     // Beğeniyi kaydet (zaten varsa hata vermesin)
     await prisma.like.upsert({
@@ -63,6 +67,57 @@ router.post('/like/:userId', requireAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Beğeni işlenemedi.' });
+  }
+});
+
+// POST /api/matches/pass/:userId — Kart Modu'nda "Geç". Kişi 30 gün desteye
+// geri gelmez (önceden sayfa yenilenince aynı kişiler tekrar çıkıyordu).
+router.post('/pass/:userId', requireAuth, async (req, res) => {
+  try {
+    const toUserId = Number(req.params.userId);
+    if (!Number.isInteger(toUserId) || toUserId === req.userId) return res.status(400).json({ error: 'Geçersiz kullanıcı.' });
+    await prisma.pass.upsert({
+      where: { fromUserId_toUserId: { fromUserId: req.userId, toUserId } },
+      update: { createdAt: new Date() },
+      create: { fromUserId: req.userId, toUserId },
+    });
+    res.json({ passed: true });
+  } catch (err) {
+    if (err.code === 'P2003') return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
+    console.error(err);
+    res.status(500).json({ error: 'İşlem kaydedilemedi.' });
+  }
+});
+
+// POST /api/matches/undo/:userId — Premium: son kararı (beğen ya da geç) geri al.
+// Yalnızca son 10 dakikadaki karar ve eşleşmeye dönüşmemiş beğeni geri alınır.
+const UNDO_WINDOW_MS = 10 * 60 * 1000;
+router.post('/undo/:userId', requireAuth, async (req, res) => {
+  try {
+    const toUserId = Number(req.params.userId);
+    const me = await prisma.user.findUnique({ where: { id: req.userId }, select: { isPremium: true, premiumUntil: true } });
+    if (!isPremiumActive(me)) {
+      return res.status(403).json({ error: "Son kararı geri almak Premium'a özel.", code: 'PREMIUM_REQUIRED' });
+    }
+    const since = new Date(Date.now() - UNDO_WINDOW_MS);
+    const key = { fromUserId_toUserId: { fromUserId: req.userId, toUserId } };
+    const [pass, like] = await Promise.all([prisma.pass.findUnique({ where: key }), prisma.like.findUnique({ where: key })]);
+
+    if (pass && pass.createdAt >= since) {
+      await prisma.pass.delete({ where: key });
+      return res.json({ undone: 'pass' });
+    }
+    if (like && like.createdAt >= since) {
+      const [userAId, userBId] = req.userId < toUserId ? [req.userId, toUserId] : [toUserId, req.userId];
+      const match = await prisma.match.findUnique({ where: { userAId_userBId: { userAId, userBId } } });
+      if (match) return res.status(409).json({ error: 'Bu beğeni eşleşmeye dönüştü; geri almak yerine eşleşmeyi kaldırabilirsin.' });
+      await prisma.like.delete({ where: key });
+      return res.json({ undone: 'like' });
+    }
+    res.status(404).json({ error: 'Geri alınacak yakın tarihli bir karar yok.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Geri alınamadı.' });
   }
 });
 
@@ -134,36 +189,68 @@ router.get('/', requireAuth, async (req, res) => {
   try {
     const myId = req.userId;
 
-    const matches = await prisma.match.findMany({
-      where: { OR: [{ userAId: myId }, { userBId: myId }] },
-      include: {
-        userA: { select: { id: true, fullName: true, photoUrl: true, department: true } },
-        userB: { select: { id: true, fullName: true, photoUrl: true, department: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    // Engel ilişkisi olan eşleşmeler listede görünmez (tek sorguda)
+    const blocked = await getBlockedUserIds(myId);
+    const matches = (
+      await prisma.match.findMany({
+        where: { OR: [{ userAId: myId }, { userBId: myId }] },
+        include: {
+          userA: { select: { id: true, fullName: true, photoUrl: true, department: true } },
+          userB: { select: { id: true, fullName: true, photoUrl: true, department: true } },
+          messages: { orderBy: { createdAt: 'desc' }, take: 1 },
+        },
+      })
+    ).filter((m) => !blocked.has(m.userAId === myId ? m.userBId : m.userAId));
 
-    // Taraflardan biri diğerini engellemişse bu eşleşme artık listede görünmesin
-    // (mesajlaşma zaten engellendi, sohbetin görünür kalmasının bir anlamı yok).
-    const visible = [];
-    for (const m of matches) {
-      const otherId = m.userAId === myId ? m.userBId : m.userAId;
-      if (!(await isBlockedEitherWay(myId, otherId))) {
-        visible.push(m);
-      }
-    }
+    // Her sohbette okunmamış (karşı taraftan gelen, görülmemiş) mesaj sayısı
+    const unreadRows = matches.length
+      ? await prisma.message.groupBy({
+          by: ['matchId'],
+          where: { matchId: { in: matches.map((m) => m.id) }, senderId: { not: myId }, isRead: false },
+          _count: { _all: true },
+        })
+      : [];
+    const unread = new Map(unreadRows.map((r) => [r.matchId, r._count._all]));
 
-    // Karşı tarafın bilgisini "otherUser" olarak düzleştir
-    const formatted = visible.map((m) => ({
-      matchId: m.id,
-      otherUser: m.userAId === myId ? m.userB : m.userA,
-      createdAt: m.createdAt,
-    }));
+    const formatted = matches
+      .map((m) => {
+        const last = m.messages[0] || null;
+        return {
+          matchId: m.id,
+          otherUser: m.userAId === myId ? m.userB : m.userA,
+          createdAt: m.createdAt,
+          lastMessage: last ? { id: last.id, senderId: last.senderId, preview: previewOf(last), createdAt: last.createdAt } : null,
+          unreadCount: unread.get(m.id) || 0,
+        };
+      })
+      // En son hareket eden sohbet en üstte (mesaj yoksa eşleşme anı)
+      .sort((a, b) => new Date(b.lastMessage?.createdAt || b.createdAt) - new Date(a.lastMessage?.createdAt || a.createdAt));
 
     res.json(formatted);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Eşleşmeler alınamadı.' });
+  }
+});
+
+// GET /api/matches/unread-count — okunmamış mesajı olan sohbet sayısı (alt menü rozeti)
+router.get('/unread-count', requireAuth, async (req, res) => {
+  try {
+    const myId = req.userId;
+    const blocked = await getBlockedUserIds(myId);
+    const rows = await prisma.message.groupBy({
+      by: ['matchId'],
+      where: {
+        senderId: { not: myId, notIn: [...blocked] },
+        isRead: false,
+        match: { OR: [{ userAId: myId }, { userBId: myId }] },
+      },
+      _count: { _all: true },
+    });
+    res.json({ chats: rows.length, messages: rows.reduce((n, r) => n + r._count._all, 0) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Okunmamış mesaj sayısı alınamadı.' });
   }
 });
 

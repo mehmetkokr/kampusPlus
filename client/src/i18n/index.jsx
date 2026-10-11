@@ -1,7 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api';
-import en, { patterns as enPatterns } from './en';
 
 // Hafif çoklu dil desteği. Anahtar olarak Türkçe metnin kendisi kullanılır:
 //   t('Keşfet')                     -> "Discover" (İngilizce seçiliyse)
@@ -10,9 +9,22 @@ import en, { patterns as enPatterns } from './en';
 //
 // Dil kaynağı: giriş yapılmışsa hesabın tercihi (user.language), değilse
 // tarayıcıda hatırlanan seçim, o da yoksa tarayıcının dili.
+//
+// İngilizce sözlük ayrı bir parçadır; yalnızca İngilizce kullanan ziyaretçiye
+// indirilir (Türkçe kullananın ilk açılışı ~25 KB hafifler).
 const STORAGE_KEY = 'kp-lang';
-const DICTS = { en };
-const PATTERNS = { en: enPatterns };
+const DICTS = {};
+const PATTERNS = {};
+let enPromise = null;
+function loadEnglish() {
+  if (!enPromise) {
+    enPromise = import('./en').then((m) => {
+      DICTS.en = m.default;
+      PATTERNS.en = m.patterns;
+    });
+  }
+  return enPromise;
+}
 
 function readStoredLang() {
   try {
@@ -29,6 +41,9 @@ function interpolate(text, vars) {
   return text.replace(/\{(\w+)\}/g, (m, k) => (vars[k] !== undefined ? String(vars[k]) : m));
 }
 
+// Tarayıcıda İngilizce seçiliyse sözlük sayfa açılır açılmaz yüklenmeye başlar
+if (readStoredLang() === 'en') loadEnglish();
+
 const I18nContext = createContext({ lang: 'tr', t: (s, v) => interpolate(s, v), setLang: () => {} });
 
 export function I18nProvider({ children }) {
@@ -36,8 +51,15 @@ export function I18nProvider({ children }) {
   const [guestLang, setGuestLang] = useState(readStoredLang);
   const lang = user?.language === 'en' || user?.language === 'tr' ? user.language : guestLang;
 
+  // Sözlük yüklenince metinler yeniden çevrilsin diye sürüm sayacı
+  const [dictVersion, setDictVersion] = useState(() => (DICTS.en ? 1 : 0));
   useEffect(() => {
     document.documentElement.lang = lang;
+    if (lang === 'en' && !DICTS.en) {
+      loadEnglish()
+        .then(() => setDictVersion((v) => v + 1))
+        .catch(() => {});
+    }
   }, [lang]);
 
   const t = useCallback(
@@ -51,7 +73,9 @@ export function I18nProvider({ children }) {
       }
       return interpolate(text, vars);
     },
-    [lang]
+    // dictVersion: sözlük sonradan yüklendiğinde t yeniden oluşsun
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [lang, dictVersion]
   );
 
   const setLang = useCallback(

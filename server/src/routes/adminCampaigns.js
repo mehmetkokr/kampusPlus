@@ -7,6 +7,7 @@
 //   email        → hedef kitlenin okul e-postası (SMTP yoksa sunucu konsoluna yazılır)
 const express = require('express');
 const prisma = require('../lib/prisma');
+const { pushToUsers } = require('../lib/push');
 const { sendMail } = require('../lib/mailer');
 const { audienceWhere, normalizeAudience } = require('../lib/audience');
 const { getOnlineUserIds } = require('../socket');
@@ -177,6 +178,11 @@ router.post('/campaigns', async (req, res) => {
         })),
       });
       await pushLive(io, campaign.id);
+      // Uygulaması kapalı olanlara anlık bildirim (arka planda)
+      pushToUsers(
+        recipients.map((r) => r.id),
+        { title: v.title, body: v.text.slice(0, 180), url: v.link || '/notifications', tag: `campaign-${campaign.id}` }
+      );
     }
 
     // E-postalar arka planda gider; sayı bitince kampanyaya yazılır

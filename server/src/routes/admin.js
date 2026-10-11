@@ -2,18 +2,23 @@
 // Tüm route'lar requireAdmin ile korunur (isAdmin=true olmayan hiç giremez).
 const express = require('express');
 const prisma = require('../lib/prisma');
+const { disconnectUser } = require('../socket');
 const { createNotification } = require('../lib/notifications');
 const { requireAdmin } = require('../middleware/adminAuth');
+const { auditMiddleware } = require('../lib/audit');
 const { sendMail } = require('../lib/mailer');
 const { getOnlineUserIds } = require('../socket');
 const { removeUploadedFile, deleteUserWithFiles } = require('../lib/uploads');
 
 const router = express.Router();
 router.use(requireAdmin);
+// Paneldeki her başarılı değişiklik yönetici işlem kaydına yazılır (lib/audit.js)
+router.use(auditMiddleware);
 
 // Pazarlama analitiği ve kampanyalar (ayrı dosyalarda, aynı yetki kontrolüyle)
 router.use(require('./adminInsights'));
 router.use(require('./adminCampaigns'));
+router.use(require('./adminSystem'));
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -458,8 +463,7 @@ router.patch('/users/:id', async (req, res) => {
     // devam edebilir. HTTP istekleri zaten requireAuth'taki isBanned
     // kontrolüyle bir sonraki istekte reddedilir.
     if (data.isBanned) {
-      const io = req.app.get('io');
-      io?.in(`user_${id}`).disconnectSockets(true);
+      disconnectUser(id, 'banned');
     }
 
     // Belge kararı: uygulama içi bildirim (rozet durumu değiştiyse)
@@ -500,6 +504,7 @@ router.delete('/users/:id', async (req, res) => {
     if (id === req.userId) {
       return res.status(400).json({ error: 'Kendi hesabınızı buradan silemezsiniz.' });
     }
+    await disconnectUser(id, 'deleted');
     await deleteUserWithFiles(id);
     res.json({ message: 'Kullanıcı silindi.' });
   } catch (err) {
@@ -793,7 +798,7 @@ router.post('/reports/:id/action', async (req, res) => {
       if (!ownerId) return res.status(400).json({ error: 'İçerik silinmiş; askıya alınacak kullanıcı bulunamadı.' });
       if (ownerId === req.userId) return res.status(400).json({ error: 'Kendini askıya alamazsın.' });
       const owner = await prisma.user.update({ where: { id: ownerId }, data: { isBanned: true }, select: { fullName: true } });
-      io?.in(`user_${ownerId}`).disconnectSockets(true);
+      disconnectUser(ownerId, 'banned');
       message = `${owner.fullName} askıya alındı.`;
     } else if (action === 'delete_content') {
       const model = { post: 'post', story: 'story', message: 'message', club_message: 'clubMessage', comment: 'comment', club: 'club' }[report.targetType];

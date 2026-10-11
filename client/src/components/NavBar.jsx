@@ -16,6 +16,7 @@ import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
 import { useI18n } from '../i18n';
 import ThemeToggle from './ThemeToggle';
+import { useChatUnread } from '../hooks/useChatUnread';
 
 // Kart Modu'nu kapatan kullanıcı menüde onu görmez
 export function navItemsFor(user) {
@@ -37,15 +38,26 @@ const SPRING = { type: 'spring', stiffness: 520, damping: 40, mass: 0.9 };
 // arası geçişte yok olup yeniden oluşmadığı için aktif gösterge kayarak geçer.
 // Masaüstünde sol cam kenar çubuğu, mobilde alt yüzen cam dock olarak görünür.
 export default function NavBar() {
+  // Okunmamış mesajı olan sohbet sayısı: "Sohbet" sekmesinde rozet
+  const chatUnread = useChatUnread();
   return (
     <>
-      <SideNav />
-      <MobileDock />
+      <SideNav chatUnread={chatUnread} />
+      <MobileDock chatUnread={chatUnread} />
     </>
   );
 }
 
-function SideNav() {
+function UnreadBadge({ to, count, className }) {
+  if (to !== '/matches' || !count) return null;
+  return (
+    <span className={className} aria-hidden="true">
+      {count > 9 ? '9+' : count}
+    </span>
+  );
+}
+
+function SideNav({ chatUnread }) {
   const { t } = useI18n();
   const { user } = useAuth();
   const firstName = user?.fullName?.split(' ')[0];
@@ -71,6 +83,7 @@ function SideNav() {
                   <Icon size={18} strokeWidth={isActive ? 2.3 : 1.9} />
                 </span>
                 <span className="side-nav-text">{t(label)}</span>
+                <UnreadBadge to={to} count={chatUnread} className="nav-unread side" />
               </>
             )}
           </NavLink>
@@ -136,17 +149,24 @@ function SideNav() {
   );
 }
 
-function MobileDock() {
+function MobileDock({ chatUnread }) {
   const { user } = useAuth();
   const { t } = useI18n();
   return (
     <nav className="dock" aria-label={t("Ana menü")}>
       {navItemsFor(user).map(({ to, label, icon: Icon, end }) => (
-        <NavLink key={to} to={to} end={end} className={({ isActive }) => `dock-item ${isActive ? 'active' : ''}`} aria-label={t(label)}>
+        <NavLink
+          key={to}
+          to={to}
+          end={end}
+          className={({ isActive }) => `dock-item ${isActive ? 'active' : ''}`}
+          aria-label={to === '/matches' && chatUnread ? t('{label}, {n} okunmamış sohbet', { label: t(label), n: chatUnread }) : t(label)}
+        >
           {({ isActive }) => (
             <>
               {isActive && <motion.span layoutId="dock-pill" className="dock-pill" transition={SPRING} />}
               <Icon className="dock-icon" size={19} strokeWidth={isActive ? 2.3 : 1.9} />
+              <UnreadBadge to={to} count={chatUnread} className="nav-unread dock" />
               <span className="dock-label">{t(label)}</span>
             </>
           )}

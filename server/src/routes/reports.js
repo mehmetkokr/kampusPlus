@@ -2,6 +2,7 @@
 // için kullanılan uç nokta. Admin tarafı server/src/routes/admin.js içindedir.
 const express = require('express');
 const prisma = require('../lib/prisma');
+const { cleanUserText, LIMITS } = require('../lib/textSafety');
 const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
@@ -19,6 +20,8 @@ router.post('/', requireAuth, async (req, res) => {
     if (!VALID_REASONS.includes(reason)) {
       return res.status(400).json({ error: 'Geçersiz şikayet sebebi.' });
     }
+    const desc = await cleanUserText(description, { max: LIMITS.reportDescription, label: 'Açıklama', filter: false });
+    if (desc.error) return res.status(400).json({ error: desc.error });
     const targetIdNum = Number(targetId);
     if (!targetIdNum) {
       return res.status(400).json({ error: 'Geçersiz hedef.' });
@@ -42,7 +45,7 @@ router.post('/', requireAuth, async (req, res) => {
         targetType,
         targetId: targetIdNum,
         reason,
-        description: description?.trim() || null,
+        description: desc.value,
       },
     });
 

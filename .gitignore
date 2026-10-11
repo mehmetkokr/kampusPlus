@@ -20,6 +20,10 @@ server/private-uploads/*
 !server/uploads/.gitkeep
 !server/private-uploads/.gitkeep
 
+# Veritabanı yedekleri ve otomatik üretilen anlık bildirim anahtarları (gizli)
+server/backups/
+server/vapid-keys.json
+
 # Loglar ve sistem dosyaları
 *.log
 npm-debug.log*
@@ -36,3 +40,7 @@ test-accounts.local.txt
 
 # OCR dil verileri (tesseract.js çalışırken kendisi indirir)
 *.traineddata
+
+# Uçtan uca test çıktıları
+client/test-results/
+client/playwright-report/

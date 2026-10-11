@@ -1,9 +1,15 @@
 // Kayıt ve giriş işlemleri
 const express = require('express');
+const { track } = require('../lib/analytics');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
 const prisma = require('../lib/prisma');
+const { signFileToken } = require('../lib/fileToken');
+const { disconnectUser } = require('../socket');
+const { requireAuth } = require('../middleware/auth');
+const { reverifyInfo } = require('../lib/reverify');
+const { checkTotp } = require('../lib/twoFactor');
 const upload = require('../middleware/upload');
 const { verifyFileSignature } = require('../lib/fileValidation');
 const { sendMail, isRealSmtpConfigured } = require('../lib/mailer');
@@ -58,10 +64,11 @@ const schoolEmailError = (university) =>
 const router = express.Router();
 
 // Giriş denemesi kaba kuvvet (brute-force) saldırılarına karşı sınırlanır.
-// 15 dakikada aynı IP'den en fazla 10 deneme.
+// 15 dakikada aynı IP'den en fazla 10 deneme (LOGIN_RATE_LIMIT ile değişir;
+// uçtan uca testler aynı adresten çok sayıda giriş yaptığı için yükseltir).
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 10,
+  limit: Number(process.env.LOGIN_RATE_LIMIT) || 10,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Çok fazla giriş denemesi yapıldı. Lütfen birkaç dakika sonra tekrar deneyin.' },
@@ -134,6 +141,8 @@ router.post('/register/send-code', sendCodeLimiter, async (req, res) => {
       text: `Merhaba,\n\nkampüs· kaydını tamamlamak için doğrulama kodun: ${code}\n\nKod 10 dakika geçerlidir. Bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin.`,
       html: `<p>Merhaba,</p><p>kampüs· kaydını tamamlamak için doğrulama kodun:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px">${code}</p><p>Kod 10 dakika geçerlidir. Bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin.</p>`,
     });
+
+    track('code_sent', { anonId: req.headers['x-anon-id'] });
 
     res.json({
       sent: true,
@@ -238,15 +247,18 @@ router.post('/register', registerLimiter, upload.private.single('studentDoc'), v
         age: birth.age,
         intent: intentValue,
         verificationStatus,
+        schoolEmailVerifiedAt: new Date(),
       },
     });
 
     await prisma.emailVerificationCode.delete({ where: { email } }).catch(() => {});
 
     const token = jwt.sign({ userId: user.id, tokenVersion: user.tokenVersion }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    track('signup', { userId: user.id, anonId: req.headers['x-anon-id'] });
 
     res.status(201).json({
       token,
+      fileToken: signFileToken(user),
       user: {
         id: user.id,
         email: user.email,
@@ -286,6 +298,14 @@ router.post('/login', loginLimiter, async (req, res) => {
       return res.status(403).json({ error: 'Hesabın askıya alındı. Detaylar için destek ekibiyle iletişime geç.' });
     }
 
+    // Yönetici iki adımlı doğrulamayı açtıysa şifreden sonra uygulamadaki kod da istenir
+    if (user.isAdmin && user.totpEnabled) {
+      if (!req.body.totpCode) return res.json({ twoFactorRequired: true });
+      if (!checkTotp(user, req.body.totpCode)) {
+        return res.status(401).json({ error: 'Doğrulama kodu hatalı.', twoFactorRequired: true });
+      }
+    }
+
     let reactivated = false;
     if (user.isFrozen) {
       await prisma.user.update({ where: { id: user.id }, data: { isFrozen: false } });
@@ -296,6 +316,7 @@ router.post('/login', loginLimiter, async (req, res) => {
 
     res.json({
       token,
+      fileToken: signFileToken(user),
       reactivated,
       user: {
         id: user.id,
@@ -399,11 +420,130 @@ router.post('/reset-password', forgotPasswordLimiter, async (req, res) => {
         tokenVersion: { increment: 1 }, // bu token'ı ve varsa diğer eski token'ları geçersiz kıl
       },
     });
+    disconnectUser(user.id, 'password_changed');
 
     res.json({ message: 'Şifren başarıyla güncellendi. Şimdi giriş yapabilirsin.' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Şifre sıfırlanırken bir hata oluştu.' });
+  }
+});
+
+// ----------------------------
+// YILLIK ÖĞRENCİLİK DOĞRULAMASI (lib/reverify.js)
+// ----------------------------
+// Kod, hesabın kayıtlı okul e-postasına gönderilir. Okul adresi artık
+// çalışmıyorsa (mezuniyet) kod ulaşmaz; hesap ek sürenin sonunda listelerden
+// gizlenir.
+router.post('/reverify/send-code', requireAuth, sendCodeLimiter, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: req.userId }, select: { email: true } });
+    const email = user.email;
+    const existing = await prisma.emailVerificationCode.findUnique({ where: { email } });
+    if (existing) {
+      const wait = CODE_RESEND_MS - (Date.now() - new Date(existing.lastSentAt).getTime());
+      if (wait > 0) {
+        return res.status(429).json({ error: `Yeni kod için ${Math.ceil(wait / 1000)} saniye bekle.`, retryAfter: Math.ceil(wait / 1000) });
+      }
+    }
+    const code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+    const now = new Date();
+    await prisma.emailVerificationCode.upsert({
+      where: { email },
+      update: { codeHash: hashCode(code), expiresAt: new Date(now.getTime() + CODE_TTL_MS), attempts: 0, lastSentAt: now },
+      create: { email, codeHash: hashCode(code), expiresAt: new Date(now.getTime() + CODE_TTL_MS), lastSentAt: now },
+    });
+    await sendMail({
+      to: email,
+      subject: `kampüs· öğrencilik doğrulama kodun: ${code}`,
+      text: `Merhaba,
+
+kampüs· hesabının öğrenciliğini yenilemek için kodun: ${code}
+
+Kod 10 dakika geçerlidir. Bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin.`,
+      html: `<p>Merhaba,</p><p>kampüs· hesabının öğrenciliğini yenilemek için kodun:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px">${code}</p><p>Kod 10 dakika geçerlidir.</p>`,
+    });
+    // E-posta adresinin bir kısmı gösterilir: kodun nereye gittiği anlaşılsın
+    const [local, domain] = email.split('@');
+    res.json({ sent: true, to: `${local.slice(0, 2)}***@${domain}`, expiresInSec: CODE_TTL_MS / 1000, devConsole: !isRealSmtpConfigured() });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Doğrulama kodu gönderilemedi.' });
+  }
+});
+
+router.post('/reverify', requireAuth, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: req.userId }, select: { email: true } });
+    const email = user.email;
+    const record = await prisma.emailVerificationCode.findUnique({ where: { email } });
+    if (!record || new Date(record.expiresAt) < new Date()) {
+      return res.status(400).json({ error: 'Kodun süresi doldu. Yeni kod iste.', codeError: 'expired' });
+    }
+    if (record.attempts >= CODE_MAX_ATTEMPTS) {
+      return res.status(429).json({ error: 'Çok fazla hatalı deneme yapıldı. Yeni kod iste.', codeError: 'locked' });
+    }
+    const code = String(req.body?.code || '').trim();
+    if (!code || hashCode(code) !== record.codeHash) {
+      const updated = await prisma.emailVerificationCode.update({ where: { email }, data: { attempts: { increment: 1 } } });
+      const left = CODE_MAX_ATTEMPTS - updated.attempts;
+      return res.status(400).json({ error: left > 0 ? `Kod hatalı. ${left} deneme hakkın kaldı.` : 'Kod hatalı. Deneme hakkın bitti, yeni kod iste.', codeError: left > 0 ? 'invalid' : 'locked' });
+    }
+    await prisma.emailVerificationCode.delete({ where: { email } }).catch(() => {});
+    const now = new Date();
+    await prisma.user.update({ where: { id: req.userId }, data: { schoolEmailVerifiedAt: now } });
+    res.json({ message: 'Öğrenciliğin doğrulandı. Bir yıl boyunca tekrar sormayacağız.', reverify: reverifyInfo({ schoolEmailVerifiedAt: now }) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Doğrulama tamamlanamadı.' });
+  }
+});
+
+// ----------------------------
+// ŞİFRE DEĞİŞTİRME (giriş yapmışken, Ayarlar'dan)
+// ----------------------------
+// Mevcut şifre doğrulanır; diğer cihazlardaki oturumlar kapanır, bu cihaz yeni
+// oturum anahtarı alır ve açık kalır.
+const changePasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Çok fazla deneme yapıldı. Lütfen biraz sonra tekrar dene.' },
+});
+
+router.put('/password', requireAuth, changePasswordLimiter, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body || {};
+    if (typeof currentPassword !== 'string' || typeof newPassword !== 'string') {
+      return res.status(400).json({ error: 'Mevcut ve yeni şifreni yaz.' });
+    }
+    if (newPassword.length < PASSWORD_MIN) {
+      return res.status(400).json({ error: `Yeni şifre en az ${PASSWORD_MIN} karakter olmalı.`, field: 'newPassword' });
+    }
+    if (newPassword.length > 200) return res.status(400).json({ error: 'Şifre çok uzun.', field: 'newPassword' });
+
+    const user = await prisma.user.findUnique({ where: { id: req.userId } });
+    if (!user || !(await bcrypt.compare(currentPassword, user.passwordHash))) {
+      return res.status(400).json({ error: 'Mevcut şifren hatalı.', field: 'currentPassword' });
+    }
+    if (await bcrypt.compare(newPassword, user.passwordHash)) {
+      return res.status(400).json({ error: 'Yeni şifre eskisiyle aynı olamaz.', field: 'newPassword' });
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash: await bcrypt.hash(newPassword, 10), tokenVersion: { increment: 1 } },
+      select: { id: true, tokenVersion: true },
+    });
+    const exceptSocketId = typeof req.headers['x-socket-id'] === 'string' ? req.headers['x-socket-id'] : undefined;
+    disconnectUser(user.id, 'password_changed', { exceptSocketId });
+
+    const token = jwt.sign({ userId: updated.id, tokenVersion: updated.tokenVersion }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    res.json({ message: 'Şifren değiştirildi. Diğer cihazlardaki oturumların kapatıldı.', token, fileToken: signFileToken(updated) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Şifre değiştirilemedi.' });
   }
 });
 

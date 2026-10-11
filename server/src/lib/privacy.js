@@ -15,6 +15,9 @@
 //  department
 //    başlangıç adımını (bölüm, sınıf, doğum tarihi) bitirmemiş yeni hesaplar
 //    yarım profille listelerde görünmez
+//  schoolEmailVerifiedAt
+//    yıllık öğrencilik doğrulaması ek süresi de geçmişse görünmez (lib/reverify.js)
+const { recentlyVerifiedWhere } = require('./reverify');
 
 // Prisma "where" koşulu: izleyicinin keşif listelerinde görebileceği kullanıcılar
 function discoverableUserWhere(viewerUniversityId) {
@@ -25,6 +28,7 @@ function discoverableUserWhere(viewerUniversityId) {
     department: { not: null },
     profileVisibility: { not: 'nobody' },
     OR: [{ profileVisibility: 'everyone' }, { universityId: viewerUniversityId }],
+    AND: [recentlyVerifiedWhere()],
   };
 }
 

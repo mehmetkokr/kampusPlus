@@ -70,6 +70,12 @@ async function createUser(email, extra = {}) {
   });
 }
 
+// Giriş denemesi sınırına takılmamak için yeni testler token'ı doğrudan üretir
+async function tokenFor(email) {
+  const u = await prisma.user.findUnique({ where: { email } });
+  return jwt.sign({ userId: u.id, tokenVersion: u.tokenVersion }, process.env.JWT_SECRET, { expiresIn: '1h' });
+}
+
 async function login(email) {
   const res = await api('POST', '/api/auth/login', { body: { email, password: PASSWORD } });
   assert.equal(res.status, 200, JSON.stringify(res.data));
@@ -126,10 +132,18 @@ test('tüm oturumlardan çıkış sonrası eski token ne API\'yi ne özel dosyal
   fs.writeFileSync(path.join(tmp, 'private-uploads', docName), 'belge');
   await prisma.user.update({ where: { id: user.id }, data: { studentDocUrl: `/api/files/${docName}` } });
 
-  assert.equal((await api('GET', `/api/files/${docName}?token=${token}`)).status, 200);
+  // Adreste yalnızca dosya anahtarı geçer; oturum anahtarı adreste reddedilir
+  const ft = (await api('GET', '/api/profile/me', { token })).data.fileToken;
+  assert.ok(ft, '/profile/me dosya anahtarı döndürmeli');
+  assert.equal((await api('GET', `/api/files/${docName}?ft=${ft}`)).status, 200);
+  assert.equal((await api('GET', `/api/files/${docName}?token=${token}`)).status, 401);
+  assert.equal((await api('GET', `/api/files/${docName}?ft=${token}`)).status, 401, 'oturum anahtarı dosya anahtarı yerine geçmemeli');
+  // Dosya anahtarı API'de oturum yerine kullanılamaz
+  assert.equal((await api('GET', '/api/profile/me', { token: ft })).status, 401);
+
   assert.equal((await api('POST', '/api/profile/logout-all', { token })).status, 200);
   assert.equal((await api('GET', '/api/profile/me', { token })).status, 401);
-  assert.equal((await api('GET', `/api/files/${docName}?token=${token}`)).status, 401);
+  assert.equal((await api('GET', `/api/files/${docName}?ft=${ft}`)).status, 401, 'çıkıştan sonra dosya anahtarı da geçersiz');
 });
 
 test('özel dosyayı yalnızca sahibi görebilir', async () => {
@@ -209,4 +223,100 @@ test('hesap silme: kullanıcının dosyaları diskten de kalkar', async () => {
   const res = await api('DELETE', '/api/profile/me', { token, body: { password: PASSWORD } });
   assert.equal(res.status, 200, JSON.stringify(res.data));
   assert.equal(fs.existsSync(path.join(tmp, 'uploads', 'silinen.jpg')), false);
+});
+
+test('yedek: yönetici yedek alır, listeler ve indirir; öğrenci erişemez', async () => {
+  await createUser('yonetici@test.edu.tr', { isAdmin: true });
+  await createUser('ogrenci-yedek@test.edu.tr');
+  const admin = await tokenFor('yonetici@test.edu.tr');
+  const student = await tokenFor('ogrenci-yedek@test.edu.tr');
+
+  assert.equal((await api('POST', '/api/admin/backups', { token: student })).status, 403);
+
+  const created = await api('POST', '/api/admin/backups', { token: admin });
+  assert.equal(created.status, 201, JSON.stringify(created.data));
+  const list = await api('GET', '/api/admin/backups', { token: admin });
+  assert.equal(list.data.backups[0].name, created.data.backup.name);
+
+  const file = await fetch(`${BASE}/api/admin/backups/${created.data.backup.name}`, { headers: { Authorization: `Bearer ${admin}` } });
+  assert.equal(file.status, 200);
+  const bytes = Buffer.from(await file.arrayBuffer());
+  assert.equal(bytes[0], 0x1f, 'gzip dosyası olmalı');
+  assert.equal(bytes[1], 0x8b, 'gzip dosyası olmalı');
+  // Gzip açılınca geçerli bir SQLite dosyası çıkmalı
+  const db = require('node:zlib').gunzipSync(bytes);
+  assert.equal(db.subarray(0, 15).toString(), 'SQLite format 3');
+
+  assert.equal((await api('GET', '/api/admin/backups/..%2F..%2Fetc%2Fpasswd', { token: admin })).status, 404);
+});
+
+test('hata takibi: tarayıcı hatası birleşir, yönetici görür ve çözüldü işaretler', async () => {
+  for (let i = 0; i < 2; i++) {
+    const res = await api('POST', '/api/telemetry/errors', { body: { message: `Kart ${i + 3} yüklenemedi`, stack: 'Error\n    at Kart (app.js:1:2)', path: '/discover?x=1' } });
+    assert.equal(res.status, 204);
+  }
+  assert.equal((await api('POST', '/api/telemetry/errors', { body: {} })).status, 400);
+
+  const admin = await tokenFor('yonetici@test.edu.tr');
+  const list = await api('GET', '/api/admin/errors?source=client', { token: admin });
+  const row = list.data.errors.find((e) => e.message.startsWith('Kart'));
+  assert.ok(row, 'hata kaydı listede olmalı');
+  assert.equal(row.count, 2, 'sayı farkı olan aynı hata tek kayıtta birleşmeli');
+  assert.equal(row.path, '/discover');
+
+  const patched = await api('PATCH', `/api/admin/errors/${row.id}`, { token: admin, body: { resolved: true } });
+  assert.equal(patched.data.error.resolved, true);
+});
+
+test('analitik: yalnızca izinli olaylar yazılır, yollar sadeleşir, huni hesaplanır', async () => {
+  const res = await api('POST', '/api/telemetry/events', {
+    body: {
+      anonId: 'anon-test-12345',
+      events: [
+        { name: 'page_view', path: '/chat/42?tab=x' },
+        { name: 'page_view', path: '/register' },
+        { name: 'signup', path: '/' }, // yalnızca sunucu üretebilir
+        { name: 'kotu_olay' },
+      ],
+    },
+  });
+  assert.equal(res.status, 204);
+  const rows = await prisma.analyticsEvent.findMany({ where: { anonId: 'anon-test-12345' } });
+  assert.deepEqual(rows.map((r) => r.path).sort(), ['/chat/:id', '/register']);
+  assert.ok(rows.every((r) => r.name === 'page_view'));
+
+  // Kayıt sonrası temel bilgileri tamamlama olayı
+  await createUser('yeni-ogrenci@test.edu.tr');
+  const token = await tokenFor('yeni-ogrenci@test.edu.tr');
+  const basics = await api('PUT', '/api/profile/me/basics', { token, body: { birthDate: '2003-05-10', department: 'Fizik', classYear: 2 } });
+  assert.equal(basics.status, 200, JSON.stringify(basics.data));
+  const me = await prisma.user.findUnique({ where: { email: 'yeni-ogrenci@test.edu.tr' } });
+  assert.equal(await prisma.analyticsEvent.count({ where: { name: 'onboarding_done', userId: me.id } }), 1);
+
+  const admin = await tokenFor('yonetici@test.edu.tr');
+  const report = await api('GET', '/api/admin/analytics?days=7', { token: admin });
+  assert.equal(report.status, 200, JSON.stringify(report.data));
+  assert.ok(report.data.kpis.visitors >= 1);
+  assert.equal(report.data.funnel.find((s) => s.key === 'register_view').count, 1);
+  assert.ok(report.data.pages.some((p) => p.path === '/chat/:id'));
+});
+
+test('anlık bildirim: açık anahtar verilir, geçersiz abonelik reddedilir, geçerlisi kaydedilir', async () => {
+  const key = await api('GET', '/api/push/key');
+  assert.equal(key.status, 200);
+  assert.ok(key.data.publicKey.length > 40);
+
+  await createUser('bildirim@test.edu.tr');
+  const token = await tokenFor('bildirim@test.edu.tr');
+  assert.equal((await api('POST', '/api/push/subscribe', { token, body: { endpoint: 'http://kotu' } })).status, 400);
+  assert.equal((await api('POST', '/api/push/subscribe', { body: {} })).status, 401);
+
+  const sub = { endpoint: 'https://push.example.test/abc', keys: { p256dh: 'BPk' + 'a'.repeat(84), auth: 'b'.repeat(22) } };
+  assert.equal((await api('POST', '/api/push/subscribe', { token, body: { subscription: sub } })).status, 200);
+  // Aynı cihaz tekrar kaydolunca çift kayıt oluşmaz
+  assert.equal((await api('POST', '/api/push/subscribe', { token, body: { subscription: sub } })).status, 200);
+  assert.equal(await prisma.pushSubscription.count({ where: { endpoint: sub.endpoint } }), 1);
+
+  assert.equal((await api('DELETE', '/api/push/subscribe', { token, body: { endpoint: sub.endpoint } })).status, 200);
+  assert.equal(await prisma.pushSubscription.count({ where: { endpoint: sub.endpoint } }), 0);
 });

@@ -57,3 +57,83 @@ test('yaş hesaplama ve doğum tarihi doğrulama', () => {
   assert.equal(ok.error, undefined);
   assert.ok(ok.age >= 18);
 });
+
+test('analitik: sayfa yolu sadeleşir, kişisel veri kalmaz', () => {
+  const { normalizePath } = require('../src/lib/analytics');
+  assert.equal(normalizePath('/chat/42?tab=x#son'), '/chat/:id');
+  assert.equal(normalizePath('/users/17/photos'), '/users/:id/photos');
+  assert.equal(normalizePath('/reset-password/3f2a9c1d4e5b6a7c8d9e'), '/reset-password/:id');
+  assert.equal(normalizePath('https://kotu.site/x'), null);
+});
+
+test('hata takibi: sayılar farklı olsa da aynı hata aynı parmak izini alır', () => {
+  const { fingerprintOf } = require('../src/lib/errorLog');
+  const a = fingerprintOf('server', 'Kullanıcı 12 bulunamadı', 'Error\n    at f (a.js:10:5)');
+  const b = fingerprintOf('server', 'Kullanıcı 37 bulunamadı', 'Error\n    at f (a.js:11:9)');
+  const c = fingerprintOf('client', 'Kullanıcı 12 bulunamadı', 'Error\n    at f (a.js:10:5)');
+  assert.equal(a, b);
+  assert.notEqual(a, c);
+});
+
+test('anlık bildirim içeriği: mesaj içeriği gösterilmez, bazı türler gönderilmez', () => {
+  const { buildPayload } = require('../src/lib/push');
+  const msg = buildPayload({ id: 1, type: 'message', targetId: 9, actor: { fullName: 'Ece' }, message: 'gizli metin' });
+  assert.deepEqual(msg, { title: 'Ece', body: 'sana bir mesaj gönderdi.', url: '/chat/9', tag: 'message-9' });
+  assert.equal(buildPayload({ id: 2, type: 'match', targetId: 3, actor: { fullName: 'Can' } }, 'en').title, "It's a match!");
+  const ann = buildPayload({ id: 5, type: 'announcement', message: JSON.stringify({ title: 'Bahar şenliği', body: 'Cuma', link: '/clubs' }) });
+  assert.equal(ann.url, '/clubs');
+  assert.equal(buildPayload({ id: 3, type: 'club_join' }), null);
+  assert.equal(buildPayload({ id: 4, type: 'weekly_summary' }), null);
+});
+
+test('TOTP: RFC 6238 test değerleri ve tekrar kullanım engeli', () => {
+  const t = require('../src/lib/totp');
+  const secret = t.base32Encode(Buffer.from('12345678901234567890'));
+  assert.equal(t.codeAt(secret, Math.floor(59 / 30)), '287082');
+  assert.equal(t.codeAt(secret, Math.floor(1111111109 / 30)), '081804');
+  const now = Date.now();
+  const step = Math.floor(now / 30000);
+  assert.equal(t.verifyTotp(secret, t.codeAt(secret, step), { now }), step);
+  assert.equal(t.verifyTotp(secret, t.codeAt(secret, step), { now, lastStep: step }), null);
+});
+
+test('S3 imzası: AWS belge örnekleriyle aynı', () => {
+  const { signingKey, signRequest } = require('../src/lib/offsiteBackup');
+  assert.equal(
+    signingKey('wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY', '20120215', 'us-east-1', 'iam').toString('hex'),
+    'f4780e2d9f65fa895f9c67b32ce1baf0b0d8a43505a000a1a9e090d414db404d'
+  );
+  const h = signRequest({
+    method: 'GET',
+    url: 'https://examplebucket.s3.amazonaws.com/test.txt',
+    headers: { range: 'bytes=0-9' },
+    payloadHash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+    cfg: { region: 'us-east-1', accessKeyId: 'AKIAIOSFODNN7EXAMPLE', secretAccessKey: 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY' },
+    now: new Date('2013-05-24T00:00:00Z'),
+  });
+  assert.match(h.Authorization, /Signature=f0e8bdb87c964420e857bd35b5d6ed310bd44f0170aba48dd91039c6036bdb41$/);
+});
+
+test('kelime filtresi: küfürler gizlenir, masum kelimeler kalır', async () => {
+  const { maskBannedWords } = require('../src/lib/textSafety');
+  assert.equal(await maskBannedWords('S1KT1R git'), 'S***** git');
+  assert.equal(await maskBannedWords('Piçler'), 'P*****');
+  assert.equal(await maskBannedWords('yarın götürür müsün, sikke koleksiyonu'), 'yarın götürür müsün, sikke koleksiyonu');
+});
+
+test('sosyal bağlantı: yalnızca geçerli kullanıcı adı kabul edilir', () => {
+  const { normalizeSocial } = require('../src/lib/social');
+  assert.deepEqual(normalizeSocial('instagram', 'https://www.instagram.com/ece_1/?hl=tr'), { value: 'https://instagram.com/ece_1' });
+  assert.ok(normalizeSocial('instagram', 'javascript:alert(1)').error);
+  assert.ok(normalizeSocial('x', 'https://evil.com/jack').error);
+  assert.deepEqual(normalizeSocial('x', ''), { value: null });
+});
+
+test('yıllık doğrulama durumu', () => {
+  const { reverifyStatus } = require('../src/lib/reverify');
+  const D = 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  assert.equal(reverifyStatus({ schoolEmailVerifiedAt: new Date(now - 100 * D) }, now), 'ok');
+  assert.equal(reverifyStatus({ schoolEmailVerifiedAt: new Date(now - 370 * D) }, now), 'due');
+  assert.equal(reverifyStatus({ schoolEmailVerifiedAt: null, createdAt: new Date(now - 400 * D) }, now), 'expired');
+});

@@ -4,6 +4,7 @@ import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useI18n } from '../i18n';
+import { track } from '../lib/telemetry';
 
 const PLAN_LABELS = {
   monthly: { label: 'Aylık', badge: null },
@@ -24,6 +25,7 @@ export default function PaywallModal({ onClose, onUpgraded, contextText }) {
   const [saving, setSaving] = useState(false);
 
   React.useEffect(() => {
+    track('paywall_view');
     api
       .get('/premium/status')
       .then((res) => {
@@ -34,6 +36,7 @@ export default function PaywallModal({ onClose, onUpgraded, contextText }) {
   }, []);
 
   async function handleUpgrade() {
+    track('checkout_click', { plan });
     setSaving(true);
     try {
       const res = await api.post('/premium/activate', { plan });

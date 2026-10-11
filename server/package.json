@@ -14,10 +14,12 @@
     "mail:test": "node scripts/mail-test.js",
     "admin:create": "node scripts/create-admin.js",
     "start:prod": "prisma migrate deploy && node prisma/seed.js --if-empty && node src/index.js",
-    "test": "node --test test/lib.test.js test/api.test.js"
+    "test": "node --test test/lib.test.js test/api.test.js test/features.test.js",
+    "admin:reset-2fa": "node scripts/reset-2fa.js"
   },
   "dependencies": {
     "@prisma/client": "^5.20.0",
+    "@sentry/node": "^11.6.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -27,11 +29,13 @@
     "helmet": "^8.2.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
-    "node-cron": "^3.0.3",
-    "nodemailer": "^9.0.3",
+    "node-cron": "^4.6.0",
+    "nodemailer": "^10.1.0",
     "prisma": "^5.20.0",
+    "qrcode": "^1.5.4",
     "socket.io": "^4.8.0",
-    "tesseract.js": "^5.1.1"
+    "tesseract.js": "^5.1.1",
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "nodemon": "^3.1.7"

@@ -66,6 +66,21 @@ export function formatNotification(n, t = plain) {
         link: n.targetId ? `/clubs/${n.targetId}` : '/clubs',
       };
     }
+    case 'event_reminder': {
+      // message: { club, title, startsAt, location } (JSON)
+      let info = {};
+      try {
+        info = JSON.parse(n.message || '{}');
+      } catch {
+        info = { title: n.message };
+      }
+      const time = info.startsAt ? new Date(info.startsAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '';
+      return {
+        text: t('{title} birazdan başlıyor ({time}).', { title: info.title || t('Etkinlik'), time }),
+        detail: [info.club, info.location].filter(Boolean).join(' · '),
+        link: n.targetId ? `/clubs/${n.targetId}` : '/clubs',
+      };
+    }
     case 'badge_approved':
       return {
         text: t('Öğrenci belgen onaylandı. Artık isminin yanında yeşil tik var.'),
