@@ -163,6 +163,13 @@ başlatma + imzalı webhook) ve `PaymentLog` tablosu.
 - **Güvenlik politikası (CSP):** satır içi betik yok (`script-src 'self'`); tema
   `public/theme-init.js` dosyasından yüklenir.
 - **Gerçek zamanlı bağlantı:** eksik ya da bozuk olay yükleri sunucuyu düşürmez.
+- **Kapalı kampüs ve gizlilik** (`server/src/lib/privacy.js` → `reachCheck`): profil
+  görüntüleme, takip ve beğenme aynı kurala bağlı. Yönetici, dondurulmuş ve askıya
+  alınmış hesaplar yok sayılır; profilini gizleyen ya da yalnızca kendi
+  üniversitesine açan kişiye ve (Premium olmadan) başka üniversiteden birine
+  numarayla ulaşılamaz. Aralarında eşleşme, takip ya da beğeni varsa ulaşılabilir.
+- **Çevrimiçi durumu** yalnızca eşleşilen kişilere gider (herkese yayınlanmaz).
+- **Şikâyet** yalnızca şikâyet edenin görebildiği içerik için açılabilir.
 - **İki adımlı doğrulama:** yöneticiler panel > Ayarlar'dan açar.
   `ADMIN_REQUIRE_2FA=true` ile zorunlu olur. Telefon kaybında:
   `npm run admin:reset-2fa --prefix server -- e-posta`.
@@ -229,6 +236,11 @@ veritabanı değişikliklerini uygular. Bu akış her test çalıştırmasında
   Tek kampüs için fazlasıyla yeterli. Birden çok sunucuya geçilecekse
   çevrimiçi durumu, hız sınırları ve kulüp yavaş modu bellekte tutulduğu için
   Redis'e, veritabanı PostgreSQL'e taşınmalı.
+- **Telefon performansı:** sunucu metin yanıtları sıkıştırır (ana JavaScript
+  270 KB yerine ~94 KB). Telefonda ve zayıf cihazda ana sayfadaki 3D renk
+  geçişi ve 3D harita yüklenmez (yerine CSS geçişi ve düz harita); yönetim
+  panelinin kodu ve yazı tipi yalnızca `/admin` açılınca iner. Lighthouse
+  (telefon): ana sayfa 75, giriş/kayıt 97–98; SEO ve erişilebilirlik 100.
 - **Erişilebilirlik** (`client/e2e/a11y.spec.js`): açık ve koyu temada tüm ana
   sayfalar axe-core ile WCAG 2.1 A/AA'ya göre taranır; ihlal varsa CI durur.
   Renk sistemi buna göre ayarlıdır: `--amber-soft` yazı mavisi, `--accent-fill`
