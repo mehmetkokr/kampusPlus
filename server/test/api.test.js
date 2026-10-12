@@ -23,6 +23,8 @@ Object.assign(process.env, {
   SMTP_HOST: '',
   ADMIN_EMAIL: '',
   SEED_DEMO_USERS: '',
+  // Testler aynı adresten çok sayıda giriş yapar; IP sınırı yerine hesap bazlı koruma sınanır
+  LOGIN_RATE_LIMIT: '1000',
 });
 
 execFileSync(process.execPath, [require.resolve('prisma/build/index.js'), 'migrate', 'deploy'], {
@@ -508,4 +510,40 @@ test('çevrimiçi durumu yalnızca eşleşilen kişilere gider', async () => {
   [me, partner, stranger].forEach((s) => s.close());
   assert.ok(seen.partner.includes(a.id), 'eşleşilen kişi görmeli');
   assert.ok(!seen.stranger.includes(a.id), 'yabancı görmemeli');
+});
+
+// ---------------------------------------------------------------
+// Hesap bazlı giriş koruması ve demo hesapların kilitlenmesi
+// ---------------------------------------------------------------
+test('hesap bazlı giriş koruması: aynı hesaba çok hatalı deneme kilitler, kayıtsız adreste de aynı', async () => {
+  await createUser('pt-kilit@test.edu.tr', READY);
+  const attempt = (email, password) => api('POST', '/api/auth/login', { body: { email, password } });
+  for (let i = 0; i < 8; i++) assert.equal((await attempt('pt-kilit@test.edu.tr', 'yanlis-' + i)).status, 401);
+  const locked = await attempt('pt-kilit@test.edu.tr', PASSWORD);
+  assert.equal(locked.status, 429, 'doğru şifre bile kilit süresince reddedilmeli');
+  for (let i = 0; i < 8; i++) await attempt('hic-olmayan-kilit@test.edu.tr', 'yanlis-' + i);
+  assert.equal((await attempt('hic-olmayan-kilit@test.edu.tr', 'x')).status, 429, 'kayıtsız adres de aynı kilitlenir (varlık sızmaz)');
+  // Başka hesaplar etkilenmez
+  await createUser('pt-kilitsiz@test.edu.tr', READY);
+  assert.equal((await attempt('pt-kilitsiz@test.edu.tr', PASSWORD)).status, 200);
+});
+
+test('yayında demo hesaplar bilinen şifreyle kalmışsa askıya alınır', async () => {
+  const bcryptLib = require('bcryptjs');
+  const { lockDemoUsers, DEMO_USERS } = require('../src/lib/bootstrap');
+  const uni = await prisma.university.findFirst();
+  const [demo, changed] = DEMO_USERS;
+  await prisma.user.create({ data: { email: demo.email, fullName: 'Demo', universityId: uni.id, passwordHash: await bcryptLib.hash('12345678', 4) } });
+  await prisma.user.create({ data: { email: changed.email, fullName: 'Demo2', universityId: uni.id, passwordHash: await bcryptLib.hash('baska-guclu-sifre', 4) } });
+  const env = { NODE_ENV: process.env.NODE_ENV, SEED: process.env.SEED_DEMO_USERS };
+  process.env.NODE_ENV = 'production';
+  process.env.SEED_DEMO_USERS = '';
+  try {
+    await lockDemoUsers();
+  } finally {
+    process.env.NODE_ENV = env.NODE_ENV;
+    process.env.SEED_DEMO_USERS = env.SEED;
+  }
+  assert.equal((await prisma.user.findUnique({ where: { email: demo.email } })).isBanned, true);
+  assert.equal((await prisma.user.findUnique({ where: { email: changed.email } })).isBanned, false, 'şifresi değişmiş hesaba dokunulmamalı');
 });

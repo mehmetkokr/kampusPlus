@@ -1,6 +1,7 @@
 // Kayıt ve giriş işlemleri
 const express = require('express');
 const { siteUrl } = require('../lib/siteConfig');
+const loginGuard = require('../lib/loginGuard');
 const { track } = require('../lib/analytics');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -327,10 +328,20 @@ router.post('/login', loginLimiter, async (req, res) => {
       return res.status(400).json({ error: 'E-posta ve şifre zorunludur.' });
     }
 
+    // Çok sayıda adresten tek hesaba şifre tahmini (bkz. lib/loginGuard.js)
+    const wait = loginGuard.lockedFor(email);
+    if (wait > 0) {
+      return res.status(429).json({
+        error: `Bu hesap için çok fazla hatalı deneme yapıldı. ${Math.ceil(wait / 60)} dakika sonra tekrar dene ya da şifreni sıfırla.`,
+        retryAfter: wait,
+      });
+    }
+
     const user = await findUserByEmail(email);
     // Hesap yoksa da bcrypt çalışır: yanıt süresi adresin kayıtlı olup olmadığını belli etmez
     const passwordOk = await bcrypt.compare(String(password), user ? user.passwordHash : DUMMY_PASSWORD_HASH);
     if (!user || !passwordOk) {
+      loginGuard.recordFailure(email);
       return res.status(401).json({ error: 'E-posta veya şifre hatalı.' });
     }
 
@@ -342,9 +353,12 @@ router.post('/login', loginLimiter, async (req, res) => {
     if (user.isAdmin && user.totpEnabled) {
       if (!req.body.totpCode) return res.json({ twoFactorRequired: true });
       if (!(await checkTotp(user, req.body.totpCode))) {
+        loginGuard.recordFailure(email);
         return res.status(401).json({ error: 'Doğrulama kodu hatalı.', twoFactorRequired: true });
       }
     }
+
+    loginGuard.clearFailures(email);
 
     let reactivated = false;
     if (user.isFrozen) {
@@ -465,6 +479,8 @@ router.post('/reset-password', forgotPasswordLimiter, async (req, res) => {
         tokenVersion: { increment: 1 }, // bu token'ı ve varsa diğer eski token'ları geçersiz kıl
       },
     });
+    // Şifresini sıfırlayan sahibi hemen giriş yapabilsin
+    loginGuard.clearFailures(user.email);
     disconnectUser(user.id, 'password_changed');
 
     res.json({ message: 'Şifren başarıyla güncellendi. Şimdi giriş yapabilirsin.' });
