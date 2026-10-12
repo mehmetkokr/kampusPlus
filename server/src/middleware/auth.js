@@ -37,9 +37,9 @@ async function requireAuth(req, res, next) {
       return res.status(401).json({ error: 'Oturum geçersiz veya süresi dolmuş.' });
     }
 
-    // Eski (register/login sırasında tokenVersion içermeyen) token'larla geriye
-    // dönük uyumluluk için payload.tokenVersion tanımsızsa kontrolü atla.
-    if (payload.tokenVersion !== undefined && payload.tokenVersion !== user.tokenVersion) {
+    // Her oturum token'ı tokenVersion taşır; taşımayan token kabul edilmez
+    // (aksi halde "tüm oturumlardan çık" ve şifre değişikliği onu kapatamazdı).
+    if (payload.tokenVersion !== user.tokenVersion) {
       return res.status(401).json({ error: 'Şifren değiştirildiği için oturumun sonlandı. Lütfen tekrar giriş yap.' });
     }
 

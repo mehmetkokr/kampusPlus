@@ -12,8 +12,10 @@ const { PRIVATE_UPLOADS } = require('../lib/paths');
 const { canUnsend } = require('../lib/unsend');
 const path = require('path');
 
+const { numericIdParams, optionalId } = require('../lib/idParams');
 const router = express.Router();
 
+numericIdParams(router);
 async function assertMatchAccess(matchId, userId) {
   const match = await prisma.match.findUnique({ where: { id: matchId } });
   if (!match || (match.userAId !== userId && match.userBId !== userId)) {
@@ -41,7 +43,7 @@ router.get('/:matchId', requireAuth, async (req, res) => {
     if (!match) return res.status(403).json({ error: 'Bu sohbete erişim yetkiniz yok.' });
 
     const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 100);
-    const before = req.query.before ? Number(req.query.before) : null;
+    const before = optionalId(req.query.before);
 
     const messages = await prisma.message.findMany({
       where: { matchId, ...(before ? { id: { lt: before } } : {}) },

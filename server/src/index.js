@@ -69,6 +69,12 @@ app.use(cors({ origin: ORIGINS }));
 // İçerik Güvenlik Politikası: betikler yalnızca sitenin kendi dosyalarından
 // gelir (satır içi betik yok), yazı tipleri Google Fonts'tan gelir; gerçek
 // zamanlı bağlantı (socket.io) aynı adrese ws/wss ile yapılır.
+// Tarayıcı izinleri: mikrofon yalnızca sitenin kendisi (sesli mesaj), kamera,
+// konum, ödeme vb. tamamen kapalı. Gömülü üçüncü taraf çerçeveler bunları isteyemez.
+app.use((req, res, next) => {
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(self), geolocation=(), payment=(), usb=(), interest-cohort=()');
+  next();
+});
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
@@ -103,16 +109,17 @@ app.use(express.json());
 // Not: Bu limiter'ın anahtarı mümkünse kullanıcı ID'sidir (JWT'den çıkarılır),
 // böylece aynı kampüs WiFi'sini/NAT'ı paylaşan farklı kullanıcılar birbirinin
 // limitini tüketmez. Token yoksa/geçersizse IP'ye düşülür (login öncesi trafik
-// ve misafir istekler için). Bu, imzayı DOĞRULAMAZ - sadece kaba bir anahtar
-// seçimi içindir; gerçek yetkilendirme hâlâ requireAuth middleware'inde yapılır.
+// ve misafir istekler için). İmza burada da doğrulanır: yalnızca çözümlemek
+// (jwt.decode) yetmez, yoksa uydurma kimlikli token'larla her istekte yeni bir
+// kota açılıp IP sınırı tamamen aşılabilirdi.
 function rateLimitKey(req) {
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
     try {
-      const decoded = jwt.decode(authHeader.split(' ')[1]);
-      if (decoded && decoded.userId) return `user:${decoded.userId}`;
+      const decoded = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET, { algorithms: ['HS256'] });
+      if (decoded && decoded.userId && !decoded.purpose) return `user:${decoded.userId}`;
     } catch {
-      // token çözümlenemedi, IP'ye düş
+      // token geçersiz, IP'ye düş
     }
   }
   return ipKeyGenerator(req.ip);
@@ -196,7 +203,23 @@ app.get('/sitemap.xml', (req, res) => {
 });
 
 if (fs.existsSync(CLIENT_INDEX)) {
-  const indexHtml = fs.readFileSync(CLIENT_INDEX, 'utf8');
+  // index.html bellekte tutulur, ama dosya değişince (yeni derleme) yeniden
+  // okunur: aksi halde sunucu yeniden başlatılana kadar artık var olmayan eski
+  // /assets dosyalarına bağlantı verir ve sayfa "Yükleniyor"da kalır
+  let indexHtml = fs.readFileSync(CLIENT_INDEX, 'utf8');
+  let indexMtime = fs.statSync(CLIENT_INDEX).mtimeMs;
+  const currentIndexHtml = () => {
+    try {
+      const m = fs.statSync(CLIENT_INDEX).mtimeMs;
+      if (m !== indexMtime) {
+        indexHtml = fs.readFileSync(CLIENT_INDEX, 'utf8');
+        indexMtime = m;
+      }
+    } catch {
+      // dosya derleme sırasında geçici olarak yoksa eldeki sürüm kullanılır
+    }
+    return indexHtml;
+  };
   app.get('/index.html', (req, res) => res.redirect(301, '/'));
   app.use(express.static(CLIENT_DIST, { index: false, maxAge: '7d', setHeaders: noCacheHtml }));
   // Her sayfa kendi başlığı, açıklaması ve canonical adresiyle; bilinmeyen
@@ -204,7 +227,7 @@ if (fs.existsSync(CLIENT_INDEX)) {
   app.get(/^\/(?!api\/|uploads\/|socket\.io\/).*/, (req, res) => {
     // Eksik dosya (ör. eski sürümden kalan /assets/...js) sayfa değil, düz 404
     if (/\.[a-z0-9]{1,8}$/i.test(req.path)) return res.status(404).type('text/plain').send('Bulunamadı');
-    const page = renderPage(indexHtml, req.path, configuredSiteUrl());
+    const page = renderPage(currentIndexHtml(), req.path, configuredSiteUrl());
     res.status(page.status);
     res.setHeader('Cache-Control', 'no-cache');
     if (page.robots.startsWith('noindex')) res.setHeader('X-Robots-Tag', page.robots);

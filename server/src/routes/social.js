@@ -13,8 +13,10 @@ const { isBlockedEitherWay } = require('../lib/block');
 const { withLiveAge } = require('../lib/age');
 const { discoverableUserWhere, reachCheck } = require('../lib/privacy');
 
+const { numericIdParams } = require('../lib/idParams');
 const router = express.Router();
 
+numericIdParams(router);
 const AUTHOR_SELECT = {
   id: true,
   fullName: true,
@@ -827,6 +829,26 @@ router.post('/users/:id/block', requireAuth, async (req, res) => {
         ],
       },
     });
+
+    // Ortak sohbet odası boşaltılır: engellenen kişi açık sohbet ekranından
+    // "yazıyor"/"görüldü" gibi canlı olayları almaya devam etmesin. Sohbet
+    // listesi de güncellensin (engelleyen taraf kendi ekranından zaten ayrılır).
+    const io = req.app.get('io');
+    if (io) {
+      const shared = await prisma.match.findMany({
+        where: {
+          OR: [
+            { userAId: req.userId, userBId: targetId },
+            { userAId: targetId, userBId: req.userId },
+          ],
+        },
+        select: { id: true },
+      });
+      for (const m of shared) {
+        io.in(`match_${m.id}`).socketsLeave(`match_${m.id}`);
+        io.to(`user_${targetId}`).emit('match_removed', { matchId: m.id });
+      }
+    }
 
     res.json({ blocked: true });
   } catch (err) {

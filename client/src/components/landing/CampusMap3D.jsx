@@ -63,66 +63,126 @@ function Land({ colors }) {
   );
 }
 
+// 81 il: nokta, ışık halesi ve dokunma alanı. Her biri tek bir örneklenmiş
+// (instanced) çizim: önceden 243 ayrı nesne ve malzeme her karede ayrı ayrı
+// çiziliyor, kaydırmayı takıltıyordu. Hale saydamlığı il başına bir öznitelikle
+// (instanceOpacity) verilir.
+const N = PROVINCES.length;
+
+function withInstanceOpacity(material) {
+  material.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute float instanceOpacity;\nvarying float vInstanceOpacity;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvInstanceOpacity = instanceOpacity;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying float vInstanceOpacity;')
+      .replace('#include <opaque_fragment>', 'diffuseColor.a *= vInstanceOpacity;\n#include <opaque_fragment>');
+  };
+  return material;
+}
+
 function Provinces({ colors, animate, hovered, onHover }) {
-  const dots = useRef([]);
-  const halos = useRef([]);
+  const dots = useRef();
+  const halos = useRef();
+  const hits = useRef();
+  const tmp = useMemo(() => new THREE.Object3D(), []);
+  const dotColor = useMemo(() => new THREE.Color(colors.dot), [colors.dot]);
+  const hoverColor = useMemo(() => new THREE.Color(colors.hover), [colors.hover]);
+  const opacity = useMemo(() => new THREE.InstancedBufferAttribute(new Float32Array(N), 1), []);
+  const haloMaterial = useMemo(
+    () => withInstanceOpacity(new THREE.MeshBasicMaterial({ color: colors.halo, transparent: true, depthWrite: false })),
+    [colors.halo]
+  );
+  useEffect(() => () => haloMaterial.dispose(), [haloMaterial]);
+
+  // Dokunma alanları sabittir: bir kez yerleştirilir
+  useEffect(() => {
+    const mesh = hits.current;
+    if (!mesh) return;
+    PROVINCES.forEach((p, i) => {
+      tmp.position.set(p.x, p.y, TOP);
+      tmp.rotation.set(0, 0, 0);
+      tmp.scale.setScalar(1);
+      tmp.updateMatrix();
+      mesh.setMatrixAt(i, tmp.matrix);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.computeBoundingSphere();
+  }, [tmp]);
 
   useFrame(({ clock }) => {
+    const d = dots.current;
+    const h = halos.current;
+    if (!d || !h) return;
     // Dalga: soldan sağa 1,6 sn'lik tarama, arada kısa bir duraklama
     const t = animate ? (clock.elapsedTime * 0.3) % 1.6 : -1;
     PROVINCES.forEach((p, i) => {
-      const d = t - p.phase;
-      const glow = animate ? Math.exp(-(d * d) / 0.005) : 0;
+      const dist = t - p.phase;
+      const glow = animate ? Math.exp(-(dist * dist) / 0.005) : 0;
       const isHover = hovered === i;
-      dots.current[i]?.scale.setScalar(1 + glow * 0.7 + (isHover ? 0.9 : 0));
-      const halo = halos.current[i];
-      if (halo) {
-        halo.scale.setScalar(1 + glow * 2.4 + (isHover ? 1.6 : 0));
-        halo.material.opacity = Math.max(glow * 0.45, isHover ? 0.35 : 0);
-      }
+
+      tmp.position.set(p.x, p.y, TOP + 0.03);
+      tmp.rotation.set(Math.PI / 2, 0, 0);
+      tmp.scale.setScalar(1 + glow * 0.7 + (isHover ? 0.9 : 0));
+      tmp.updateMatrix();
+      d.setMatrixAt(i, tmp.matrix);
+      d.setColorAt(i, isHover ? hoverColor : dotColor);
+
+      tmp.position.set(p.x, p.y, TOP + 0.004);
+      tmp.rotation.set(0, 0, 0);
+      tmp.scale.setScalar(1 + glow * 2.4 + (isHover ? 1.6 : 0));
+      tmp.updateMatrix();
+      h.setMatrixAt(i, tmp.matrix);
+      opacity.setX(i, Math.max(glow * 0.45, isHover ? 0.35 : 0));
     });
+    d.instanceMatrix.needsUpdate = true;
+    if (d.instanceColor) d.instanceColor.needsUpdate = true;
+    h.instanceMatrix.needsUpdate = true;
+    opacity.needsUpdate = true;
   });
+
+  const handle = (e) => {
+    e.stopPropagation();
+    if (e.instanceId !== undefined) onHover(e.instanceId, e.nativeEvent);
+  };
 
   return (
     <group>
-      {PROVINCES.map((p, i) => (
-        <group key={p.name} position={[p.x, p.y, TOP]}>
-          <mesh ref={(el) => (halos.current[i] = el)} position={[0, 0, 0.004]}>
-            <circleGeometry args={[0.12, 24]} />
-            <meshBasicMaterial color={colors.halo} transparent opacity={0} depthWrite={false} />
-          </mesh>
-          <mesh ref={(el) => (dots.current[i] = el)} position={[0, 0, 0.03]} rotation={[Math.PI / 2, 0, 0]}>
-            <cylinderGeometry args={[0.07, 0.07, 0.06, 20]} />
-            <meshStandardMaterial
-              color={hovered === i ? colors.hover : colors.dot}
-              emissive={hovered === i ? colors.hover : colors.dot}
-              emissiveIntensity={0.35}
-              roughness={0.4}
-            />
-          </mesh>
-          {/* Parmakla da kolay seçilsin diye noktadan büyük, görünmez alan */}
-          <mesh
-            visible={false}
-            onPointerOver={(e) => {
-              e.stopPropagation();
-              onHover(i, e.nativeEvent);
-            }}
-            onPointerMove={(e) => {
-              e.stopPropagation();
-              onHover(i, e.nativeEvent);
-            }}
-            onPointerDown={(e) => {
-              e.stopPropagation();
-              onHover(i, e.nativeEvent);
-            }}
-            onPointerOut={() => onHover(null)}
-          >
-            <sphereGeometry args={[0.3, 8, 8]} />
-          </mesh>
-        </group>
-      ))}
+      <instancedMesh ref={halos} args={[undefined, haloMaterial, N]} frustumCulled={false} renderOrder={1}>
+        <circleGeometry args={[0.12, 24]}>
+          <primitive object={opacity} attach="attributes-instanceOpacity" />
+        </circleGeometry>
+      </instancedMesh>
+      <instancedMesh ref={dots} args={[undefined, undefined, N]} frustumCulled={false}>
+        <cylinderGeometry args={[0.07, 0.07, 0.06, 20]} />
+        <meshStandardMaterial color="#ffffff" emissive={colors.dot} emissiveIntensity={0.35} roughness={0.4} />
+      </instancedMesh>
+      {/* Parmakla da kolay seçilsin diye noktadan büyük, görünmez alan */}
+      <instancedMesh
+        ref={hits}
+        args={[undefined, undefined, N]}
+        visible={false}
+        onPointerOver={handle}
+        onPointerMove={handle}
+        onPointerDown={handle}
+        onPointerOut={() => onHover(null)}
+      >
+        <sphereGeometry args={[0.3, 8, 8]} />
+        <meshBasicMaterial />
+      </instancedMesh>
     </group>
   );
+}
+
+// İlk kare gerçekten çizilince bir kez haber verir: düz harita ancak o zaman kaybolur
+function FirstFrame({ onReady }) {
+  const done = useRef(false);
+  useFrame(() => {
+    if (done.current) return;
+    done.current = true;
+    requestAnimationFrame(() => onReady?.());
+  });
+  return null;
 }
 
 // Haritayı tuvale sığdır; fareyle hafif eğim (hareket kapalıysa sabit)
@@ -161,19 +221,22 @@ function Rig({ animate, children }) {
   );
 }
 
-export default function CampusMap3D({ mode = 'dark', active = true, animate = true, hovered = null, onHover }) {
+export default function CampusMap3D({ mode = 'dark', active = true, animate = true, hovered = null, onHover, onReady }) {
   const colors = COLORS[mode] || COLORS.dark;
   return (
     <Canvas
       dpr={[1, 1.75]}
       camera={CAMERA}
       gl={GL}
-      frameloop={active ? (animate ? 'always' : 'demand') : 'never'}
+      // Görünmezken "demand": yalnızca ilk kare (ve gerekirse sığdırma) çizilir,
+      // sürekli çizim yapılmaz; görünür olunca dalga canlanır
+      frameloop={active && animate ? 'always' : 'demand'}
       onPointerMissed={() => onHover?.(null)}
       style={{ touchAction: 'pan-y' }}
     >
       <ambientLight intensity={mode === 'light' ? 2.4 : 1.2} />
       <directionalLight position={[-3, -4, 9]} intensity={mode === 'light' ? 2.2 : 1.8} />
+      <FirstFrame onReady={onReady} />
       <Rig animate={animate}>
         <Land colors={colors} />
         <Provinces colors={colors} animate={animate} hovered={hovered} onHover={(i, ev) => onHover?.(i, ev)} />

@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { ArrowRight, CheckCircle2, LogIn, ShieldCheck, Smartphone, Sparkles, UserPlus } from 'lucide-react';
@@ -7,10 +7,9 @@ import CampusSky from '../CampusSky';
 import PhoneMockup from './PhoneMockup';
 import UniversityMarquee from './UniversityMarquee';
 import { useI18n } from '../../i18n';
-import { useDeferredWebGL } from '../../utils/webgl';
 
-// three.js yalnızca WebGL destekleyen tarayıcıda, sayfa çizildikten sonra yüklenir
-const HeroGradient = lazy(() => import('./HeroGradient'));
+// Renk geçişi CSS ile, ana iş parçacığını yormadan çizilir (bkz. HeroGradient)
+import HeroGradient from './HeroGradient';
 
 // Ortalanmış, sade hero: büyük serif başlık, kısa açıklama, gerçek bir güven
 // satırı (sistemin tanıdığı üniversite sayısı) ve iki büyük düğme. Mağaza
@@ -87,8 +86,6 @@ export default function Hero() {
       .catch(() => {});
   }, []);
 
-  const webgl = useDeferredWebGL();
-
   const fade = (delay) => ({
     initial: { opacity: 0, y: 16 },
     animate: { opacity: 1, y: 0 },
@@ -106,11 +103,7 @@ export default function Hero() {
   // sağda canlı telefon. Telefonda tek sütun, düğmeler telefondan önce.
   return (
     <section className="landing-hero-bg relative isolate overflow-hidden pb-10 pt-24 sm:pb-16 sm:pt-28 lg:pt-28">
-      {webgl && (
-        <Suspense fallback={null}>
-          <HeroGradient />
-        </Suspense>
-      )}
+      <HeroGradient />
       <CampusSky variant="landing" />
       <div className="mx-auto grid max-w-6xl items-center gap-10 px-5 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-8 lg:px-8">
         <div className="flex flex-col items-center text-center lg:items-start lg:text-left">

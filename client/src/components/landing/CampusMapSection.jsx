@@ -37,10 +37,21 @@ export default function CampusMapSection() {
   const { t } = useI18n();
   const mode = useThemeMode();
   const reduce = useReducedMotion();
-  const [boxRef, near] = useNearViewport('300px');
+  // Geniş pay: sahne ekrana gelmeden çok önce hazırlanır (kaydırırken takılmasın);
+  // ama yalnızca gerçekten görünürken kare çizer (görünmezken ana iş parçacığını yormasın)
+  const [boxRef, near] = useNearViewport('900px');
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el || !('IntersectionObserver' in window)) return undefined;
+    const io = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), { rootMargin: '0px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [boxRef]);
   // Telefonda ve zayıf cihazda düz harita kalır (3D sahne yüklenmez)
   const [webgl] = useState(() => typeof window !== 'undefined' && hasWebGL() && !prefersLightweight());
   const [loaded, setLoaded] = useState(false);
+  const [ready, setReady] = useState(false); // 3D'nin ilk karesi çizildi
   const [uniCount, setUniCount] = useState(null);
   const [hover, setHover] = useState(null); // { i, x, y }
   const frameRef = useRef(null);
@@ -52,10 +63,36 @@ export default function CampusMapSection() {
       .catch(() => {});
   }, []);
 
-  // 3D parça bir kez ekrana yaklaşınca yüklenir; sonra görünürlüğe göre durur/çalışır
+  // 3D kodu sayfa açıldıktan sonra tarayıcı boşa çıkınca önceden indirilip
+  // çalıştırılır: ~1 MB'lık kodun çözümlenmesi kullanıcı aşağı kaydırırken
+  // değil, ilk ekranda beklerken olur
   useEffect(() => {
-    if (near && webgl) setLoaded(true);
-  }, [near, webgl]);
+    if (!webgl) return undefined;
+    let idle;
+    const timer = setTimeout(() => {
+      const warm = () => import('./CampusMap3D').catch(() => {});
+      idle = 'requestIdleCallback' in window ? window.requestIdleCallback(warm, { timeout: 4000 }) : warm();
+    }, 2500);
+    return () => {
+      clearTimeout(timer);
+      if (typeof idle === 'number') window.cancelIdleCallback?.(idle);
+    };
+  }, [webgl]);
+
+  // 3D parça bir kez ekrana yaklaşınca yüklenir; sonra görünürlüğe göre durur/çalışır.
+  // Bölüm ilk ekranın hemen altında olduğundan "yakın" sayfa açılırken gelir:
+  // sahnenin kurulması ve shader derlemesi açılış işleriyle üst üste binip ilk
+  // saniyelerde takılma yapmasın diye tarayıcı boşa çıkana kadar beklenir
+  // (kullanıcı haritaya gerçekten gelirse beklemeden kurulur).
+  useEffect(() => {
+    if (!near || !webgl || loaded) return undefined;
+    if (visible || !('requestIdleCallback' in window)) {
+      setLoaded(true);
+      return undefined;
+    }
+    const id = window.requestIdleCallback(() => setLoaded(true), { timeout: 3000 });
+    return () => window.cancelIdleCallback(id);
+  }, [near, webgl, visible, loaded]);
 
   const onHover = useCallback((i, ev) => {
     if (i === null || !ev || !frameRef.current) return setHover(null);
@@ -105,13 +142,13 @@ export default function CampusMapSection() {
           onPointerLeave={() => setHover(null)}
         >
           {/* Düz harita her zaman altta: 3D yüklenene kadar ve WebGL yoksa görünür */}
-          <div className={`landing-map-layer ${loaded ? 'is-hidden' : ''}`}>
+          <div className={`landing-map-layer ${ready ? 'is-hidden' : ''}`}>
             <FlatMap />
           </div>
           {loaded && (
-            <div className="landing-map-layer landing-map-3d" data-html2canvas-ignore>
+            <div className={`landing-map-layer landing-map-3d ${ready ? 'is-ready' : ''}`} data-html2canvas-ignore>
               <Suspense fallback={null}>
-                <CampusMap3D mode={mode} active={near} animate={!reduce} hovered={hover?.i ?? null} onHover={onHover} />
+                <CampusMap3D mode={mode} active={visible} animate={!reduce} hovered={hover?.i ?? null} onHover={onHover} onReady={() => setReady(true)} />
               </Suspense>
             </div>
           )}

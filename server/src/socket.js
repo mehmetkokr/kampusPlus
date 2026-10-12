@@ -132,7 +132,7 @@ function setupSocket(io) {
         return next(new Error('Hesabınız askıya alınmış.'));
       }
 
-      if (payload.tokenVersion !== undefined && payload.tokenVersion !== user.tokenVersion) {
+      if (payload.tokenVersion !== user.tokenVersion) {
         return next(new Error('Şifreniz değiştirildiği için oturumunuz sonlandı.'));
       }
 
@@ -165,9 +165,11 @@ function setupSocket(io) {
       try {
         // Yalnızca eşleşmenin iki tarafı odaya katılabilir; aksi halde başkası
         // odaya girip özel mesajları canlı olarak dinleyebilirdi.
-        const match = await prisma.match.findUnique({ where: { id: Number(matchId) } });
+        const id = Number(matchId);
+        if (!Number.isInteger(id) || id <= 0) return;
+        const match = await prisma.match.findUnique({ where: { id } });
         if (!match || (match.userAId !== socket.userId && match.userBId !== socket.userId)) return;
-        socket.join(`match_${matchId}`);
+        socket.join(`match_${id}`);
 
         // Karşı tarafa çevrimiçi/son görülme bilgisini bildir
         {
@@ -258,11 +260,16 @@ function setupSocket(io) {
 
     // Kulüp grup sohbeti odasına katılır (yalnızca aktif üyeler)
     socket.on('join_club', async (clubId) => {
-      const membership = await prisma.clubMembership.findUnique({
-        where: { clubId_userId: { clubId: Number(clubId), userId: socket.userId } },
-      });
-      if (membership && membership.status === 'active') {
-        socket.join(`club_${clubId}`);
+      // Geçersiz kimlik yakalanmamış bir hata fırlatıp süreci düşürmesin
+      const id = Number(clubId);
+      if (!Number.isInteger(id) || id <= 0) return;
+      try {
+        const membership = await prisma.clubMembership.findUnique({
+          where: { clubId_userId: { clubId: id, userId: socket.userId } },
+        });
+        if (membership && membership.status === 'active') socket.join(`club_${id}`);
+      } catch (err) {
+        console.error(err);
       }
     });
 
