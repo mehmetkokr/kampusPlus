@@ -13,7 +13,9 @@ const { generateSecret, otpauthUrl } = require('../lib/totp');
 const { checkTotp, twoFactorRequired } = require('../lib/twoFactor');
 const { invalidateBannedWords, normalizeWord, DEFAULT_ROOTS } = require('../lib/textSafety');
 
+const { numericIdParams, optionalId } = require('../lib/idParams');
 const router = express.Router();
+numericIdParams(router);
 const DAY = 24 * 60 * 60 * 1000;
 
 function parseDays(v) {
@@ -292,7 +294,7 @@ router.get('/audit', async (req, res) => {
     const pageSize = 50;
     const where = {};
     if (req.query.targetType) where.targetType = String(req.query.targetType);
-    if (req.query.targetId) where.targetId = Number(req.query.targetId);
+    if (optionalId(req.query.targetId)) where.targetId = optionalId(req.query.targetId);
     const [entries, total] = await Promise.all([
       prisma.adminAuditLog.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * pageSize, take: pageSize }),
       prisma.adminAuditLog.count({ where }),

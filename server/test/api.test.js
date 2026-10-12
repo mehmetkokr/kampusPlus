@@ -547,3 +547,20 @@ test('yayında demo hesaplar bilinen şifreyle kalmışsa askıya alınır', asy
   assert.equal((await prisma.user.findUnique({ where: { email: demo.email } })).isBanned, true);
   assert.equal((await prisma.user.findUnique({ where: { email: changed.email } })).isBanned, false, 'şifresi değişmiş hesaba dokunulmamalı');
 });
+
+test('sürüm bilgisi taşımayan token kabul edilmez', async () => {
+  const user = await createUser('surumsuz@test.edu.tr');
+  const legacy = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+  assert.equal((await api('GET', '/api/profile/me', { token: legacy })).status, 401);
+});
+
+test('geçersiz kimlikli adresler 500 değil 404 döner', async () => {
+  await createUser('kimlik@test.edu.tr');
+  const token = await tokenFor('kimlik@test.edu.tr');
+  for (const url of ['/api/users/abc', '/api/users/1.5', '/api/users/-3', '/api/users/99999999999', '/api/messages/xyz']) {
+    const res = await api('GET', url, { token });
+    assert.equal(res.status, 404, url);
+  }
+  assert.equal((await api('POST', '/api/users/abc/block', { token })).status, 404);
+  assert.equal((await api('DELETE', '/api/matches/0', { token })).status, 404);
+});

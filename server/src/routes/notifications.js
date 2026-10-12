@@ -4,8 +4,10 @@ const express = require('express');
 const prisma = require('../lib/prisma');
 const { requireAuth } = require('../middleware/auth');
 
+const { numericIdParams } = require('../lib/idParams');
 const router = express.Router();
 
+numericIdParams(router);
 const ACTOR_SELECT = { id: true, fullName: true, photoUrl: true };
 
 // GET /api/notifications — en yeni bildirimler önce

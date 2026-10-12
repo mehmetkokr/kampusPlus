@@ -11,8 +11,10 @@ const fs = require('fs');
 const path = require('path');
 const { PRIVATE_UPLOADS } = require('../lib/paths');
 
+const { numericIdParams } = require('../lib/idParams');
 const router = express.Router();
 
+numericIdParams(router);
 // Bir kullanıcıyı beğen. Karşı taraf da seni beğenmişse, eşleşme oluşur.
 router.post('/like/:userId', requireAuth, async (req, res) => {
   try {
@@ -288,7 +290,14 @@ router.delete('/:matchId', requireAuth, async (req, res) => {
       }
     }
 
-    req.app.get('io')?.to(`match_${matchId}`).emit('match_removed', { matchId });
+    // İki tarafın da sohbet listesi ve rozetleri anında güncellensin (sohbet
+    // açık olmasa bile); sonra eşleşmenin odası boşaltılır, böylece kalan
+    // bağlantılar "yazıyor" gibi olayları almaya devam etmez
+    const io = req.app.get('io');
+    if (io) {
+      io.to([`match_${matchId}`, `user_${match.userAId}`, `user_${match.userBId}`]).emit('match_removed', { matchId });
+      io.in(`match_${matchId}`).socketsLeave(`match_${matchId}`);
+    }
     res.json({ success: true });
   } catch (err) {
     console.error(err);

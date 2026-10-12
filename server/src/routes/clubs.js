@@ -11,8 +11,10 @@ const { createNotification } = require('../lib/notifications');
 const { checkCanPost, markPosted, serializePoll, loadPoll, broadcastPoll, POLL_INCLUDE, SENDER_SELECT } = require('../lib/clubChat');
 const { canUnsend } = require('../lib/unsend');
 
+const { numericIdParams, optionalId } = require('../lib/idParams');
 const router = express.Router();
 
+numericIdParams(router);
 const MEMBER_SELECT = {
   id: true,
   role: true,
@@ -371,7 +373,7 @@ router.get('/:id/messages', requireAuth, async (req, res) => {
     }
 
     const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 100);
-    const before = req.query.before ? Number(req.query.before) : null;
+    const before = optionalId(req.query.before);
     const blockedIds = await getBlockedUserIds(req.userId);
 
     const messages = await prisma.clubMessage.findMany({

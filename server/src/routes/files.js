@@ -39,7 +39,7 @@ async function authenticateFileRequest(req, res, next) {
       return res.status(401).json({ error: 'Oturum geçersiz veya süresi dolmuş.' });
     }
     // Şifre sıfırlama/tüm oturumlardan çıkış sonrası eski token'lar özel dosyaları da açamaz
-    if (payload.tokenVersion !== undefined && payload.tokenVersion !== user.tokenVersion) {
+    if (payload.tokenVersion !== user.tokenVersion) {
       return res.status(401).json({ error: 'Oturum geçersiz veya süresi dolmuş.' });
     }
     // Başlıkta yalnızca oturum anahtarı, adreste yalnızca dosya anahtarı geçer

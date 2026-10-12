@@ -29,7 +29,7 @@ async function requireAdmin(req, res, next) {
       return res.status(401).json({ error: 'Oturum geçersiz.' });
     }
 
-    if (payload.tokenVersion !== undefined && payload.tokenVersion !== user.tokenVersion) {
+    if (payload.tokenVersion !== user.tokenVersion) {
       return res.status(401).json({ error: 'Şifren değiştirildiği için oturumun sonlandı. Lütfen tekrar giriş yap.' });
     }
 

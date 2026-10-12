@@ -26,7 +26,7 @@ export default [
       'react/prop-types': 'off',
       'react/no-unescaped-entities': 'off',
       'react/display-name': 'off',
-      'react/no-unknown-property': ['error', { ignore: ['args', 'attach', 'position', 'rotation', 'intensity', 'transparent', 'side', 'depthWrite', 'toneMapped', 'castShadow', 'receiveShadow', 'object', 'dispose', 'geometry', 'material', 'metalness', 'roughness', 'visible', 'emissive', 'emissiveIntensity'] }],
+      'react/no-unknown-property': ['error', { ignore: ['args', 'attach', 'position', 'rotation', 'intensity', 'transparent', 'side', 'depthWrite', 'toneMapped', 'castShadow', 'receiveShadow', 'object', 'dispose', 'geometry', 'material', 'metalness', 'roughness', 'visible', 'emissive', 'emissiveIntensity', 'frustumCulled', 'renderOrder'] }],
       'no-unused-vars': ['warn', { varsIgnorePattern: '^[A-Z_]', argsIgnorePattern: '^_', caughtErrors: 'none', ignoreRestSiblings: true }],
       'no-empty': ['error', { allowEmptyCatch: true }],
     },

@@ -14,7 +14,9 @@ const { sendMail } = require('../lib/mailer');
 const { audienceWhere, normalizeAudience } = require('../lib/audience');
 const { getOnlineUserIds } = require('../socket');
 
+const { numericIdParams } = require('../lib/idParams');
 const router = express.Router();
+numericIdParams(router);
 const CHANNELS = ['notification', 'banner', 'email'];
 const DAY = 24 * 60 * 60 * 1000;
 

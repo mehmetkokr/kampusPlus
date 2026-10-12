@@ -334,8 +334,58 @@ html:not([data-theme='light']) .landing-card {
   position: absolute;
   inset: 0;
   z-index: -2;
+  overflow: hidden;
   pointer-events: none;
-  animation: landing-hero-gradient-in 1.4s cubic-bezier(0.23, 1, 0.32, 1) both;
+  /* Palet (önceki ShaderGradient renkleri) */
+  --hg-1: #0b2f73;
+  --hg-2: #1c1a5e;
+  --hg-3: #123a8c;
+}
+html[data-theme='light'] .landing-hero-gradient {
+  --hg-1: #a9cdff;
+  --hg-2: #cfcaff;
+  --hg-3: #bcd9ff;
+}
+/* Yumuşak renk bulutları: yalnızca transform canlandırılır (ekran kartında,
+   ana iş parçacığından bağımsız); bulanıklık filtresi yerine kenarı yumuşak
+   radyal geçiş kullanılır, böylece her karede yeniden bulanıklaştırma olmaz */
+.hg-blob {
+  position: absolute;
+  width: 75vmax;
+  height: 75vmax;
+  border-radius: 50%;
+  will-change: transform;
+  animation: hg-drift 26s ease-in-out infinite alternate;
+}
+.hg-blob-1 {
+  top: -35vmax;
+  left: -15vmax;
+  background: radial-gradient(closest-side, var(--hg-1), transparent);
+}
+.hg-blob-2 {
+  top: -25vmax;
+  right: -25vmax;
+  background: radial-gradient(closest-side, var(--hg-2), transparent);
+  animation-duration: 32s;
+  animation-delay: -9s;
+}
+.hg-blob-3 {
+  top: 5vmax;
+  left: 25vmax;
+  width: 60vmax;
+  height: 60vmax;
+  background: radial-gradient(closest-side, var(--hg-3), transparent);
+  opacity: 0.7;
+  animation-duration: 38s;
+  animation-delay: -17s;
+}
+@keyframes hg-drift {
+  0% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(6vmax, 4vmax, 0) scale(1.12); }
+  100% { transform: translate3d(-5vmax, 7vmax, 0) scale(0.94); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hg-blob { animation: none; }
 }
 .landing-hero-gradient::after {
   content: '';
@@ -355,9 +405,6 @@ html:not([data-theme='light']) .landing-hero-gradient::after {
   from { opacity: 0; }
   to { opacity: 1; }
 }
-@media (prefers-reduced-motion: reduce) {
-  .landing-hero-gradient { animation: none; }
-}
 
 /* "Türkiye genelinde": 3D harita (yoksa düz SVG) */
 .landing-map-frame {
@@ -374,7 +421,9 @@ html:not([data-theme='light']) .landing-hero-gradient::after {
   transition: opacity 0.6s cubic-bezier(0.23, 1, 0.32, 1);
 }
 .landing-map-layer.is-hidden { opacity: 0; }
-.landing-map-3d { animation: landing-hero-gradient-in 0.9s cubic-bezier(0.23, 1, 0.32, 1) both; }
+/* 3D harita ilk karesi çizilene kadar görünmez; sonra düz haritanın yerine yumuşakça geçer */
+.landing-map-3d { opacity: 0; transition: opacity 0.7s cubic-bezier(0.23, 1, 0.32, 1); }
+.landing-map-3d.is-ready { opacity: 1; }
 .landing-map-flat { display: block; width: 100%; height: 100%; }
 .landing-map-flat polygon {
   fill: var(--surface-2);

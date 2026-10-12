@@ -10,7 +10,9 @@ const { sendMail } = require('../lib/mailer');
 const { getOnlineUserIds } = require('../socket');
 const { removeUploadedFile, deleteUserWithFiles } = require('../lib/uploads');
 
+const { numericIdParams, optionalId } = require('../lib/idParams');
 const router = express.Router();
+numericIdParams(router);
 router.use(requireAdmin);
 // Paneldeki her başarılı değişiklik yönetici işlem kaydına yazılır (lib/audit.js)
 router.use(auditMiddleware);
@@ -883,7 +885,7 @@ router.get('/clubs', async (req, res) => {
     const where = {
       AND: [
         search ? { OR: [{ name: { contains: search } }, { university: { name: { contains: search } } }] } : {},
-        req.query.university ? { universityId: Number(req.query.university) } : {},
+        optionalId(req.query.university) ? { universityId: optionalId(req.query.university) } : {},
       ],
     };
     const clubs = await prisma.club.findMany({

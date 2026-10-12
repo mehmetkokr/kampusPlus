@@ -21,6 +21,7 @@ const { toTitleCaseTR } = require('../lib/text');
 const { discoverableUserWhere } = require('../lib/privacy');
 const { ALLOWED_INTENTS, wantsDating, visibleIntentFor } = require('../lib/intents');
 
+const { numericIdParams } = require('../lib/idParams');
 const MAX_PHOTOS = 6;
 
 // İlgi alanı / hobi listesi: virgülle ayrılmış, en fazla 10 benzersiz öğe,
@@ -53,6 +54,7 @@ async function listPhotos(userId) {
 
 const router = express.Router();
 
+numericIdParams(router);
 // Kendi profilini getir
 router.get('/me', requireAuth, async (req, res) => {
   try {
