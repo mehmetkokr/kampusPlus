@@ -2,6 +2,7 @@
 // admin.js içinde requireAdmin'den SONRA bağlanır; buraya yalnızca adminler ulaşır.
 const express = require('express');
 const { isProduction, productionConfigWarnings } = require('../lib/siteConfig');
+const { mailStatus } = require('../lib/mailer');
 const fsp = require('fs/promises');
 const prisma = require('../lib/prisma');
 const { createBackup, listBackups, backupPath } = require('../lib/backup');
@@ -59,6 +60,7 @@ router.get('/system', async (req, res) => {
       payments: { mock: mockPaymentsEnabled() },
       // Yayında eksik/yanlış ayarlar (SMTP, kalıcı disk, anahtar, site adresi)
       config: { production: isProduction(), warnings: productionConfigWarnings() },
+      mail: mailStatus(),
     });
   } catch (err) {
     console.error(err);

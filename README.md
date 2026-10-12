@@ -269,7 +269,7 @@ Railway > Variables:
 | `STORAGE_DIR` | `/data` (yüklenen dosyalar kalıcı diskte kalsın) |
 | `SITE_URL` | Sitenin adresi (ör. `https://kampusplus.app`). Boşsa Railway alan adı kullanılır; e-posta bağlantıları, sitemap ve canonical buna göre yazılır |
 | `TRUST_PROXY` | Railway'de boş bırakılabilir (kendiliğinden açık) |
-| `SMTP_*`, `MAIL_FROM` | Gerçek e-posta için zorunlu |
+| `BREVO_API_KEY` ya da `SMTP_*`, `MAIL_FROM` | Gerçek e-posta için zorunlu. Railway SMTP portlarını kapatıyorsa Brevo API (HTTPS) kullanın |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | İlk açılışta yönetici hesabı oluşturur |
 | `SEED_DEMO_USERS` | `true` ise demo öğrenciler (gerçek kullanıcılar gelmeden kapatın) |
 | `SENTRY_DSN`, `VITE_SENTRY_DSN` | İsteğe bağlı, Sentry hata takibi |

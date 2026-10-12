@@ -137,3 +137,38 @@ test('yıllık doğrulama durumu', () => {
   assert.equal(reverifyStatus({ schoolEmailVerifiedAt: new Date(now - 370 * D) }, now), 'due');
   assert.equal(reverifyStatus({ schoolEmailVerifiedAt: null, createdAt: new Date(now - 400 * D) }, now), 'expired');
 });
+
+test('mailer: Brevo API ile gönderim ve hata durumu panele yansır', async () => {
+  const mailer = require('../src/lib/mailer');
+  const saved = { key: process.env.BREVO_API_KEY, from: process.env.MAIL_FROM, fetch: global.fetch };
+  process.env.BREVO_API_KEY = 'test-key';
+  process.env.MAIL_FROM = 'kampüs+ <destek@ornek.com>';
+  const calls = [];
+  try {
+    global.fetch = async (url, opts) => {
+      calls.push({ url, opts });
+      return { ok: true, json: async () => ({}) };
+    };
+    const out = await mailer.sendMail({ to: 'ali@ogr.mku.edu.tr', subject: 'Kod', html: '<b>1</b>', text: '1' });
+    assert.deepEqual(out, { delivered: true, mode: 'brevo' });
+    assert.equal(calls[0].url, 'https://api.brevo.com/v3/smtp/email');
+    assert.equal(calls[0].opts.headers['api-key'], 'test-key');
+    const body = JSON.parse(calls[0].opts.body);
+    assert.deepEqual(body.sender, { name: 'kampüs+', email: 'destek@ornek.com' });
+    assert.deepEqual(body.to, [{ email: 'ali@ogr.mku.edu.tr' }]);
+    assert.equal(mailer.mailStatus().ok, true);
+
+    global.fetch = async () => ({ ok: false, status: 401, statusText: 'Unauthorized', json: async () => ({ message: 'Key not found' }) });
+    await assert.rejects(mailer.sendMail({ to: 'a@b.com', subject: 's', html: 'h' }), /Brevo 401: Key not found/);
+    const st = mailer.mailStatus();
+    assert.equal(st.mode, 'brevo');
+    assert.equal(st.ok, false);
+    assert.match(st.error, /Key not found/);
+  } finally {
+    global.fetch = saved.fetch;
+    if (saved.key === undefined) delete process.env.BREVO_API_KEY;
+    else process.env.BREVO_API_KEY = saved.key;
+    if (saved.from === undefined) delete process.env.MAIL_FROM;
+    else process.env.MAIL_FROM = saved.from;
+  }
+});
