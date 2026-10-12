@@ -171,6 +171,23 @@ export default function AdminSystem() {
               </ul>
             </>
           )}
+          {system.mail && system.mail.mode !== 'console' && (
+            <p style={{ margin: '12px 0 0', display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+              {system.mail.ok === false ? (
+                <AlertTriangle size={18} style={{ color: 'var(--adm-warn)', flexShrink: 0, marginTop: 2 }} aria-hidden="true" />
+              ) : (
+                <CheckCircle2 size={18} style={{ color: 'var(--adm-up)', flexShrink: 0, marginTop: 2 }} aria-hidden="true" />
+              )}
+              <span>
+                E-posta ({system.mail.mode === 'brevo' ? 'Brevo' : 'SMTP'}):{' '}
+                {system.mail.ok === false
+                  ? `son deneme başarısız — ${system.mail.error}`
+                  : system.mail.ok
+                    ? 'son deneme başarılı.'
+                    : 'henüz e-posta gönderilmedi.'}
+              </span>
+            </p>
+          )}
         </section>
       )}
 
