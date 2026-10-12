@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { VerifiedBadge } from '@/components/ui/icon-badge';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Flag, MoreHorizontal, ShieldOff, Sparkles, UserPlus, UserRound } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Flag, MoreHorizontal, ShieldOff, Sparkles, UserPlus, UserRound } from './icons';
 import { API_BASE_URL } from '../config';
 import { useI18n } from '../i18n';
 import { useToast } from '../context/ToastContext';

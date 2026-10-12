@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Crown, Globe2, Eye, Search as SearchIcon, Loader2 } from 'lucide-react';
+import { X, Crown, Globe2, Eye, Search as SearchIcon, Loader2 } from './icons';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';

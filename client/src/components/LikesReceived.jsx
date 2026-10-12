@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { VerifiedBadge } from '@/components/ui/icon-badge';
 import { useNavigate } from 'react-router-dom';
-import { Heart, Crown, Eye } from 'lucide-react';
+import { Heart, Crown, Eye } from './icons';
 import api from '../api';
 import { API_BASE_URL } from '../config';
 import { useToast } from '../context/ToastContext';

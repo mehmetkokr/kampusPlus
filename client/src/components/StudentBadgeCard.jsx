@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { BadgeCheck, Clock, FileText, Loader2, Upload, X } from 'lucide-react';
+import { BadgeCheck, Clock, FileText, Loader2, Upload, X } from './icons';
 import api from '../api';
 import { useToast } from '../context/ToastContext';
 import { useI18n } from '../i18n';

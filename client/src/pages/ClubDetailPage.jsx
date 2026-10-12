@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ClubIcon from '../components/ClubIcon';
-import { Flag as FlagIcon } from 'lucide-react';
+import { Flag as FlagIcon } from '../components/icons';
 import ReportModal from '../components/ReportModal';
 import { onEveryConnect, useSocket } from '../lib/socket';
 import api, { buildFileUrl } from '../api';
@@ -31,7 +31,7 @@ import {
   UserX as UserXIcon,
   Users as UsersIcon,
   X as CloseIcon,
-} from 'lucide-react';
+} from '../components/icons';
 import { useConfirm } from '../context/ConfirmContext';
 import { useI18n } from '../i18n';
 import { NeonCheckbox } from '@/components/ui/animated-check-box';

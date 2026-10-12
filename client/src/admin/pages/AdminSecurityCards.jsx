@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { KeyRound, ShieldCheck, Trash2, X } from 'lucide-react';
+import { KeyRound, ShieldCheck, Trash2, X } from '../../components/icons';
 import adminApi, { errorText } from '../adminApi';
 import { Skeleton } from '../ui';
 import { useToast } from '../../context/ToastContext';

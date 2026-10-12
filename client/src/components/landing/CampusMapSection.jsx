@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { useReducedMotion } from 'framer-motion';
-import { MapPin } from 'lucide-react';
+import { MapPin } from '../icons';
 import api from '../../api';
 import Reveal from './Reveal';
 import { useI18n } from '../../i18n';

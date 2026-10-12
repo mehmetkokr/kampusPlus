@@ -1,5 +1,5 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight } from './icons';
 import { useI18n } from '../i18n';
 
 // Doğum tarihi alanı: Gün / Ay / Yıl kutularına elle yazılır (otomatik bir

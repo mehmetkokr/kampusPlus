@@ -1,14 +1,14 @@
 import React from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import CubeLoader from '../components/CubeLoader';
+import LogoLoader from '../components/LogoLoader';
 import './admin.css';
 
 export default function AdminProtectedRoute({ children }) {
   const { token, user, loading } = useAuth();
 
   if (loading) {
-    return <CubeLoader mode="fullscreen" />;
+    return <LogoLoader mode="fullscreen" />;
   }
 
   if (!token) {

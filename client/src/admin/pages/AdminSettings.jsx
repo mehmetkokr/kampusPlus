@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Info, Shield, ShieldOff, UserPlus } from 'lucide-react';
+import { Info, Shield, ShieldOff, UserPlus } from '../../components/icons';
 import adminApi, { errorText } from '../adminApi';
 import { PageHead, Person, Skeleton, fmtDate, timeAgo } from '../ui';
 import { useToast } from '../../context/ToastContext';

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BellRing, Eye, MousePointerClick, Smartphone, UserPlus, Users } from 'lucide-react';
+import { BellRing, Eye, MousePointerClick, Smartphone, UserPlus, Users } from '../../components/icons';
 import adminApi, { errorText } from '../adminApi';
 import { Kpi, PageHead, PERIODS, Segmented, Skeleton, fmt } from '../ui';
 import { BarList, Funnel, LineChart } from '../charts';

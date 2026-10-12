@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Crop, RotateCcw, Sparkles, SunMedium, Undo2 } from 'lucide-react';
+import { Crop, RotateCcw, Sparkles, SunMedium, Undo2 } from './icons';
 import { useI18n } from '../i18n';
 import { loadBitmap } from '../utils/image';
 import { ADJUSTMENTS, NO_ADJUST, PRESETS, applyMatrix, buildMatrix, combine, isIdentity, toSvgValues } from '../utils/colorMatrix';

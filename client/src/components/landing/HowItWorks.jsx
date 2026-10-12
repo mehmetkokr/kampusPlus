@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from 'framer-motion';
-import { Compass, Mail, UserCircle } from 'lucide-react';
+import { Compass, Mail, UserCircle } from '../icons';
 import Reveal from './Reveal';
 import { useI18n } from '../../i18n';
 

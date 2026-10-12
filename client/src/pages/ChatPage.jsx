@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Ban, CornerUpLeft, Flag, HeartOff, MoreHorizontal, Smile, UserRound, X as XIcon } from 'lucide-react';
+import { Ban, CornerUpLeft, Flag, HeartOff, MoreHorizontal, Smile, UserRound, X as XIcon } from '../components/icons';
 import api, { buildFileUrl } from '../api';
 import { API_BASE_URL } from '../config';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
-import { ArrowLeft as ArrowLeftIcon, Send as SendIcon, Image as ImageIcon, Mic as MicIcon, Paperclip as PaperclipIcon, File as FileIcon } from 'lucide-react';
+import { ArrowLeft as ArrowLeftIcon, Send as SendIcon, Image as ImageIcon, Mic as MicIcon, Paperclip as PaperclipIcon, File as FileIcon } from '../components/icons';
 import VoiceMessagePlayer from '../components/VoiceMessagePlayer';
 import ReportModal from '../components/ReportModal';
 import { useI18n } from '../i18n';

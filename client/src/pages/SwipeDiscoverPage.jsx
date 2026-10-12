@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { VerifiedBadge } from '@/components/ui/icon-badge';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Flag, ArrowLeft, Layers, Heart, X, RotateCcw } from 'lucide-react';
+import { Flag, ArrowLeft, Layers, Heart, X, RotateCcw } from '../components/icons';
 import PaywallModal from '../components/PaywallModal';
 import PageHeader from '../components/PageHeader';
 import PhotoCarousel from '../components/PhotoCarousel';
@@ -13,9 +13,9 @@ import MatchCelebration from '../components/MatchCelebration';
 import LikesReceived from '../components/LikesReceived';
 import SegmentedControl from '../components/SegmentedControl';
 import { INTENT_LABEL, INTENT_CHIP_CLASS, parseIntents } from '../constants/intents';
-import { UserPlus as UserPlusIcon, UserCheck as UserCheckIcon } from 'lucide-react';
+import { UserPlus as UserPlusIcon, UserCheck as UserCheckIcon } from '../components/icons';
 import { useI18n } from '../i18n';
-import { FileText, Telescope } from 'lucide-react';
+import { FileText, Telescope } from '../components/icons';
 
 const SWIPE_THRESHOLD = 110;
 

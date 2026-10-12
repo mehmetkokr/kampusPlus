@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import api from '../api';
 import NotificationBell from '../components/NotificationBell';
-import { Plus as PlusIcon, ChevronRight as ChevronRightIcon, Users as UsersIcon } from 'lucide-react';
+import { Plus as PlusIcon, ChevronRight as ChevronRightIcon, Users as UsersIcon } from '../components/icons';
 import PageHeader from '../components/PageHeader';
 import CreateClubSheet from '../components/CreateClubSheet';
 import ClubIcon from '../components/ClubIcon';
 import { useI18n } from '../i18n';
-import { Landmark } from 'lucide-react';
+import { Landmark } from '../components/icons';
 
 const CATEGORIES = ['Tümü', 'Teknoloji', 'Spor', 'Sanat', 'Akademik', 'Sosyal', 'Diğer'];
 

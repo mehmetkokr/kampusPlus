@@ -47,7 +47,7 @@ import {
   Users,
   Volleyball,
   Waves,
-} from 'lucide-react';
+} from '../components/icons';
 
 // Kulüp simgeleri: işletim sistemine göre farklı görünen emojiler yerine
 // uygulamanın ikon setinden çizgi ikonlar. Veritabanında "icon:<anahtar>"

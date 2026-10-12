@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { VerifiedBadge } from '@/components/ui/icon-badge';
 import { AnimatePresence, motion, useInView, useReducedMotion } from 'framer-motion';
-import { Check, Crown, EyeOff, Heart, Loader2, Lock, Mail, ShieldCheck, UserX, X } from 'lucide-react';
+import { Check, Crown, EyeOff, Heart, Loader2, Lock, Mail, ShieldCheck, UserX, X } from '../icons';
 import Reveal from './Reveal';
 import { useI18n } from '../../i18n';
 import { demoPhoto } from './demoPhotos';
-import { Bot, Camera, Guitar } from 'lucide-react';
+import { Bot, Camera, Guitar } from '../icons';
 
 const EASE = [0.16, 1, 0.3, 1];
 

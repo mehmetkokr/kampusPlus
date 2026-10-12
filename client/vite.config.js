@@ -29,10 +29,23 @@ function siteUrlPlugin(env) {
   };
 }
 
+// Açılış ekranı: logo animasyonunun stilleri tek kaynaktan (src/styles/logo-loader.css)
+// index.html'e gömülür; böylece JavaScript inmeden önceki ilk ekran React'in
+// gösterdiğiyle birebir aynı kalır.
+function bootLoaderPlugin() {
+  const file = fileURLToPath(new URL('./src/styles/logo-loader.css', import.meta.url));
+  return {
+    name: 'kampus-boot-loader',
+    transformIndexHtml(html) {
+      return html.replace('/*@logo-loader.css@*/', fs.readFileSync(file, 'utf8'));
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_');
   return {
-    plugins: [react(), tailwindcss(), siteUrlPlugin(env)],
+    plugins: [react(), tailwindcss(), siteUrlPlugin(env), bootLoaderPlugin()],
     // shadcn bileşenlerinin beklediği kısayol: "@/components/ui/..." → src/components/ui/...
     resolve: {
       alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },

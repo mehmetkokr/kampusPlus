@@ -1,4 +1,4 @@
-import { CheckIcon, StarIcon, ZapIcon } from 'lucide-react';
+import { CheckIcon, StarIcon, ZapIcon } from '../icons';
 
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';

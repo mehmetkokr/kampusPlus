@@ -12,7 +12,7 @@ import {
   Compass,
   Sparkles,
   ChevronRight,
-} from 'lucide-react';
+} from '../components/icons';
 import api from '../api';
 import { API_BASE_URL } from '../config';
 import { useAuth } from '../context/AuthContext';
@@ -28,7 +28,7 @@ import ReportModal from '../components/ReportModal';
 import PaywallModal from '../components/PaywallModal';
 import { useConfirm } from '../context/ConfirmContext';
 import { useI18n } from '../i18n';
-import { Crown } from 'lucide-react';
+import { Crown } from '../components/icons';
 
 function timeAgo(dateStr) {
   const diffMs = Date.now() - new Date(dateStr).getTime();

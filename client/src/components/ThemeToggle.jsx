@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Moon, Sun } from 'lucide-react';
+import { Moon, Sun } from './icons';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../i18n';

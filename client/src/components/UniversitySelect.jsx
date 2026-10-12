@@ -1,5 +1,5 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { Check, ChevronDown, GraduationCap, Search, X } from 'lucide-react';
+import { Check, ChevronDown, GraduationCap, Search, X } from './icons';
 import { useI18n } from '../i18n';
 
 // Türkçe karakterlere duyarsız karşılaştırma: "istanbul" → "İstanbul", "odtu" → "ODTÜ"

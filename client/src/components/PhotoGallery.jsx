@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { ImagePlus, Loader2, MoreHorizontal, Plus, Star, Trash2 } from 'lucide-react';
+import { ImagePlus, Loader2, MoreHorizontal, Plus, Star, Trash2 } from './icons';
 import api from '../api';
 import { API_BASE_URL } from '../config';
 import { useToast } from '../context/ToastContext';

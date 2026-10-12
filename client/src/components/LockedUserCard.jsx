@@ -1,5 +1,5 @@
 import React from 'react';
-import { Lock } from 'lucide-react';
+import { Lock } from './icons';
 
 // Premium olmayan kullanıcılara diğer üniversitelerden birinin "var olduğunu"
 // gösteren ama kimliğini açmayan kilitli kart. Tıklanınca paywall açılır.

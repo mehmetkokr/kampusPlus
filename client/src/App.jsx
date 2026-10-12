@@ -6,7 +6,7 @@ import AppBackdrop from './components/AppBackdrop';
 import AnnouncementBanner from './components/AnnouncementBanner';
 import ReverifyBanner, { needsReverify } from './components/ReverifyBanner';
 import { useAuth } from './context/AuthContext';
-import CubeLoader from './components/CubeLoader';
+import LogoLoader from './components/LogoLoader';
 import PageMeta from './components/PageMeta';
 import ErrorBoundary from './components/ErrorBoundary';
 import { track } from './lib/telemetry';
@@ -72,7 +72,7 @@ export default function App() {
     {isAppRoute && (needsReverify(user) ? <ReverifyBanner /> : <AnnouncementBanner />)}
     <PageMeta />
     <ErrorBoundary resetKey={pathname}>
-    <Suspense fallback={<CubeLoader mode="fullscreen" />}>
+    <Suspense fallback={<LogoLoader mode="fullscreen" />}>
     <Routes>
       <Route
         path="/"

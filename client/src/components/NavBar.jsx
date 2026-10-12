@@ -11,7 +11,7 @@ import {
   Settings as SettingsIcon,
   Layers as LayersIcon,
   Crown as CrownIcon,
-} from 'lucide-react';
+} from './icons';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
 import { useI18n } from '../i18n';

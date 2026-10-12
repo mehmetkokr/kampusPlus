@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, ChevronRight, Heart, Layers, Lock, Plus, Users } from 'lucide-react';
+import { ArrowRight, ChevronRight, Heart, Layers, Lock, Plus, Users } from './icons';
 import api from '../api';
 import { useI18n } from '../i18n';
 import { getCompletionPercent, getCompletionSteps } from './ProfileCompletion';

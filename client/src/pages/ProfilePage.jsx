@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { VerifiedBadge } from '@/components/ui/icon-badge';
 import { Link } from 'react-router-dom';
-import { Camera, ChevronRight, GraduationCap, Lock, LogOut, Settings, ShieldCheck } from 'lucide-react';
+import { Camera, ChevronRight, GraduationCap, Lock, LogOut, Settings, ShieldCheck } from '../components/icons';
 import api from '../api';
 import { API_BASE_URL } from '../config';
 import { useAuth } from '../context/AuthContext';
@@ -11,7 +11,7 @@ import PhotoGallery from '../components/PhotoGallery';
 import StudentBadgeCard from '../components/StudentBadgeCard';
 import ProfileCompletion, { getCompletionPercent } from '../components/ProfileCompletion';
 import MultiSelectBox from '../components/MultiSelectBox';
-import { InstagramGlyph, XGlyph } from '../components/SocialGlyphs';
+import { SocialBadge } from '../components/SocialGlyphs';
 import { socialHandle } from '../utils/social';
 import { INTENT_OPTIONS, parseIntents } from '../constants/intents';
 import { INTEREST_OPTIONS, HOBBY_OPTIONS, MAX_TAGS, parseTags } from '../constants/tags';
@@ -117,6 +117,11 @@ export default function ProfilePage() {
 
   return (
     <div className="container pf-page">
+      {/* Cam kartların arkasındaki renkli zemin: profil fotoğrafının bulanık
+          hâli ve sitenin mavisinde yumuşak ışıklar */}
+      <div className="pf-backdrop" aria-hidden="true">
+        {user.photoUrl && <img src={`${API_BASE_URL}${user.photoUrl}`} alt="" />}
+      </div>
       <header className="pf-header">
         <h1>{t('Profilim')}</h1>
         <div className="pf-header-actions">
@@ -233,14 +238,14 @@ export default function ProfilePage() {
         <div className="pf-section" id="profile-social" tabIndex={-1}>
           <h3 className="pf-label">{t('Sosyal Medya Bağlantıları')}</h3>
           <label className="pf-social">
-            <span className="pf-social-icon" aria-hidden="true">
-              <InstagramGlyph />
+            <span className="pf-social-icon">
+              <SocialBadge network="instagram" size={32} />
             </span>
             <input className="pf-input" value={form.instagramUrl} onChange={(e) => set('instagramUrl', e.target.value)} placeholder={t('Instagram kullanıcı adı')} aria-label={t('Instagram kullanıcı adı')} />
           </label>
           <label className="pf-social">
-            <span className="pf-social-icon" aria-hidden="true">
-              <XGlyph />
+            <span className="pf-social-icon">
+              <SocialBadge network="x" size={32} />
             </span>
             <input className="pf-input" value={form.twitterUrl} onChange={(e) => set('twitterUrl', e.target.value)} placeholder={t('Twitter / X kullanıcı adı')} aria-label={t('Twitter / X kullanıcı adı')} />
           </label>

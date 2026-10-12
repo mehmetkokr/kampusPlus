@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { VerifiedBadge } from '@/components/ui/icon-badge';
-import { FileCheck2, ShieldCheck, UserX } from 'lucide-react';
+import { FileCheck2, ShieldCheck, UserX } from '../icons';
 import Reveal from './Reveal';
 import GlassCard from './GlassCard';
 import { useI18n } from '../../i18n';

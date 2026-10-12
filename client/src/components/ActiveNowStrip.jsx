@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UserRound } from 'lucide-react';
+import { UserRound } from './icons';
 import { API_BASE_URL } from '../config';
 import { useI18n } from '../i18n';
 

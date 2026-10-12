@@ -1,6 +1,6 @@
 import React from 'react';
 import { CLUB_ICONS, ICON_PREFIX, toneForCategory } from '../constants/clubIcons';
-import { Users } from 'lucide-react';
+import { Users } from './icons';
 
 // Kulüp simgesi: "icon:<anahtar>" değerleri kategori renginde yumuşak bir
 // kutu içinde çizgi ikon olarak çizilir; eski kulüplerin emoji değerleri

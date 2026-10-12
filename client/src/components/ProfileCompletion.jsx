@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, ChevronRight } from 'lucide-react';
+import { Check, ChevronRight } from './icons';
 import { useI18n } from '../i18n';
 
 // Profil doluluk oranı: her adımın bir ağırlığı var (toplam 100).

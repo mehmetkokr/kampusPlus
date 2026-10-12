@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight } from '../icons';
 import { useI18n } from '../../i18n';
 
 // Telefonda sabit alt çağrı: üstteki "Ücretsiz katıl" düğmesi ekrandan çıkınca

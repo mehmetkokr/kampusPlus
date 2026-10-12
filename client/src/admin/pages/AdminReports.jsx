@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Ban, CheckCircle2, Flag, Trash2, XCircle } from 'lucide-react';
+import { Ban, CheckCircle2, Flag, Trash2, XCircle } from '../../components/icons';
 import adminApi, { errorText, refreshCounts } from '../adminApi';
 import { Empty, PageHead, Pager, Segmented, Skeleton, timeAgo } from '../ui';
 import { useToast } from '../../context/ToastContext';

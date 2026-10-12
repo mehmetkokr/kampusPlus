@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X as CloseIcon } from 'lucide-react';
+import { X as CloseIcon } from './icons';
 import api from '../api';
 import { useI18n } from '../i18n';
 

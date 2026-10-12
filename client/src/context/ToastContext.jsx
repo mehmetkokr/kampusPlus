@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useCallback, useState } from 'react';
-import { CheckCircle2, XCircle, Info, X } from 'lucide-react';
+import { CheckCircle2, XCircle, Info, X } from '../components/icons';
 import { useI18n } from '../i18n';
 
 const ToastContext = createContext(null);

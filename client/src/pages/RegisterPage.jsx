@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, ShieldCheck, Eye, EyeOff, Check, X, Mail, RotateCw } from 'lucide-react';
+import { ArrowLeft, ShieldCheck, Eye, EyeOff, Check, X, Mail, RotateCw } from '../components/icons';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import AuthBackdrop from '../components/AuthBackdrop';
-import CubeLoader from '../components/CubeLoader';
+import LogoLoader from '../components/LogoLoader';
 import UniversitySelect from '../components/UniversitySelect';
 import { minDuration } from '../utils/wait';
 import { toTitleCaseTR, normalizeEmail } from '../utils/text';
@@ -204,7 +204,7 @@ export default function RegisterPage() {
   return (
     <div className="auth-screen">
       <AuthBackdrop />
-      {loading && <CubeLoader mode="overlay" label={tx("Hesabın oluşturuluyor")} />}
+      {loading && <LogoLoader mode="overlay" label={tx("Hesabın oluşturuluyor")} />}
 
       <ThemeToggle className="auth-theme-toggle" />
 

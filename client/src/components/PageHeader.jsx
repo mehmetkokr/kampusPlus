@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from './icons';
 import { useI18n } from '../i18n';
 
 // Her menü sayfasının üstündeki cam "hero" başlığı. `tone` vurgu rengini

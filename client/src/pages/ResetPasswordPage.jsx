@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, KeyRound } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, KeyRound } from '../components/icons';
 import api from '../api';
 import { useToast } from '../context/ToastContext';
 import AuthBackdrop from '../components/AuthBackdrop';

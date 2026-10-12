@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { VerifiedBadge } from '@/components/ui/icon-badge';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Check, UserRound } from 'lucide-react';
+import { ArrowRight, Check, UserRound } from '../components/icons';
 import api from '../api';
 import { API_BASE_URL } from '../config';
 import { needsBasics, useAuth } from '../context/AuthContext';
@@ -10,7 +10,7 @@ import { useI18n } from '../i18n';
 import PhotoGallery from '../components/PhotoGallery';
 import TagPicker from '../components/TagPicker';
 import BirthDateInput from '../components/BirthDateInput';
-import CubeLoader from '../components/CubeLoader';
+import LogoLoader from '../components/LogoLoader';
 import { HOBBY_OPTIONS, INTEREST_OPTIONS, parseTags } from '../constants/tags';
 import { INTENT_OPTIONS, parseIntents } from '../constants/intents';
 import { toTitleCaseTR } from '../utils/text';
@@ -124,7 +124,7 @@ export default function WelcomePage() {
   }
 
   if (!user) return null;
-  if (withAbout === null) return <CubeLoader mode="fullscreen" />;
+  if (withAbout === null) return <LogoLoader mode="fullscreen" />;
   const firstName = user.fullName?.split(' ')[0] || '';
   const current = STEPS[step];
 

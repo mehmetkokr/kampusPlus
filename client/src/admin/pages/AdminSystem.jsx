@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, BellRing, Bug, CheckCircle2, Database, Download, HardDriveDownload, RotateCcw } from 'lucide-react';
+import { AlertTriangle, BellRing, Bug, CheckCircle2, Database, Download, HardDriveDownload, RotateCcw } from '../../components/icons';
 import adminApi, { errorText } from '../adminApi';
 import { Empty, PageHead, Skeleton, fmt, fmtDateTime, timeAgo } from '../ui';
 import { useToast } from '../../context/ToastContext';

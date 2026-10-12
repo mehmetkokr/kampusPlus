@@ -1,0 +1,250 @@
+/* ==========================================================================
+   Logo yükleme ekranı
+   - Sade (varsayılan): sayfa geçişleri, giriş/kayıt, sonraki açılışlar.
+     Uygulama simgesi yumuşakça belirir; yükleme sürerse hafifçe nefes alır,
+     üzerinden ışık geçer.
+   - Açılış (.is-intro): sitenin bir oturumdaki ilk açılışı. Arka planda mavi
+     ışıklar dolaşır, simge yaylanarak gelir, "k" çizilip dolar, nokta belirir,
+     altında "kampüs·" harf harf yazılır. Sayfa hazır olunca (.is-leaving)
+     logo büyüyüp solarak sayfaya geçer. Oturumda bir kez oynar: sonraki
+     açılışlarda theme-init.js <html data-intro="seen"> koyar, sade hâl görünür.
+   Yalnızca transform/opacity ve SVG çizgi ofseti kullanılır. Hareket azaltma
+   açıksa simge sabit, tam hâliyle görünür.
+   Bu dosya derlemede index.html'e de gömülür (vite.config.js).
+   ========================================================================== */
+.logo-loader {
+  --ll-bg: #000000;
+  --ll-text: rgba(245, 245, 247, 0.62);
+  --ll-word: #f5f5f7;
+  --ll-glow: rgba(10, 132, 255, 0.5);
+  --ll-light-1: rgba(10, 132, 255, 0.32);
+  --ll-light-2: rgba(94, 92, 230, 0.26);
+  position: relative;
+  display: grid;
+  place-items: center;
+  gap: 22px;
+  color: var(--ll-text);
+}
+[data-theme='light'] .logo-loader {
+  --ll-bg: #f5f5f7;
+  --ll-text: rgba(29, 29, 31, 0.6);
+  --ll-word: #1d1d1f;
+  --ll-glow: rgba(0, 113, 227, 0.38);
+  --ll-light-1: rgba(0, 113, 227, 0.2);
+  --ll-light-2: rgba(94, 92, 230, 0.16);
+}
+
+.logo-loader.is-fullscreen,
+.logo-loader.is-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  align-content: center;
+  overflow: hidden;
+  background: var(--ll-bg);
+}
+.logo-loader.is-overlay {
+  background: rgba(0, 0, 0, 0.55);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  backdrop-filter: blur(18px) saturate(160%);
+  animation: ll-fade 0.25s ease both;
+}
+[data-theme='light'] .logo-loader.is-overlay { background: rgba(245, 245, 247, 0.7); }
+/* Açılış ekranı her şeyin üstünde (uygulamanın kendi yükleme ekranı altta kalır) */
+#boot-splash.logo-loader { z-index: 2000; }
+
+/* Tam ekranda simge her zaman tam ortada: altındaki yazı simgeyi kaydırmaz,
+   böylece açılış ekranı ile uygulamanın yükleme ekranı birebir üst üste biner */
+.logo-loader.is-fullscreen .ll-foot,
+.logo-loader.is-overlay .ll-foot {
+  position: absolute;
+  top: calc(50% + 66px);
+  left: 0;
+  right: 0;
+}
+.ll-foot { display: grid; place-items: center; gap: 10px; }
+
+.ll-stage { position: relative; width: 84px; height: 84px; }
+
+/* Simgenin altındaki yumuşak mavi ışık */
+.ll-stage::before {
+  content: '';
+  position: absolute;
+  inset: -34px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, var(--ll-glow), transparent);
+  opacity: 0;
+  animation: ll-glow-in 0.5s ease-out forwards, ll-glow 2.4s ease-in-out 0.8s infinite;
+}
+
+.ll-mark {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 23.5%;
+  background: linear-gradient(145deg, #3b9bff, #0052b8);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.18),
+    0 18px 36px -14px rgba(0, 60, 160, 0.6);
+  opacity: 0;
+  transform: scale(0.92);
+  animation:
+    ll-in 0.35s cubic-bezier(0.23, 1, 0.32, 1) forwards,
+    ll-breathe 2.4s ease-in-out 0.8s infinite;
+}
+.ll-mark svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.ll-k { fill: #fff; stroke: #fff; stroke-width: 0; }
+.ll-dot,
+.ll-ring {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.ll-dot { fill: #fff; }
+.ll-ring { fill: none; stroke: #fff; stroke-width: 1.2; opacity: 0; animation: ll-ring 2.4s cubic-bezier(0.22, 1, 0.36, 1) 0.9s infinite; }
+
+/* Camın üzerinden geçen ışık */
+.ll-sheen {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.42) 50%, transparent 65%);
+  transform: translateX(-120%);
+  animation: ll-sheen 2.4s cubic-bezier(0.45, 0, 0.25, 1) 0.6s infinite;
+}
+
+.ll-label {
+  margin: 0;
+  font: 500 13px/1.2 -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  letter-spacing: 0.01em;
+  opacity: 0;
+  animation: ll-fade 0.3s ease 0.4s forwards;
+}
+.ll-word,
+.ll-lights { display: none; }
+
+/* ---------- Açılış (oturumdaki ilk açılış) ---------- */
+html:not([data-intro='seen']) .logo-loader.is-intro .ll-lights {
+  display: block;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  animation: ll-fade 1.2s ease forwards;
+}
+.ll-lights span {
+  position: absolute;
+  width: 70vmax;
+  height: 70vmax;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, var(--ll-light-1), transparent);
+  will-change: transform;
+}
+.ll-lights span:first-child { top: -35vmax; left: -25vmax; animation: ll-drift-a 9s ease-in-out infinite alternate; }
+.ll-lights span:last-child {
+  right: -30vmax;
+  bottom: -40vmax;
+  background: radial-gradient(closest-side, var(--ll-light-2), transparent);
+  animation: ll-drift-b 11s ease-in-out infinite alternate;
+}
+
+html:not([data-intro='seen']) .logo-loader.is-intro .ll-stage::before {
+  animation: ll-glow-in 0.9s ease-out 0.15s forwards, ll-glow 2.4s ease-in-out 1.8s infinite;
+}
+html:not([data-intro='seen']) .logo-loader.is-intro .ll-mark {
+  transform: scale(0.6);
+  animation:
+    ll-in 0.7s cubic-bezier(0.34, 1.45, 0.64, 1) forwards,
+    ll-breathe 2.4s ease-in-out 2.2s infinite;
+}
+/* "k": önce çizgisi çizilir, sonra içi dolar */
+html:not([data-intro='seen']) .logo-loader.is-intro .ll-k {
+  fill-opacity: 0;
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation:
+    ll-draw 0.75s cubic-bezier(0.65, 0, 0.35, 1) 0.25s forwards,
+    ll-fill 0.3s ease-out 0.85s forwards;
+}
+html:not([data-intro='seen']) .logo-loader.is-intro .ll-dot {
+  transform: scale(0);
+  animation: ll-pop 0.45s cubic-bezier(0.34, 1.6, 0.64, 1) 0.95s forwards;
+}
+html:not([data-intro='seen']) .logo-loader.is-intro .ll-ring { animation-delay: 1.15s; }
+html:not([data-intro='seen']) .logo-loader.is-intro .ll-sheen { animation-delay: 1.5s; }
+html:not([data-intro='seen']) .logo-loader.is-intro .ll-label { display: none; }
+
+/* "kampüs·" harf harf */
+html:not([data-intro='seen']) .logo-loader.is-intro .ll-word {
+  display: flex;
+  margin: 0;
+  font: 700 28px/1 -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  letter-spacing: -0.035em;
+  color: var(--ll-word);
+}
+.ll-word span {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(10px);
+  animation: ll-letter 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+.ll-word span:nth-child(1) { animation-delay: 1.05s; }
+.ll-word span:nth-child(2) { animation-delay: 1.1s; }
+.ll-word span:nth-child(3) { animation-delay: 1.15s; }
+.ll-word span:nth-child(4) { animation-delay: 1.2s; }
+.ll-word span:nth-child(5) { animation-delay: 1.25s; }
+.ll-word span:nth-child(6) { animation-delay: 1.3s; }
+.ll-word .ll-word-dot {
+  color: #0a84ff;
+  opacity: 1;
+  transform: scale(0);
+  animation: ll-pop 0.45s cubic-bezier(0.34, 1.6, 0.64, 1) 1.45s forwards;
+}
+[data-theme='light'] .ll-word .ll-word-dot { color: #0071e3; }
+
+/* Sayfaya geçiş: logo büyüyüp solar, arkasındaki sayfa ortaya çıkar */
+.logo-loader.is-leaving {
+  pointer-events: none;
+  animation: ll-out 0.55s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+.logo-loader.is-leaving .ll-stage,
+.logo-loader.is-leaving .ll-foot {
+  animation: ll-zoom 0.55s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes ll-in { to { transform: scale(1); opacity: 1; } }
+@keyframes ll-draw { to { stroke-dashoffset: 0; } }
+@keyframes ll-fill { to { fill-opacity: 1; } }
+@keyframes ll-pop { to { transform: scale(1); } }
+@keyframes ll-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ll-out { to { opacity: 0; } }
+@keyframes ll-zoom { to { transform: scale(1.12); } }
+@keyframes ll-letter { to { opacity: 1; transform: none; } }
+@keyframes ll-glow-in { to { opacity: 0.7; } }
+@keyframes ll-glow { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; } }
+@keyframes ll-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.045); } }
+@keyframes ll-sheen { 0% { transform: translateX(-120%); } 45%, 100% { transform: translateX(120%); } }
+@keyframes ll-ring {
+  0% { transform: scale(1); opacity: 0.8; }
+  70%, 100% { transform: scale(3.2); opacity: 0; }
+}
+@keyframes ll-drift-a { to { transform: translate(18vmax, 12vmax); } }
+@keyframes ll-drift-b { to { transform: translate(-16vmax, -10vmax); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-loader *,
+  .logo-loader *::before,
+  .logo-loader.is-overlay { animation: none !important; }
+  .ll-stage::before { opacity: 0.7; }
+  .ll-mark,
+  .ll-word span,
+  .ll-label,
+  .ll-lights { opacity: 1 !important; transform: none !important; }
+  .ll-k { fill-opacity: 1 !important; stroke-dashoffset: 0 !important; }
+  .ll-dot { transform: none !important; }
+  .ll-ring,
+  .ll-sheen { display: none; }
+  .logo-loader.is-leaving { animation: ll-out 0.2s linear forwards !important; }
+}

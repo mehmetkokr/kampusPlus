@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { CalendarDays, FileText, Heart, MessageCircle, Search, Trash2, Users } from 'lucide-react';
+import { CalendarDays, FileText, Heart, MessageCircle, Search, Trash2, Users } from '../../components/icons';
 import adminApi, { errorText } from '../adminApi';
 import { Empty, PageHead, Pager, Segmented, Skeleton, fmt, fmtDate, fmtDateTime } from '../ui';
 import { buildFileUrl } from '../../api';

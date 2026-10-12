@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ChevronRight, Megaphone, X } from 'lucide-react';
+import { ChevronRight, Megaphone, X } from './icons';
 import api from '../api';
 import { useI18n } from '../i18n';
 

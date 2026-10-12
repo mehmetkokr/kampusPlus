@@ -1,6 +1,6 @@
 // Yönetim panelinin ortak arayüz parçaları
 import React, { useEffect } from 'react';
-import { ArrowDownRight, ArrowUpRight, Minus, X } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, Minus, X } from '../components/icons';
 import { buildFileUrl } from '../api';
 
 const nf = new Intl.NumberFormat('tr-TR');

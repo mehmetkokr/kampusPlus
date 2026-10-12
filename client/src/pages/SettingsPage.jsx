@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Moon, Sun, ShieldOff, Snowflake, Trash2, X, LogOut, Crown, Settings as SettingsIcon } from 'lucide-react';
+import { Moon, Sun, ShieldOff, Snowflake, Trash2, X, LogOut, Crown, Settings as SettingsIcon } from '../components/icons';
 import api from '../api';
 import { API_BASE_URL } from '../config';
 import { useAuth } from '../context/AuthContext';

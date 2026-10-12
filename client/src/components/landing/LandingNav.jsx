@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Globe, Menu, X } from 'lucide-react';
+import { Globe, Menu, X } from '../icons';
 import { useI18n } from '../../i18n';
 import ThemeToggle from '../ThemeToggle';
 

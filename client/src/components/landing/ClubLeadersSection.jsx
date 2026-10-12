@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, BellRing, Crown, Shield, Users } from 'lucide-react';
+import { ArrowRight, BellRing, Crown, Shield, Users } from '../icons';
 import Reveal from './Reveal';
 import { useI18n } from '../../i18n';
 

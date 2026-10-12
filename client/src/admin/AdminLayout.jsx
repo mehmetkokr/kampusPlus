@@ -18,7 +18,7 @@ import {
   Users,
   BarChart3,
   Server,
-} from 'lucide-react';
+} from '../components/icons';
 import adminApi from './adminApi';
 import ThemeToggle from '../components/ThemeToggle';
 import { useAuth } from '../context/AuthContext';

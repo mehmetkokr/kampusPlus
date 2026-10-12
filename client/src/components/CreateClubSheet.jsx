@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { BookOpen, Coffee, Cpu, Palette, Sparkles, Trophy, Users, X } from 'lucide-react';
+import { BookOpen, Coffee, Cpu, Palette, Sparkles, Trophy, Users, X } from './icons';
 import api from '../api';
 import ClubIcon from './ClubIcon';
 import { CLUB_CATEGORY_STYLE, CLUB_ICONS, ICON_PREFIX } from '../constants/clubIcons';

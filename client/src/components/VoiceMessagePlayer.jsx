@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Play as PlayIcon, Pause as PauseIcon } from 'lucide-react';
+import { Play as PlayIcon, Pause as PauseIcon } from './icons';
 
 export default function VoiceMessagePlayer({ src, mine }) {
   const audioRef = useRef(null);

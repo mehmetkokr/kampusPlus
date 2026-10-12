@@ -1,4 +1,4 @@
-import { BadgeCheck, Heart, Layers, ShieldOff } from 'lucide-react';
+import { BadgeCheck, Heart, Layers, ShieldOff } from '../icons';
 import Reveal from './Reveal';
 import { useI18n } from '../../i18n';
 

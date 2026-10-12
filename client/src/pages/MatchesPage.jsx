@@ -3,7 +3,7 @@ import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import api from '../api';
 import { API_BASE_URL } from '../config';
 import NotificationBell from '../components/NotificationBell';
-import { ChevronRight as ChevronRightIcon, MessageCircle as ChatIcon } from 'lucide-react';
+import { ChevronRight as ChevronRightIcon, MessageCircle as ChatIcon } from '../components/icons';
 import PageHeader from '../components/PageHeader';
 import { useI18n } from '../i18n';
 import { useAuth } from '../context/AuthContext';

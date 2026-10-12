@@ -39,7 +39,7 @@ import {
   Users,
   Wifi,
   X,
-} from 'lucide-react';
+} from '../icons';
 import { useI18n } from '../../i18n';
 import { demoPhoto } from './demoPhotos';
 import { Badge } from '@/components/ui/badge';

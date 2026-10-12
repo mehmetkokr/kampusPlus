@@ -6,3 +6,9 @@ try {
   var light = saved ? saved === 'light' : window.matchMedia('(prefers-color-scheme: light)').matches;
   document.documentElement.setAttribute('data-theme', light ? 'light' : 'dark');
 } catch (e) {}
+
+// Uzun logo açılışı oturumda bir kez oynar (bkz. src/lib/splash.js): bu
+// sekmede daha önce oynadıysa ilk ekranda logo yalnızca belirir.
+try {
+  if (sessionStorage.getItem('kp-intro')) document.documentElement.setAttribute('data-intro', 'seen');
+} catch (e) {}

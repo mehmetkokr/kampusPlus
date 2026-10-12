@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell } from 'lucide-react';
+import { Bell } from './icons';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../lib/socket';

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Check, GraduationCap, Megaphone, Pencil, Plus, Search, Trash2, X } from 'lucide-react';
+import { Check, GraduationCap, Megaphone, Pencil, Plus, Search, Trash2, X } from '../../components/icons';
 import adminApi, { errorText } from '../adminApi';
 import { Kpi, PageHead, PERIODS, Segmented, Skeleton, Empty, fmt } from '../ui';
 import { BarList } from '../charts';

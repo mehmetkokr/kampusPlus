@@ -306,8 +306,8 @@
 }
 .pf-textarea { min-height: 96px; padding: 12px 14px; resize: vertical; line-height: 1.5; }
 .pf-social { position: relative; display: flex; align-items: center; margin: 0 0 10px; }
-.pf-social-icon { position: absolute; left: 14px; display: grid; place-items: center; color: var(--text-muted); pointer-events: none; }
-.pf-social .pf-input { min-height: 50px; padding-left: 44px; }
+.pf-social-icon { position: absolute; left: 9px; display: grid; place-items: center; pointer-events: none; }
+.pf-social .pf-input { min-height: 50px; padding-left: 52px; }
 .pf-input:focus {
   outline: none;
   border-color: var(--amber-soft);
@@ -393,4 +393,119 @@
 .pf-select-box:has(.pf-select-toggle:focus-visible) {
   border-color: var(--amber-soft);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--amber-soft) 20%, transparent);
+}
+
+/* ==========================================================================
+   Cam görünüm (Liquid Glass): kartlar arkadaki renkli zemini bulanık ve
+   doygun gösterir; üst kenarda ışık çizgisi, köşede hafif parlama.
+   Zemin: profil fotoğrafının çok bulanık hâli + sitenin mavisinde ışıklar.
+   Saydamlığı azalt açıksa ya da tarayıcı bulanıklığı desteklemiyorsa
+   kartlar eski düz hâline döner.
+   ========================================================================== */
+.pf-page { position: relative; isolation: isolate; }
+.pf-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(60vmax 45vmax at 12% 0%, rgba(10, 132, 255, 0.34), transparent 70%),
+    radial-gradient(50vmax 40vmax at 95% 30%, rgba(94, 92, 230, 0.26), transparent 70%),
+    radial-gradient(55vmax 45vmax at 40% 100%, rgba(0, 199, 190, 0.16), transparent 70%);
+}
+.pf-backdrop img {
+  position: absolute;
+  top: -10%;
+  left: 50%;
+  width: min(900px, 140vw);
+  aspect-ratio: 1;
+  object-fit: cover;
+  transform: translateX(-50%);
+  filter: blur(70px) saturate(1.6);
+  opacity: 0.45;
+}
+[data-theme='light'] .pf-backdrop {
+  background:
+    radial-gradient(60vmax 45vmax at 12% 0%, rgba(0, 113, 227, 0.2), transparent 70%),
+    radial-gradient(50vmax 40vmax at 95% 30%, rgba(94, 92, 230, 0.16), transparent 70%),
+    radial-gradient(55vmax 45vmax at 40% 100%, rgba(0, 199, 190, 0.12), transparent 70%);
+}
+[data-theme='light'] .pf-backdrop img { opacity: 0.35; }
+
+.pf-page .pf-card,
+.pf-page .completion-card,
+.pf-page .badge-card {
+  position: relative;
+  isolation: isolate;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(28, 28, 30, 0.52);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  backdrop-filter: blur(30px) saturate(180%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.03),
+    0 24px 48px -28px rgba(0, 0, 0, 0.7);
+}
+/* Köşeden süzülen parlama */
+.pf-page .pf-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  z-index: -1; /* kartın zemininin üstünde, yazıların altında */
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0) 38%);
+  pointer-events: none;
+}
+/* Açılır seçim listesi sonraki kartın altında kalmasın */
+.pf-page .pf-card:focus-within { z-index: 2; }
+
+[data-theme='light'] .pf-page .pf-card,
+[data-theme='light'] .pf-page .completion-card,
+[data-theme='light'] .pf-page .badge-card {
+  border-color: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.58);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 18px 40px -24px rgba(0, 40, 100, 0.28);
+}
+[data-theme='light'] .pf-page .pf-card::before {
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0) 40%);
+}
+
+/* Kart içindeki alanlar da yarı saydam: cam etkisi bölünmesin */
+.pf-page .pf-input,
+.pf-page .pf-select-box,
+.pf-page .pf-secondary { background: rgba(118, 118, 128, 0.18); border-color: rgba(255, 255, 255, 0.08); }
+[data-theme='light'] .pf-page .pf-input,
+[data-theme='light'] .pf-page .pf-select-box,
+[data-theme='light'] .pf-page .pf-secondary { background: rgba(255, 255, 255, 0.6); border-color: rgba(0, 0, 0, 0.06); }
+.pf-page .pf-input:focus { background: rgba(118, 118, 128, 0.24); }
+[data-theme='light'] .pf-page .pf-input:focus { background: rgba(255, 255, 255, 0.85); }
+.pf-page .pf-status { background: rgba(118, 118, 128, 0.2); }
+
+/* Kaydet çubuğu: yüzen cam şerit */
+.pf-page .pf-savebar {
+  margin: 0 -6px;
+  padding: 8px 6px 6px;
+  border-radius: 24px;
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .pf-page .pf-card,
+  .pf-page .completion-card,
+  .pf-page .badge-card { background: var(--surface); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .pf-backdrop { display: none; }
+  .pf-page .pf-card,
+  .pf-page .completion-card,
+  .pf-page .badge-card {
+    background: var(--surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
 }

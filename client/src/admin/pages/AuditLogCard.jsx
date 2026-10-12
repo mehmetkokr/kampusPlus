@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { History } from 'lucide-react';
+import { History } from '../../components/icons';
 import adminApi, { errorText } from '../adminApi';
 import { Empty, Pager, Skeleton, fmtDateTime, timeAgo } from '../ui';
 

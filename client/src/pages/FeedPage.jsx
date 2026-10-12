@@ -26,7 +26,7 @@ import {
   Send as SendIcon,
   Bookmark as BookmarkIcon,
   BadgeCheck as VerifiedIcon,
-} from 'lucide-react';
+} from '../components/icons';
 import api from '../api';
 import { API_BASE_URL } from '../config';
 import { useAuth } from '../context/AuthContext';
@@ -36,7 +36,7 @@ import NotificationBell from '../components/NotificationBell';
 import PageHeader from '../components/PageHeader';
 import { useConfirm } from '../context/ConfirmContext';
 import { useI18n } from '../i18n';
-import { PenLine, Sprout, UsersRound } from 'lucide-react';
+import { PenLine, Sprout, UsersRound } from '../components/icons';
 import { compressImage } from '../utils/image';
 import EmojiPicker from '../components/EmojiPicker';
 import { usePhotoEditor } from '../context/PhotoEditorContext';

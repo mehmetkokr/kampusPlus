@@ -14,7 +14,7 @@ import {
   Trash2,
   UserCheck,
   Users,
-} from 'lucide-react';
+} from '../../components/icons';
 import adminApi, { errorText } from '../adminApi';
 import {
   Avatar,

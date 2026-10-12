@@ -1,9 +1,10 @@
-// Marka simgeleri (lucide'da yok): sade çizgi hâlleri
+import React from 'react';
+
+// Marka simgeleri (simge setinde yok). Dolu, tek renk hâlleri: SocialBadge
+// içinde sitenin mavisi üzerinde beyaz görünür.
 export const InstagramGlyph = ({ size = 18 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-    <rect x="3" y="3" width="18" height="18" rx="5" />
-    <circle cx="12" cy="12" r="4" />
-    <circle cx="17.5" cy="6.5" r="0.6" fill="currentColor" />
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M12 2.2c3.2 0 3.58.01 4.85.07 1.17.05 1.8.25 2.23.41.56.22.96.48 1.38.9.42.42.68.82.9 1.38.16.42.36 1.06.41 2.23.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.05 1.17-.25 1.8-.41 2.23-.22.56-.48.96-.9 1.38-.42.42-.82.68-1.38.9-.42.16-1.06.36-2.23.41-1.27.06-1.65.07-4.85.07s-3.58-.01-4.85-.07c-1.17-.05-1.8-.25-2.23-.41a3.72 3.72 0 0 1-1.38-.9 3.72 3.72 0 0 1-.9-1.38c-.16-.42-.36-1.06-.41-2.23C2.21 15.58 2.2 15.2 2.2 12s.01-3.58.07-4.85c.05-1.17.25-1.8.41-2.23.22-.56.48-.96.9-1.38.42-.42.82-.68 1.38-.9.42-.16 1.06-.36 2.23-.41C8.42 2.21 8.8 2.2 12 2.2Zm0 1.8c-3.15 0-3.5.01-4.75.07-1.06.05-1.63.22-2.01.37-.5.2-.86.43-1.24.8-.37.38-.6.74-.8 1.24-.15.38-.32.95-.37 2.01C2.77 9.74 2.76 10.1 2.76 12s.01 2.26.07 3.51c.05 1.06.22 1.63.37 2.01.2.5.43.86.8 1.24.38.37.74.6 1.24.8.38.15.95.32 2.01.37 1.25.06 1.6.07 4.75.07s3.5-.01 4.75-.07c1.06-.05 1.63-.22 2.01-.37.5-.2.86-.43 1.24-.8.37-.38.6-.74.8-1.24.15-.38.32-.95.37-2.01.06-1.25.07-1.6.07-3.51s-.01-2.26-.07-3.51c-.05-1.06-.22-1.63-.37-2.01-.2-.5-.43-.86-.8-1.24a3.36 3.36 0 0 0-1.24-.8c-.38-.15-.95-.32-2.01-.37C15.5 4.01 15.15 4 12 4Zm0 3.06a4.94 4.94 0 1 1 0 9.88 4.94 4.94 0 0 1 0-9.88Zm0 8.15a3.21 3.21 0 1 0 0-6.42 3.21 3.21 0 0 0 0 6.42Zm6.29-8.35a1.15 1.15 0 1 1-2.3 0 1.15 1.15 0 0 1 2.3 0Z" />
   </svg>
 );
 
@@ -12,3 +13,13 @@ export const XGlyph = ({ size = 16 }) => (
     <path d="M17.75 3h3.07l-6.71 7.67L22 21h-6.18l-4.84-6.33L5.44 21H2.37l7.18-8.2L2 3h6.34l4.37 5.78L17.75 3Zm-1.08 16.17h1.7L7.4 4.74H5.58l11.09 14.43Z" />
   </svg>
 );
+
+// Sitenin mavisinde yuvarlak rozet: beyaz marka simgesi, hafif parlama ve gölge
+export function SocialBadge({ network, size = 36 }) {
+  const Glyph = network === 'instagram' ? InstagramGlyph : XGlyph;
+  return (
+    <span className="social-badge" style={{ '--sb-size': `${size}px` }} aria-hidden="true">
+      <Glyph size={Math.round(size * (network === 'instagram' ? 0.5 : 0.44))} />
+    </span>
+  );
+}

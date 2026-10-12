@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useI18n } from '../i18n';
-import { Compass } from 'lucide-react';
+import { Compass } from '../components/icons';
 
 export default function NotFoundPage() {
   const { t } = useI18n();

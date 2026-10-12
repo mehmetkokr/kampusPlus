@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { BadgeCheck, ExternalLink, FileText, ShieldQuestion, X } from 'lucide-react';
+import { BadgeCheck, ExternalLink, FileText, ShieldQuestion, X } from '../../components/icons';
 import adminApi, { errorText, refreshCounts } from '../adminApi';
 import { Empty, PageHead, Person, Skeleton, fmtDate, timeAgo } from '../ui';
 import { buildFileUrl } from '../../api';

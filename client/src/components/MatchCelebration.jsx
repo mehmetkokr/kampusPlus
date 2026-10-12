@@ -1,7 +1,7 @@
 import React, { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, useReducedMotion } from 'framer-motion';
-import { MessageCircle, UserRound } from 'lucide-react';
+import { MessageCircle, UserRound } from './icons';
 import { API_BASE_URL } from '../config';
 import { useI18n } from '../i18n';
 import { hasWebGL } from '../utils/webgl';

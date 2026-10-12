@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { ArrowRight, CheckCircle2, LogIn, ShieldCheck, Smartphone, Sparkles, UserPlus } from 'lucide-react';
+import { ArrowRight, CheckCircle2, LogIn, ShieldCheck, Smartphone, Sparkles, UserPlus } from '../icons';
 import api from '../../api';
 import CampusSky from '../CampusSky';
 import PhoneMockup from './PhoneMockup';

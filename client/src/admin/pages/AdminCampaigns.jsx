@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Bell, Check, Copy, FlaskConical, Info, Mail, Megaphone, PanelTop, Send, Trash2, Users, XCircle } from 'lucide-react';
+import { Bell, Check, Copy, FlaskConical, Info, Mail, Megaphone, PanelTop, Send, Trash2, Users, XCircle } from '../../components/icons';
 import adminApi, { errorText } from '../adminApi';
 import { CLASS_LABELS, INTENT_LABELS, INTENT_OPTIONS, PageHead, Skeleton, fmt, fmtDateTime } from '../ui';
 import { useToast } from '../../context/ToastContext';

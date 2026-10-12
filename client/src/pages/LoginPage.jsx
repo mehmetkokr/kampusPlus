@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ShieldCheck, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, ShieldCheck, Eye, EyeOff } from '../components/icons';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import AuthBackdrop from '../components/AuthBackdrop';
-import CubeLoader from '../components/CubeLoader';
+import LogoLoader from '../components/LogoLoader';
 import { minDuration } from '../utils/wait';
 import { useI18n } from '../i18n';
 import ThemeToggle from '../components/ThemeToggle';
@@ -66,7 +66,7 @@ export default function LoginPage() {
   return (
     <div className="auth-screen">
       <AuthBackdrop />
-      {loading && <CubeLoader mode="overlay" label={t("Giriş yapılıyor")} />}
+      {loading && <LogoLoader mode="overlay" label={t("Giriş yapılıyor")} />}
 
       <ThemeToggle className="auth-theme-toggle" />
 

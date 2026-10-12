@@ -1,14 +1,14 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { needsBasics, useAuth } from '../context/AuthContext';
-import CubeLoader from './CubeLoader';
+import LogoLoader from './LogoLoader';
 
 export default function ProtectedRoute({ children }) {
   const { token, user, loading } = useAuth();
   const { pathname } = useLocation();
 
   if (loading) {
-    return <CubeLoader mode="fullscreen" />;
+    return <LogoLoader mode="fullscreen" />;
   }
 
   if (!token) {

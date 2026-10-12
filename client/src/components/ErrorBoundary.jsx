@@ -1,5 +1,5 @@
 import React from 'react';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw } from './icons';
 import { useI18n } from '../i18n';
 import { reportError } from '../lib/telemetry';
 

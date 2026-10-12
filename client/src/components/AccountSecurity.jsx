@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AtSign, ChevronRight, Download, Eye, EyeOff, KeyRound, X as CloseIcon } from 'lucide-react';
+import { AtSign, ChevronRight, Download, Eye, EyeOff, KeyRound, X as CloseIcon } from './icons';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';

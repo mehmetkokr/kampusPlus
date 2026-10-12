@@ -13,7 +13,7 @@ import {
   Users,
   Wallet,
   Wifi,
-} from 'lucide-react';
+} from '../../components/icons';
 import adminApi, { errorText } from '../adminApi';
 import { CLASS_LABELS, INTENT_LABELS, Kpi, PageHead, PERIODS, Segmented, Skeleton, fmt, fmtMoney } from '../ui';
 import { BarList, Funnel, LineChart, RetentionBars } from '../charts';
