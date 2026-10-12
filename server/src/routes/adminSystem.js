@@ -1,6 +1,7 @@
 // Admin paneli: sistem durumu (yedekler, hata kayıtları) ve kullanım analitiği.
 // admin.js içinde requireAdmin'den SONRA bağlanır; buraya yalnızca adminler ulaşır.
 const express = require('express');
+const { isProduction, productionConfigWarnings } = require('../lib/siteConfig');
 const fsp = require('fs/promises');
 const prisma = require('../lib/prisma');
 const { createBackup, listBackups, backupPath } = require('../lib/backup');
@@ -56,6 +57,8 @@ router.get('/system', async (req, res) => {
       push: { devices: pushDevices, users: pushUsers.length },
       sentry: Boolean(process.env.SENTRY_DSN),
       payments: { mock: mockPaymentsEnabled() },
+      // Yayında eksik/yanlış ayarlar (SMTP, kalıcı disk, anahtar, site adresi)
+      config: { production: isProduction(), warnings: productionConfigWarnings() },
     });
   } catch (err) {
     console.error(err);

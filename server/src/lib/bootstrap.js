@@ -8,6 +8,7 @@
 //                                   hesapları admin panelinden silin)
 const bcrypt = require('bcryptjs');
 const prisma = require('./prisma');
+const { isProduction } = require('./siteConfig');
 
 const DEMO_USERS = [
   { email: 'mku1@ogr.mku.edu.tr', fullName: 'Ahmet Yılmaz', department: 'Bilgisayar Mühendisliği', classYear: 2, age: 21 },
@@ -60,13 +61,28 @@ async function ensureDemoUsers() {
   }
 }
 
+// Yayında demo hesaplar kapalıysa (SEED_DEMO_USERS true değil) ve şifreleri
+// hâlâ herkesin bildiği 12345678 ise askıya alınır: aksi halde herkes bu
+// hesaplarla giriş yapabilirdi. Şifresi değiştirilmiş hesaba dokunulmaz;
+// kalıcı silmek için yönetim paneli > Kullanıcılar.
+async function lockDemoUsers() {
+  if (process.env.SEED_DEMO_USERS === 'true' || !isProduction()) return;
+  for (const { email } of DEMO_USERS) {
+    const user = await prisma.user.findUnique({ where: { email }, select: { id: true, isBanned: true, passwordHash: true } });
+    if (!user || user.isBanned || !(await bcrypt.compare('12345678', user.passwordHash))) continue;
+    await prisma.user.update({ where: { id: user.id }, data: { isBanned: true, tokenVersion: { increment: 1 } } });
+    console.warn(`[bootstrap] Demo hesap askıya alındı (bilinen şifre): ${email}`);
+  }
+}
+
 async function bootstrapAccounts() {
   try {
     await ensureAdmin();
     await ensureDemoUsers();
+    await lockDemoUsers();
   } catch (err) {
     console.error('[bootstrap] İlk hesaplar oluşturulamadı:', err.message);
   }
 }
 
-module.exports = { bootstrapAccounts };
+module.exports = { bootstrapAccounts, lockDemoUsers, DEMO_USERS };

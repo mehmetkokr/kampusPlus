@@ -151,6 +151,29 @@ export default function AdminSystem() {
         )}
       </div>
 
+      {system?.config?.production && (
+        <section className="adm-card" style={{ marginTop: 14 }} aria-labelledby="adm-config-title">
+          <h2 className="adm-card-title" id="adm-config-title">Yayın ayarları</h2>
+          {system.config.warnings.length === 0 ? (
+            <p style={{ margin: 0, display: 'flex', gap: 8, alignItems: 'center' }}>
+              <CheckCircle2 size={18} style={{ color: 'var(--adm-up)' }} aria-hidden="true" /> Temel yayın ayarlarının hepsi tamam.
+            </p>
+          ) : (
+            <>
+              <p className="adm-card-sub">Railway &gt; Variables ekranında düzeltilmesi gerekenler (her değişiklikten sonra sunucu yeniden başlar):</p>
+              <ul style={{ margin: 0, paddingLeft: 0, listStyle: 'none', display: 'grid', gap: 10 }}>
+                {system.config.warnings.map((w) => (
+                  <li key={w} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                    <AlertTriangle size={18} style={{ color: 'var(--adm-warn)', flexShrink: 0, marginTop: 2 }} aria-hidden="true" />
+                    <span>{w}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </section>
+      )}
+
       {system?.payments.mock && (
         <div className="adm-card" style={{ marginTop: 14, display: 'flex', gap: 12, alignItems: 'flex-start' }}>
           <AlertTriangle size={20} style={{ color: 'var(--adm-warn)', flexShrink: 0, marginTop: 2 }} aria-hidden="true" />

@@ -170,6 +170,14 @@ başlatma + imzalı webhook) ve `PaymentLog` tablosu.
   numarayla ulaşılamaz. Aralarında eşleşme, takip ya da beğeni varsa ulaşılabilir.
 - **Çevrimiçi durumu** yalnızca eşleşilen kişilere gider (herkese yayınlanmaz).
 - **Şikâyet** yalnızca şikâyet edenin görebildiği içerik için açılabilir.
+- **Hesap bazlı giriş koruması** (`server/src/lib/loginGuard.js`): aynı e-postaya
+  15 dakikada 8 hatalı deneme (`ACCOUNT_LOGIN_LIMIT`) o adresi 15 dakika kilitler;
+  çok sayıda IP'den tek hesaba şifre tahminini durdurur. Kayıtsız adreste de aynı
+  çalışır; şifre sıfırlama kilidi kaldırır.
+- **Demo hesaplar:** yayında `SEED_DEMO_USERS` açık değilse ve demo hesapların
+  şifresi hâlâ `12345678` ise sunucu açılışta onları askıya alır.
+- **Yayın ayarları kartı:** yönetim paneli > Sistem, eksik yayın ayarlarını
+  (SMTP, kalıcı disk, `JWT_SECRET`, site adresi) listeler.
 - **İki adımlı doğrulama:** yöneticiler panel > Ayarlar'dan açar.
   `ADMIN_REQUIRE_2FA=true` ile zorunlu olur. Telefon kaybında:
   `npm run admin:reset-2fa --prefix server -- e-posta`.
