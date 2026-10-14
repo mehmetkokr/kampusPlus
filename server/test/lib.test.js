@@ -140,9 +140,10 @@ test('yıllık doğrulama durumu', () => {
 
 test('mailer: Brevo API ile gönderim ve hata durumu panele yansır', async () => {
   const mailer = require('../src/lib/mailer');
-  const saved = { key: process.env.BREVO_API_KEY, from: process.env.MAIL_FROM, fetch: global.fetch };
+  const saved = { key: process.env.BREVO_API_KEY, from: process.env.MAIL_FROM, reply: process.env.MAIL_REPLY_TO, fetch: global.fetch };
   process.env.BREVO_API_KEY = 'test-key';
-  process.env.MAIL_FROM = 'kampüs+ <destek@ornek.com>';
+  process.env.MAIL_FROM = 'kampüs+ <bildirim@ornek.com>';
+  process.env.MAIL_REPLY_TO = 'destek@ornek.com';
   const calls = [];
   try {
     global.fetch = async (url, opts) => {
@@ -154,7 +155,8 @@ test('mailer: Brevo API ile gönderim ve hata durumu panele yansır', async () =
     assert.equal(calls[0].url, 'https://api.brevo.com/v3/smtp/email');
     assert.equal(calls[0].opts.headers['api-key'], 'test-key');
     const body = JSON.parse(calls[0].opts.body);
-    assert.deepEqual(body.sender, { name: 'kampüs+', email: 'destek@ornek.com' });
+    assert.deepEqual(body.sender, { name: 'kampüs+', email: 'bildirim@ornek.com' });
+    assert.deepEqual(body.replyTo, { email: 'destek@ornek.com' });
     assert.deepEqual(body.to, [{ email: 'ali@ogr.mku.edu.tr' }]);
     assert.equal(mailer.mailStatus().ok, true);
 
@@ -170,5 +172,7 @@ test('mailer: Brevo API ile gönderim ve hata durumu panele yansır', async () =
     else process.env.BREVO_API_KEY = saved.key;
     if (saved.from === undefined) delete process.env.MAIL_FROM;
     else process.env.MAIL_FROM = saved.from;
+    if (saved.reply === undefined) delete process.env.MAIL_REPLY_TO;
+    else process.env.MAIL_REPLY_TO = saved.reply;
   }
 });

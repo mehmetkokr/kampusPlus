@@ -9,8 +9,8 @@ import path from 'node:path';
 // dosyalarda varsayılan adres yazılı; derlemede index.html, robots.txt ve
 // sitemap.xml içindeki adres bu değerle değiştirilir. Böylece alan adı
 // değişince yalnızca ortam değişkeni güncellenir.
-const DEFAULT_SITE = 'https://kampusplus.app';
-const DEFAULT_EMAIL = 'destek@kampusplus.app';
+const DEFAULT_SITE = 'https://kampusplus.com.tr';
+const DEFAULT_EMAIL = 'destek@kampusplus.com.tr';
 
 function siteUrlPlugin(env) {
   const url = (env.VITE_SITE_URL || DEFAULT_SITE).replace(/\/+$/, '');

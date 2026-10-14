@@ -112,10 +112,10 @@ const HTML = `<!doctype html><html><head><title>kampüs· | Doğrulanmış Üniv
   content="eski"
 />
 <meta name="robots" content="index, follow" />
-<link rel="canonical" href="https://kampusplus.app/" />
+<link rel="canonical" href="https://kampusplus.com.tr/" />
 <meta property="og:title" content="x" />
-<meta property="og:url" content="https://kampusplus.app/" />
-<meta property="og:image" content="https://kampusplus.app/og-image.png" />
+<meta property="og:url" content="https://kampusplus.com.tr/" />
+<meta property="og:image" content="https://kampusplus.com.tr/og-image.png" />
 </head><body><div id="root"></div></body></html>`;
 
 test('SEO: herkese açık sayfa kendi başlığı ve canonical adresiyle, gerçek alan adıyla', () => {
@@ -126,7 +126,7 @@ test('SEO: herkese açık sayfa kendi başlığı ve canonical adresiyle, gerçe
   assert.match(page.html, /og:image" content="https:\/\/ornek\.up\.railway\.app\/og-image\.png"/);
   assert.match(page.html, /<meta name="description" content="Üniversite e-postanla/);
   assert.match(page.html, /<meta name="robots" content="index, follow" \/>/);
-  assert.ok(!page.html.includes('kampusplus.app/'), 'derlemedeki adres kalmamalı');
+  assert.ok(!page.html.includes('kampusplus.com.tr/'), 'derlemedeki adres kalmamalı');
   assert.match(page.html, /<noscript>/);
 });
 
@@ -134,7 +134,7 @@ test('SEO: özel sayfa noindex, bilinmeyen adres 404', () => {
   const priv = renderPage(HTML, '/chat/12', null);
   assert.equal(priv.status, 200);
   assert.equal(priv.robots, 'noindex, nofollow');
-  assert.match(priv.html, /<link rel="canonical" href="https:\/\/kampusplus\.app\/" \/>/);
+  assert.match(priv.html, /<link rel="canonical" href="https:\/\/kampusplus\.com\.tr\/" \/>/);
   const missing = renderPage(HTML, '/boyle-bir-sayfa', null);
   assert.equal(missing.status, 404);
   assert.match(missing.html, /Sayfa bulunamadı/);

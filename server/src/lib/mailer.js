@@ -49,12 +49,13 @@ function record(ok, err) {
   Object.assign(status, { ok, error: ok ? null : String(err?.message || err).slice(0, 300), at: new Date().toISOString() });
 }
 
-async function sendViaBrevo({ from, to, subject, html, text }) {
+async function sendViaBrevo({ from, replyTo, to, subject, html, text }) {
   const res = await fetch(BREVO_URL, {
     method: 'POST',
     headers: { 'api-key': process.env.BREVO_API_KEY, 'content-type': 'application/json', accept: 'application/json' },
     body: JSON.stringify({
       sender: parseFrom(from),
+      ...(replyTo ? { replyTo: { email: replyTo } } : {}),
       to: [{ email: to }],
       subject,
       htmlContent: html,
@@ -73,7 +74,10 @@ async function sendViaBrevo({ from, to, subject, html, text }) {
  */
 async function sendMail({ to, subject, html, text }) {
   const mode = mailMode();
-  const from = process.env.MAIL_FROM || 'kampüs· <no-reply@kampusplus.app>';
+  const from = process.env.MAIL_FROM || 'kampüs· <bildirim@kampusplus.com.tr>';
+  // Kullanıcı "Yanıtla"ya basarsa yanıt bu adrese gider (ör. destek@...);
+  // tanımlı değilse gönderen adresine
+  const replyTo = (process.env.MAIL_REPLY_TO || '').trim() || undefined;
 
   if (mode === 'console') {
     // Geliştirme modu: e-posta servisi tanımlı değil, konsola yaz.
@@ -85,8 +89,8 @@ async function sendMail({ to, subject, html, text }) {
   }
 
   try {
-    if (mode === 'brevo') await sendViaBrevo({ from, to, subject, html, text });
-    else await getTransporter().sendMail({ from, to, subject, html, text });
+    if (mode === 'brevo') await sendViaBrevo({ from, replyTo, to, subject, html, text });
+    else await getTransporter().sendMail({ from, replyTo, to, subject, html, text });
     record(true);
   } catch (err) {
     record(false, err);

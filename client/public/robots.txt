@@ -16,4 +16,4 @@ Disallow: /users
 Disallow: /welcome
 Disallow: /reset-password
 
-Sitemap: https://kampusplus.app/sitemap.xml
+Sitemap: https://kampusplus.com.tr/sitemap.xml

@@ -13,11 +13,11 @@ function initialSiteUrl() {
   } catch {
     // tarayıcı dışı ortam (testler)
   }
-  return import.meta.env.VITE_SITE_URL || 'https://kampusplus.app';
+  return import.meta.env.VITE_SITE_URL || 'https://kampusplus.com.tr';
 }
 
 export const SITE = {
   name: 'kampüs·',
   url: initialSiteUrl(),
-  contactEmail: import.meta.env.VITE_CONTACT_EMAIL || 'destek@kampusplus.app',
+  contactEmail: import.meta.env.VITE_CONTACT_EMAIL || 'destek@kampusplus.com.tr',
 };

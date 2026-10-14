@@ -51,7 +51,7 @@ function allowedOrigins(env = process.env) {
 function productionConfigWarnings(env = process.env) {
   if (!isProduction(env)) return [];
   const warnings = [];
-  if (!configuredSiteUrl(env)) warnings.push('Site adresi yok: SITE_URL (ör. https://kampusplus.app) tanımlayın; e-posta bağlantıları localhost\'a gider.');
+  if (!configuredSiteUrl(env)) warnings.push('Site adresi yok: SITE_URL (ör. https://kampusplus.com.tr) tanımlayın; e-posta bağlantıları localhost\'a gider.');
   if (!env.BREVO_API_KEY && !(env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASS)) warnings.push('E-posta servisi tanımlı değil (BREVO_API_KEY ya da SMTP): doğrulama kodları gönderilemez, kimse kayıt olamaz.');
   if (isRailway(env) && !env.STORAGE_DIR) warnings.push('STORAGE_DIR yok: yüklenen fotoğraflar her güncellemede silinir. Volume bağlayıp STORAGE_DIR=/data yapın.');
   if (isRailway(env) && !/^file:\/data\//.test(env.DATABASE_URL || '')) warnings.push('DATABASE_URL kalıcı diskte değil: veritabanı her güncellemede sıfırlanabilir (ör. file:/data/kampus.db).');

@@ -36,7 +36,7 @@ function loadKeys() {
 function ensureConfigured() {
   if (configured) return configured;
   const keys = loadKeys();
-  const subject = process.env.VAPID_SUBJECT || 'mailto:destek@kampusplus.app';
+  const subject = process.env.VAPID_SUBJECT || 'mailto:destek@kampusplus.com.tr';
   webpush.setVapidDetails(subject, keys.publicKey, keys.privateKey);
   configured = keys;
   return keys;
