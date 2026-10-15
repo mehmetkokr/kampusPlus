@@ -13,6 +13,7 @@ import PushSettings from '../components/PushSettings';
 import AccountSecurity from '../components/AccountSecurity';
 import { useConfirm } from '../context/ConfirmContext';
 import { useI18n } from '../i18n';
+import Select from '../components/Select';
 
 const VISIBILITY_OPTIONS = [
   { value: 'everyone', label: 'Herkese Açık' },
@@ -300,22 +301,16 @@ export default function SettingsPage() {
         </p>
 
         <label htmlFor="settings-visibility">{t("Profil Görünürlüğü")}</label>
-        <select
+        <Select
           id="settings-visibility"
           value={profileVisibility}
           disabled={saving}
-          onChange={(e) => {
-            setProfileVisibility(e.target.value);
-            updatePrivacy({ profileVisibility: e.target.value });
+          onChange={(v) => {
+            setProfileVisibility(v);
+            updatePrivacy({ profileVisibility: v });
           }}
-          style={{ marginBottom: 4 }}
-        >
-          {VISIBILITY_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {t(opt.label)}
-            </option>
-          ))}
-        </select>
+          options={VISIBILITY_OPTIONS.map((opt) => ({ value: opt.value, label: t(opt.label) }))}
+        />
 
         <div className="settings-row">
           <div>
@@ -437,18 +432,19 @@ export default function SettingsPage() {
         </div>
 
         <label htmlFor="settings-language">{t("Dil")}</label>
-        <select
+        <Select
           id="settings-language"
           value={language}
           disabled={saving}
-          onChange={(e) => {
-            setLanguage(e.target.value);
-            setLang(e.target.value);
+          onChange={(v) => {
+            setLanguage(v);
+            setLang(v);
           }}
-        >
-          <option value="tr">{t("Türkçe")}</option>
-          <option value="en">{t("English")}</option>
-        </select>
+          options={[
+            { value: 'tr', label: t('Türkçe') },
+            { value: 'en', label: t('English') },
+          ]}
+        />
       </div>
 
       {/* ---------- Hesap: Tehlike Bölgesi ---------- */}

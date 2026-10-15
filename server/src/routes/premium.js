@@ -18,6 +18,7 @@ const {
   isPremiumActive,
   activePlan,
   likeQuota,
+  superLikeQuota,
   isBoosting,
   mockPaymentsEnabled,
 } = require('../lib/premium');
@@ -34,12 +35,13 @@ const STATUS_SELECT = {
   premiumPlan: true,
   boostCredits: true,
   boostUntil: true,
+  incognito: true,
 };
 
 const publicPlans = () => PLAN_KEYS.map((key) => ({ key, ...PLANS[key] }));
 
 async function statusOf(user) {
-  const quota = await likeQuota(prisma, user);
+  const [quota, superLikes] = await Promise.all([likeQuota(prisma, user), superLikeQuota(prisma, user)]);
   return {
     isPremium: isPremiumActive(user),
     plan: activePlan(user),
@@ -47,6 +49,8 @@ async function statusOf(user) {
     premiumSince: user.premiumSince,
     premiumAutoRenew: user.premiumAutoRenew,
     likes: quota,
+    superLikes,
+    incognito: Boolean(user.incognito) && isPremiumActive(user),
     boostCredits: user.boostCredits,
     boostUntil: isBoosting(user) ? user.boostUntil : null,
     boostMinutes: BOOST_MINUTES,
@@ -153,6 +157,22 @@ router.post('/boost', requireAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Boost başlatılamadı.' });
+  }
+});
+
+// PUT /api/premium/incognito { enabled } — gizli mod (yalnızca Premium)
+router.put('/incognito', requireAuth, async (req, res) => {
+  try {
+    const enabled = req.body?.enabled === true;
+    const user = await prisma.user.findUnique({ where: { id: req.userId }, select: STATUS_SELECT });
+    if (enabled && !isPremiumActive(user)) {
+      return res.status(403).json({ error: 'Gizli mod Premium üyelere özel.', code: 'PREMIUM_REQUIRED' });
+    }
+    const updated = await prisma.user.update({ where: { id: req.userId }, data: { incognito: enabled }, select: STATUS_SELECT });
+    res.json(await statusOf(updated));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Gizli mod değiştirilemedi.' });
   }
 });
 

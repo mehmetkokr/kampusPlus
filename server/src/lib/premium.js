@@ -8,10 +8,11 @@ const FREE_DAILY_LIKES = 5;
 const BOOST_MINUTES = 30;
 
 // dailyLikes: null = sınırsız. boosts: satın alınca eklenen boost hakkı.
+// dailySuperLikes: günlük Süper Beğeni hakkı (ücretsiz hesapta yok).
 const PLANS = {
-  weekly: { days: 7, amount: 39.9, label: 'Haftalık', dailyLikes: 50, boosts: 1 },
-  monthly: { days: 30, amount: 99.9, label: 'Aylık', dailyLikes: null, boosts: 3 },
-  yearly: { days: 365, amount: 799.9, label: 'Yıllık', dailyLikes: null, boosts: 36 },
+  weekly: { days: 7, amount: 39.9, label: 'Haftalık', dailyLikes: 50, boosts: 1, dailySuperLikes: 1 },
+  monthly: { days: 30, amount: 99.9, label: 'Aylık', dailyLikes: null, boosts: 3, dailySuperLikes: 3 },
+  yearly: { days: 365, amount: 799.9, label: 'Yıllık', dailyLikes: null, boosts: 36, dailySuperLikes: 5 },
 };
 const PLAN_KEYS = Object.keys(PLANS);
 
@@ -52,11 +53,37 @@ function nextIstanbulDayStart(now = new Date()) {
   return new Date(istanbulDayStart(now).getTime() + 24 * 60 * 60 * 1000);
 }
 
-// Bugünkü beğeni kullanımı: { limit, used, left, resetsAt } (left: null = sınırsız)
+// Bugünkü beğeni kullanımı: { limit, used, left, resetsAt } (left: null = sınırsız).
+// Süper Beğeniler ayrı sayılır, normal beğeni hakkından düşmez.
 async function likeQuota(prisma, user, now = new Date()) {
   const limit = dailyLikeLimit(user);
-  const used = await prisma.like.count({ where: { fromUserId: user.id, createdAt: { gte: istanbulDayStart(now) } } });
+  const used = await prisma.like.count({ where: { fromUserId: user.id, isSuper: false, createdAt: { gte: istanbulDayStart(now) } } });
   return { limit, used, left: limit === null ? null : Math.max(0, limit - used), resetsAt: nextIstanbulDayStart(now) };
+}
+
+// Günlük Süper Beğeni hakkı (ücretsiz: 0)
+function dailySuperLikeLimit(user) {
+  const plan = activePlan(user);
+  return plan ? PLANS[plan].dailySuperLikes : 0;
+}
+async function superLikeQuota(prisma, user, now = new Date()) {
+  const limit = dailySuperLikeLimit(user);
+  const used = await prisma.like.count({ where: { fromUserId: user.id, isSuper: true, createdAt: { gte: istanbulDayStart(now) } } });
+  return { limit, used, left: Math.max(0, limit - used), resetsAt: nextIstanbulDayStart(now) };
+}
+
+// Gizli mod: Premium'u süren ve gizli modu açık kullanıcılar, yalnızca
+// beğendikleri kişilerin listelerinde görünür. Premium biterse mod kendiliğinden
+// etkisiz kalır. viewerId'nin göreceği adayları süzen Prisma koşulu:
+function incognitoVisibleTo(viewerId, now = new Date()) {
+  return {
+    OR: [
+      { incognito: false },
+      { isPremium: false },
+      { premiumUntil: { lte: now } },
+      { sentLikes: { some: { toUserId: viewerId } } },
+    ],
+  };
 }
 
 const isBoosting = (user, now = Date.now()) => Boolean(user?.boostUntil && new Date(user.boostUntil).getTime() > now);
@@ -83,6 +110,9 @@ module.exports = {
   istanbulDayStart,
   nextIstanbulDayStart,
   likeQuota,
+  dailySuperLikeLimit,
+  superLikeQuota,
+  incognitoVisibleTo,
   isBoosting,
   mockPaymentsEnabled,
 };

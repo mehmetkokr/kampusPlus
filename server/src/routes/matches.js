@@ -5,7 +5,7 @@ const { requireAuth } = require('../middleware/auth');
 const { createNotification } = require('../lib/notifications');
 const { isBlockedEitherWay, getBlockedUserIds } = require('../lib/block');
 const { previewOf } = require('../lib/chat');
-const { isPremiumActive, likeQuota } = require('../lib/premium');
+const { isPremiumActive, likeQuota, superLikeQuota } = require('../lib/premium');
 const { reachCheck } = require('../lib/privacy');
 const fs = require('fs');
 const path = require('path');
@@ -42,10 +42,22 @@ router.post('/like/:userId', requireAuth, async (req, res) => {
     }
 
     // Günlük beğeni sınırı (ücretsiz 5, haftalık plan 50, aylık/yıllık sınırsız).
-    // Aynı kişiyi yeniden beğenmek yeni hak harcamaz.
-    const alreadyLiked = await prisma.like.findUnique({ where: { fromUserId_toUserId: { fromUserId, toUserId } }, select: { id: true } });
+    // Aynı kişiyi yeniden beğenmek yeni hak harcamaz. Süper Beğeni ayrı hak
+    // kullanır (Premium planlarda günlük 1/3/5) ve karşı tarafa bildirilir.
+    const isSuper = req.body?.super === true;
+    const alreadyLiked = await prisma.like.findUnique({ where: { fromUserId_toUserId: { fromUserId, toUserId } }, select: { id: true, isSuper: true } });
     let quota = await likeQuota(prisma, me);
-    if (!alreadyLiked && quota.left === 0) {
+    let superQuota = null;
+    if (isSuper) {
+      if (alreadyLiked?.isSuper) return res.status(409).json({ error: 'Bu kişiyi zaten Süper Beğendin.' });
+      superQuota = await superLikeQuota(prisma, me);
+      if (superQuota.limit === 0) {
+        return res.status(403).json({ error: 'Süper Beğeni Premium üyelere özel.', code: 'PREMIUM_REQUIRED' });
+      }
+      if (superQuota.left === 0) {
+        return res.status(429).json({ error: 'Bugünkü Süper Beğeni hakkın doldu.', code: 'SUPER_LIKE_LIMIT', limit: superQuota.limit, resetsAt: superQuota.resetsAt });
+      }
+    } else if (!alreadyLiked && quota.left === 0) {
       return res.status(429).json({
         error: 'Bugünkü beğeni hakkın doldu.',
         code: 'LIKE_LIMIT',
@@ -57,11 +69,11 @@ router.post('/like/:userId', requireAuth, async (req, res) => {
     // Önce "geç" demiş olsa bile (Premium geri alma vb.) beğeni geçerli olur
     await prisma.pass.deleteMany({ where: { fromUserId, toUserId } });
 
-    // Beğeniyi kaydet (zaten varsa hata vermesin)
+    // Beğeniyi kaydet (zaten varsa hata vermesin; süper beğeni varolanı yükseltir)
     await prisma.like.upsert({
       where: { fromUserId_toUserId: { fromUserId, toUserId } },
-      update: {},
-      create: { fromUserId, toUserId },
+      update: isSuper ? { isSuper: true, createdAt: new Date() } : {},
+      create: { fromUserId, toUserId, isSuper },
     });
 
     // Karşı taraf beni beğenmiş mi kontrol et
@@ -87,8 +99,14 @@ router.post('/like/:userId', requireAuth, async (req, res) => {
       ]);
     }
 
-    if (!alreadyLiked && quota.left !== null) quota = { ...quota, used: quota.used + 1, left: quota.left - 1 };
-    res.json({ liked: true, matched: !!match, match, likes: quota });
+    // Süper Beğeni: eşleşme olmadıysa karşı taraf kimin süper beğendiğini görür
+    if (isSuper && !match) {
+      await createNotification(req.app.get('io'), { userId: toUserId, type: 'super_like', actorId: fromUserId, targetType: 'user', targetId: fromUserId });
+    }
+
+    if (!isSuper && !alreadyLiked && quota.left !== null) quota = { ...quota, used: quota.used + 1, left: quota.left - 1 };
+    if (superQuota) superQuota = { ...superQuota, used: superQuota.used + 1, left: superQuota.left - 1 };
+    res.json({ liked: true, superLiked: isSuper, matched: !!match, match, likes: quota, superLikes: superQuota });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Beğeni işlenemedi.' });

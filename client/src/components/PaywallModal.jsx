@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { X, Crown, Globe2, Search as SearchIcon, Loader2, Heart, Undo2, Rocket } from './icons';
+import { X, Crown, Globe2, Search as SearchIcon, Loader2, Heart, Undo2, Rocket, Star, EyeOff, SlidersHorizontal } from './icons';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -90,6 +90,15 @@ export default function PaywallModal({ onClose, onUpgraded, contextText, hideSco
           </li>
           <li>
             <Rocket size={16} /> {t('Boost: profilin {m} dakika boyunca kampüsünde en üstte', { m: info?.boostMinutes ?? 30 })}
+          </li>
+          <li>
+            <Star size={16} /> {t('Süper Beğeni: beğendiğini hemen bildir, destesinde ilk sen çık')}
+          </li>
+          <li>
+            <EyeOff size={16} /> {t('Gizli mod: yalnızca beğendiğin kişiler seni görsün')}
+          </li>
+          <li>
+            <SlidersHorizontal size={16} /> {t('Gelişmiş filtreler: yaş, sınıf ve ne aradığına göre')}
           </li>
           <li>
             <Undo2 size={16} /> {t('Kart Modu’nda son kararını geri al')}

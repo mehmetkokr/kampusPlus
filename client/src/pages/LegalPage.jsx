@@ -102,6 +102,8 @@ const DOCS = {
       ['Beğeni hakkı, Premium ve Boost', [
         'Ücretsiz hesapla günde 5 kişiyi beğenebilirsin; hak her gün Türkiye saatiyle 00:00’da yenilenir ve kullanılmayan hak ertesi güne devretmez.',
         'Premium haftalık, aylık ve yıllık planlarla sunulur. Haftalık planda günlük beğeni hakkı 50, aylık ve yıllık planda sınırsızdır. Planların güncel ücreti ve hakları satın alma ekranında ve Ayarlar > Premium bölümünde gösterilir.',
+        'Premium planlarda günlük Süper Beğeni hakkı vardır (haftalık 1, aylık 3, yıllık 5). Süper Beğendiğin kişiye bildirim gider ve onun Kart Modu destesinde öne çıkarsın; Süper Beğeni normal beğeni hakkından düşmez.',
+        'Gizli mod açıkken Kart Modu ve Keşfet’te yalnızca senin beğendiğin kişilere görünürsün; Premium sona erince gizli mod kendiliğinden etkisiz olur.',
         'Her plan satın alındığında hesabına Boost hakkı eklenir (haftalık 1, aylık 3, yıllık 36). Bir Boost, profilini 30 dakika boyunca kampüsündeki öğrencilerin Kart Modu ve Keşfet listelerinde öne çıkarır. Kullanılan Boost geri alınamaz; kullanılmayan Boost hakkın üyeliğin bitse de hesabında kalır.',
         'Premium üyelik seçtiğin dönem sonunda aynı planla otomatik yenilenir. Otomatik yenilemeyi Ayarlar’dan istediğin an kapatabilirsin; üyeliğin dönem sonuna kadar devam eder.',
         'Satın alma koşulları, cayma hakkı ve uyuşmazlık yolları Mesafeli Satış Sözleşmesi’nde yer alır.',
@@ -125,7 +127,7 @@ const DOCS = {
       ]],
       ['2. Sözleşmenin konusu', [
         'Elektronik ortamda anında ifa edilen dijital hizmet: seçilen dönem (haftalık, aylık ya da yıllık) boyunca Premium üyelik ve plana bağlı beğeni ile Boost hakları.',
-        'Premium ile tüm üniversitelerdeki öğrencileri keşfedebilir ve arayabilir, seni beğenenleri görebilir, Kart Modu’nda son kararını geri alabilir ve planına göre daha fazla beğeni hakkı ile Boost kullanabilirsin.',
+        'Premium ile tüm üniversitelerdeki öğrencileri keşfedebilir ve arayabilir, seni beğenenleri görebilir, Gizli modu ve Kart Modu’nun gelişmiş filtrelerini kullanabilir, son kararını geri alabilir ve planına göre daha fazla beğeni, Süper Beğeni ve Boost hakkı kullanabilirsin.',
       ]],
       ['3. Ücret ve ödeme', [
         'Planların ücreti yukarıdaki tabloda ve satın alma ekranında, vergiler dahil olarak gösterilir. Ödeme banka ya da kredi kartıyla, lisanslı bir ödeme kuruluşu aracılığıyla alınır; kart bilgilerin bizde saklanmaz.',
@@ -201,6 +203,7 @@ function PlanTable() {
               <th scope="col">Süre</th>
               <th scope="col">Ücret (vergiler dahil)</th>
               <th scope="col">Günlük beğeni</th>
+              <th scope="col">Günlük Süper Beğeni</th>
               <th scope="col">Boost</th>
             </tr>
           </thead>
@@ -211,6 +214,7 @@ function PlanTable() {
               <td>₺0</td>
               <td>{info.freeDailyLikes}</td>
               <td>—</td>
+              <td>—</td>
             </tr>
             {info.plans.map((p) => (
               <tr key={p.key}>
@@ -218,6 +222,7 @@ function PlanTable() {
                 <td>{period[p.key] || `${p.days} gün`}</td>
                 <td>{formatTL(p.amount)}</td>
                 <td>{p.dailyLikes === null ? 'Sınırsız' : p.dailyLikes}</td>
+                <td>{p.dailySuperLikes}</td>
                 <td>{`${p.boosts} × ${info.boostMinutes} dk`}</td>
               </tr>
             ))}

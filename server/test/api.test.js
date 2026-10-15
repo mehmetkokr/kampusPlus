@@ -577,7 +577,7 @@ test('premium planları herkese açık, kişisel veri içermez', async () => {
   assert.equal(res.status, 200);
   assert.equal(typeof res.data.checkoutAvailable, 'boolean');
   assert.deepEqual(res.data.plans.map((p) => p.key), ['weekly', 'monthly', 'yearly']);
-  for (const p of res.data.plans) assert.deepEqual(Object.keys(p).sort(), ['amount', 'boosts', 'dailyLikes', 'days', 'key', 'label']);
+  for (const p of res.data.plans) assert.deepEqual(Object.keys(p).sort(), ['amount', 'boosts', 'dailyLikes', 'dailySuperLikes', 'days', 'key', 'label']);
   assert.equal(res.data.freeDailyLikes, 5);
   assert.equal(res.data.boostMinutes, 30);
 });

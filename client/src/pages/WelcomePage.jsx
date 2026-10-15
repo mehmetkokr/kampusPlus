@@ -14,6 +14,7 @@ import LogoLoader from '../components/LogoLoader';
 import { HOBBY_OPTIONS, INTEREST_OPTIONS, parseTags } from '../constants/tags';
 import { INTENT_OPTIONS, parseIntents } from '../constants/intents';
 import { toTitleCaseTR } from '../utils/text';
+import Select from '../components/Select';
 
 // Kayıttan hemen sonra gösterilen başlangıç. Kayıt formu kısa olduğu için
 // ilk adım "seni tanıyalım": doğum tarihi, bölüm, sınıf ve ne aradığın (bu adım
@@ -176,20 +177,20 @@ export default function WelcomePage() {
             {!user.classYear && (
               <>
                 <label htmlFor="welcome-class">{t('Sınıf')}</label>
-                <select
+                <Select
                   id="welcome-class"
                   value={about.classYear}
-                  onChange={(e) => setAbout((a) => ({ ...a, classYear: e.target.value }))}
-                  aria-invalid={aboutError?.field === 'classYear'}
-                  className={aboutError?.field === 'classYear' ? 'is-invalid' : ''}
-                >
-                  <option value="">{t('Seçiniz...')}</option>
-                  <option value="1">{t('1. Sınıf')}</option>
-                  <option value="2">{t('2. Sınıf')}</option>
-                  <option value="3">{t('3. Sınıf')}</option>
-                  <option value="4">{t('4. Sınıf')}</option>
-                  <option value="5">{t('Yüksek Lisans / Diğer')}</option>
-                </select>
+                  onChange={(v) => setAbout((a) => ({ ...a, classYear: v }))}
+                  invalid={aboutError?.field === 'classYear'}
+                  placeholder={t('Seçiniz...')}
+                  options={[
+                    { value: '1', label: t('1. Sınıf') },
+                    { value: '2', label: t('2. Sınıf') },
+                    { value: '3', label: t('3. Sınıf') },
+                    { value: '4', label: t('4. Sınıf') },
+                    { value: '5', label: t('Yüksek Lisans / Diğer') },
+                  ]}
+                />
                 {aboutError?.field === 'classYear' ? (
                   <p className="field-hint field-hint-warn" role="alert">{aboutError.text}</p>
                 ) : (

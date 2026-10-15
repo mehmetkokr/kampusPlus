@@ -49,6 +49,7 @@ const TEXT = {
   tr: {
     message: (n) => [n, 'sana bir mesaj gönderdi.'],
     match: (n) => ['Yeni eşleşme!', `${n} ile eşleştin. Merhaba de!`],
+    super_like: (n) => ['Süper Beğeni!', `${n} seni Süper Beğendi. Kart Modu'nda ilk o çıkacak.`],
     follow: (n) => [n, 'seni takip etmeye başladı.'],
     like: (n) => [n, 'gönderini beğendi.'],
     comment: (n) => [n, 'gönderine yorum yaptı.'],
@@ -63,6 +64,7 @@ const TEXT = {
   en: {
     message: (n) => [n, 'sent you a message.'],
     match: (n) => ["It's a match!", `You matched with ${n}. Say hi!`],
+    super_like: (n) => ['Super Like!', `${n} Super Liked you. They will be first in Card Mode.`],
     follow: (n) => [n, 'started following you.'],
     like: (n) => [n, 'liked your post.'],
     comment: (n) => [n, 'commented on your post.'],
@@ -83,6 +85,8 @@ function linkFor(n) {
       return n.targetId ? `/chat/${n.targetId}` : '/matches';
     case 'follow':
       return n.actorId ? `/users/${n.actorId}` : '/notifications';
+    case 'super_like':
+      return '/discover/swipe';
     case 'like':
     case 'comment':
     case 'comment_like':

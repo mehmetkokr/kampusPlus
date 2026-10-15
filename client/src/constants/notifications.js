@@ -18,6 +18,11 @@ export function formatNotification(n, t = plain) {
         text: t('{name} sana bir mesaj gönderdi.', { name }),
         link: n.targetId ? `/chat/${n.targetId}` : null,
       };
+    case 'super_like':
+      return {
+        text: t('{name} seni Süper Beğendi! Kart Modu’nda ilk o çıkacak.', { name }),
+        link: '/discover/swipe',
+      };
     case 'match':
       return {
         text: t('{name} ile eşleştin!', { name }),

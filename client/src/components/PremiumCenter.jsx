@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Crown, Heart, Rocket, CalendarDays, Loader2 } from './icons';
+import { Crown, Heart, Rocket, CalendarDays, Loader2, Star, EyeOff } from './icons';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -59,6 +59,22 @@ export default function PremiumCenter({ onOpenPaywall }) {
     }
   }
 
+  async function toggleIncognito(enabled) {
+    if (!status.isPremium) return onOpenPaywall();
+    setBusy(true);
+    setStatus((s) => ({ ...s, incognito: enabled }));
+    try {
+      const res = await api.put('/premium/incognito', { enabled });
+      setStatus(res.data);
+      toast.success(enabled ? t('Gizli mod açık: yalnızca beğendiğin kişiler seni görür.') : t('Gizli mod kapalı.'));
+    } catch (err) {
+      setStatus((s) => ({ ...s, incognito: !enabled }));
+      toast.error(err.response?.data?.error || t('İşlem tamamlanamadı.'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function cancelRenew() {
     if (!(await confirm({ title: t('Otomatik yenileme kapatılsın mı?'), message: t('Premium üyeliğin mevcut süre dolana kadar devam eder, sonra yenilenmez.'), confirmLabel: t('Yenilemeyi kapat') }))) return;
     setBusy(true);
@@ -108,6 +124,13 @@ export default function PremiumCenter({ onOpenPaywall }) {
         </div>
         <div>
           <dt>
+            <Star size={15} /> {t('Süper Beğeni')}
+          </dt>
+          <dd>{status.superLikes.limit === 0 ? '—' : t('{left} / {limit} kaldı', { left: status.superLikes.left, limit: status.superLikes.limit })}</dd>
+          <dd className="premium-stat-note">{status.superLikes.limit === 0 ? t('Premium planlarda günlük') : t('Gece 00:00’da yenilenir')}</dd>
+        </div>
+        <div>
+          <dt>
             <Rocket size={15} /> {t('Boost hakkı')}
           </dt>
           <dd>{status.boostCredits}</dd>
@@ -123,6 +146,29 @@ export default function PremiumCenter({ onOpenPaywall }) {
           </div>
         )}
       </dl>
+
+      {/* Gizli mod (Premium) */}
+      <div className="settings-row premium-incognito">
+        <div>
+          <div className="settings-row-label">
+            <EyeOff size={15} /> {t('Gizli mod')}
+          </div>
+          <div className="settings-row-desc">
+            {t('Açıkken Kart Modu ve Keşfet’te yalnızca senin beğendiğin kişilere görünürsün.')}
+            {!status.isPremium && ` ${t('Premium’a özel.')}`}
+          </div>
+        </div>
+        <label className="switch">
+          <input
+            type="checkbox"
+            aria-label={t('Gizli mod')}
+            checked={Boolean(status.incognito)}
+            disabled={busy}
+            onChange={(e) => toggleIncognito(e.target.checked)}
+          />
+          <span className="switch-track" />
+        </label>
+      </div>
 
       <div className="premium-actions">
         {(status.boostCredits > 0 || boosting) && (
@@ -144,6 +190,7 @@ export default function PremiumCenter({ onOpenPaywall }) {
               <th scope="col">{t('Plan')}</th>
               <th scope="col">{t('Ücret')}</th>
               <th scope="col">{t('Beğeni / gün')}</th>
+              <th scope="col">{t('Süper / gün')}</th>
               <th scope="col">{t('Boost')}</th>
             </tr>
           </thead>
@@ -152,6 +199,7 @@ export default function PremiumCenter({ onOpenPaywall }) {
               <th scope="row">{t('Ücretsiz')}</th>
               <td>₺0</td>
               <td>{status.freeDailyLikes}</td>
+              <td>—</td>
               <td>—</td>
             </tr>
             {plans.map((p) => (
@@ -162,6 +210,7 @@ export default function PremiumCenter({ onOpenPaywall }) {
                   <span className="premium-table-period">{t(PERIOD_LABEL[p.key])}</span>
                 </td>
                 <td>{p.dailyLikes === null ? t('Sınırsız') : p.dailyLikes}</td>
+                <td>{p.dailySuperLikes}</td>
                 <td>{p.boosts}</td>
               </tr>
             ))}
@@ -169,7 +218,7 @@ export default function PremiumCenter({ onOpenPaywall }) {
         </table>
       </div>
       <p className="premium-footnote">
-        {t('Tüm Premium planlarda: tüm üniversitelerden keşif ve arama, seni beğenenleri görme, Kart Modu’nda geri alma. Boost hakların üyeliğin bitse de kaybolmaz.')}
+        {t('Tüm Premium planlarda: tüm üniversitelerden keşif ve arama, seni beğenenleri görme, Gizli mod, gelişmiş filtreler ve Kart Modu’nda geri alma. Boost hakların üyeliğin bitse de kaybolmaz.')}
       </p>
 
       {status.isPremium && status.premiumUntil && status.premiumAutoRenew && (

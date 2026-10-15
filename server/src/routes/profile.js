@@ -11,7 +11,7 @@ const { disconnectUser } = require('../socket');
 const { requireAuth } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 const { verifyUpload } = require('../lib/fileValidation');
-const { isPremiumActive, activePlan, isBoosting, CONSENT_VERSION } = require('../lib/premium');
+const { isPremiumActive, activePlan, isBoosting, incognitoVisibleTo, CONSENT_VERSION } = require('../lib/premium');
 const { runDocumentOcr } = require('../lib/ocr');
 const fsp = require('fs/promises');
 const { removeUploadedFile, deleteUserWithFiles } = require('../lib/uploads');
@@ -521,6 +521,28 @@ router.delete('/me/photos/:id', requireAuth, async (req, res) => {
 
 // Aynı üniversitedeki, henüz beğenilmemiş/eşleşmemiş kullanıcıları listele
 // (Kart kaydırma ekranı için kullanılır)
+// Kart Modu gelişmiş filtreleri (Premium): ?minAge=19&maxAge=24&classYear=3&intent=dating
+// Yaş doğum tarihinden hesaplanır; doğum tarihi girilmemiş kişiler yaş
+// filtresi seçiliyken görünmez.
+function deckFilters(query, now) {
+  const where = [];
+  const minAge = Math.max(18, Math.min(99, Number(query.minAge) || 18));
+  const maxAge = Math.max(minAge, Math.min(99, Number(query.maxAge) || 99));
+  if (query.minAge || query.maxAge) {
+    const year = now.getFullYear();
+    // maxAge yaşında olan en yaşlı kişi: (maxAge+1) yıl önce bugünden sonra doğmuş
+    const oldest = new Date(now);
+    oldest.setFullYear(year - maxAge - 1);
+    const youngest = new Date(now);
+    youngest.setFullYear(year - minAge);
+    where.push({ birthDate: { gt: oldest, lte: youngest } });
+  }
+  const classYear = Number(query.classYear);
+  if ([1, 2, 3, 4, 5].includes(classYear)) where.push({ classYear });
+  const intent = ALLOWED_INTENTS.includes(query.intent) ? query.intent : null;
+  return { where, intent };
+}
+
 router.get('/discover', requireAuth, async (req, res) => {
   try {
     const me = await prisma.user.findUnique({ where: { id: req.userId } });
@@ -549,12 +571,19 @@ router.get('/discover', requireAuth, async (req, res) => {
 
     const myIntents = (me.intent || 'friendship').split(',').map((s) => s.trim()).filter(Boolean);
 
+    const now = new Date();
+    // Gelişmiş filtreler (Premium): yaş aralığı, sınıf, ne arıyor
+    const premium = isPremiumActive(me);
+    const filters = premium ? deckFilters(req.query, now) : { where: [], intent: null };
+    const visibleWhere = discoverableUserWhere(me.universityId);
     const deckWhere = {
-      ...discoverableUserWhere(me.universityId),
+      ...visibleWhere,
       universityId: me.universityId,
       id: { notIn: excludeIds },
       verificationStatus: { in: ['auto_verified', 'verified'] },
       swipeEnabled: true, // Kart Modu'nu kapatanlar destede görünmez
+      // discoverableUserWhere'in kendi AND koşulları (yıllık doğrulama) korunur
+      AND: [...(visibleWhere.AND || []), incognitoVisibleTo(me.id, now), ...filters.where],
     };
     const deckSelect = {
       id: true,
@@ -573,7 +602,6 @@ router.get('/discover', requireAuth, async (req, res) => {
       photos: { orderBy: { position: 'asc' }, select: { id: true, url: true, position: true } },
     };
     // Boost: şu an öne çıkarılan profiller her zaman destenin başına gelir
-    const now = new Date();
     const boosted = await prisma.user.findMany({
       where: { ...deckWhere, boostUntil: { gt: now } },
       select: deckSelect,
@@ -586,7 +614,17 @@ router.get('/discover', requireAuth, async (req, res) => {
       take: 60,
     });
     const boostedIds = new Set(boosted.map((b) => b.id));
-    const candidates = [...boosted, ...rest];
+    // Beni Süper Beğenenler: destede en önde ve kartlarında işaretli
+    const superLikers = await prisma.like.findMany({
+      where: { toUserId: me.id, isSuper: true, fromUserId: { notIn: excludeIds } },
+      select: { fromUserId: true },
+    });
+    const superIds = new Set(superLikers.map((l) => l.fromUserId));
+    const superMissing = [...superIds].filter((id) => !boostedIds.has(id) && !rest.some((r) => r.id === id));
+    const superExtra = superMissing.length
+      ? await prisma.user.findMany({ where: { ...deckWhere, id: { in: superMissing } }, select: deckSelect })
+      : [];
+    const candidates = [...boosted, ...superExtra, ...rest];
 
     // En az bir ortak "ne arıyorsun" etiketi olan adayları öne çıkar; ortak
     // etiketi olmayanlar da listenin sonunda yer alır (eskiden tamamen
@@ -598,16 +636,25 @@ router.get('/discover', requireAuth, async (req, res) => {
     // Flört modu: yalnızca flört arayan biri, flört modunda olmayan kişinin
     // destesinde çıkmaz (tercihi zaten ona görünmeyecekti).
     const iWantDating = wantsDating(me.intent);
-    const visibleCandidates = candidates.filter((c) => iWantDating || visibleIntentFor(c.intent, me.intent) !== null);
+    const visibleCandidates = candidates.filter(
+      (c) =>
+        (iWantDating || visibleIntentFor(c.intent, me.intent) !== null) &&
+        (!filters.intent || (c.intent || 'friendship').split(',').map((s) => s.trim()).includes(filters.intent))
+    );
     const sorted = visibleCandidates
-      .map((c) => ({ c, boosted: boostedIds.has(c.id), score: overlapCount(c) }))
-      .sort((a, b) => Number(b.boosted) - Number(a.boosted) || b.score - a.score)
+      .map((c) => ({ c, superLiked: superIds.has(c.id), boosted: boostedIds.has(c.id), score: overlapCount(c) }))
+      .sort((a, b) => Number(b.superLiked) - Number(a.superLiked) || Number(b.boosted) - Number(a.boosted) || b.score - a.score)
       .map(({ c }) => c);
 
     res.json(
       sorted.slice(0, 20).map((c) => {
         const { birthDate: _b, studentDocStatus, ...rest } = withLiveAge(c);
-        return { ...rest, intent: visibleIntentFor(c.intent, me.intent), isStudentVerified: studentDocStatus === 'approved' };
+        return {
+          ...rest,
+          intent: visibleIntentFor(c.intent, me.intent),
+          isStudentVerified: studentDocStatus === 'approved',
+          superLikedYou: superIds.has(c.id),
+        };
       })
     );
   } catch (err) {

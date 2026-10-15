@@ -12,12 +12,12 @@ import {
   ArrowRight,
   BarChart3,
   BatteryFull,
-  Camera,
   Bell,
   CalendarDays,
+  Camera,
   Check,
-  ChevronLeft,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   Compass,
   Flag,
@@ -30,10 +30,11 @@ import {
   Plus,
   RotateCcw,
   Search,
-  Settings,
   Send,
+  Settings,
   Signal,
   SlidersHorizontal,
+  Star,
   User,
   UserPlus,
   Users,
@@ -53,7 +54,7 @@ const EASE_OUT = [0.23, 1, 0.32, 1];
 const UNI = 'Hatay Mustafa Kemal Üni.';
 
 const PEOPLE = [
-  { id: 'can', name: 'Can Aydın', age: 22, dept: 'Mimarlık', year: '4. Sınıf', initials: 'CA', tone: '#ffd6a5', intents: ['Spor Arkadaşı', 'Proje Ortağı'], interests: ['Basketbol', 'Eskiz', 'Kamp'], bio: 'Hafta sonu basketbol, hafta içi maket. Bitirme projesi için ekip arıyorum.', likesYou: false },
+  { id: 'can', name: 'Can Aydın', age: 22, dept: 'Mimarlık', year: '4. Sınıf', initials: 'CA', tone: '#ffd6a5', intents: ['Spor Arkadaşı', 'Proje Ortağı'], interests: ['Basketbol', 'Eskiz', 'Kamp'], bio: 'Hafta sonu basketbol, hafta içi maket. Bitirme projesi için ekip arıyorum.', likesYou: false, superLiked: true },
   { id: 'elif', name: 'Elif Yıldız', age: 21, dept: 'Bilgisayar Müh.', year: '3. Sınıf', initials: 'EY', tone: '#b9d6f7', intents: ['Arkadaşlık', 'Çalışma Arkadaşı'], interests: ['Yazılım', 'Satranç', 'Kahve'], bio: 'Hackathon bağımlısı, satranç kulübü yöneticisi. Kahvesiz kod yazmam.', likesYou: true },
   { id: 'deniz', name: 'Deniz Kara', age: 20, dept: 'Psikoloji', year: '2. Sınıf', initials: 'DK', tone: '#a7e3b5', intents: ['Arkadaşlık', 'Bir Kahve'], interests: ['Kitap', 'Yoga', 'Podcast'], bio: 'Kütüphanenin 2. katındaki cam kenarı masa benim. Kitap önerisine açığım.', likesYou: true },
   { id: 'mert', name: 'Mert Tunç', age: 23, dept: 'Endüstri Müh.', year: '4. Sınıf', initials: 'MT', tone: '#c6c5f2', intents: ['Proje Ortağı', 'Etkinlik Arkadaşı'], interests: ['Girişimcilik', 'Satranç', 'Koşu'], bio: 'Girişimcilik kulübünde etkinlik sorumlusuyum. Fikrin varsa konuşalım.', likesYou: false },
@@ -81,7 +82,7 @@ const TABS = [
 
 const HEADERS = {
   discover: { icon: Compass, eyebrow: UNI, title: 'Keşfet', actions: ['bell', 'filter'] },
-  cards: { icon: Layers, title: 'Kart Modu', back: true },
+  cards: { icon: Layers, title: 'Kart Modu', back: true, actions: ['filter'] },
   feed: { icon: LayoutGrid, eyebrow: UNI, title: 'Akış', actions: ['bell'] },
   clubs: { icon: Users, eyebrow: UNI, title: 'Kulüpler' },
   chat: { icon: MessageCircle, eyebrow: 'Mesajlar', title: 'Sohbet' },
@@ -296,6 +297,11 @@ function SwipeCard({ person, isTop, depth, command, onDecide, nudge }) {
           <span className="h-[3px] flex-1 rounded-full bg-white/45" />
         </div>
         <span className="absolute right-2.5 top-3.5 rounded-full bg-black/65 px-1.5 text-[8px] font-semibold text-white">1/2</span>
+        {person.superLiked && (
+          <span className="absolute left-2.5 top-3.5 flex items-center gap-1 rounded-full bg-gradient-to-br from-[#2e9bff] to-[#4f46e5] px-2 py-0.5 text-[8px] font-bold text-white shadow">
+            <Star size={8} weight="fill" /> {t('Seni Süper Beğendi')}
+          </span>
+        )}
         {isTop && (
           <>
             <motion.span style={{ opacity: likeOpacity }} className="absolute left-3 top-8 rounded-lg border-2 border-teal bg-white/85 px-2 py-0.5 text-[10px] font-extrabold tracking-wider text-teal [transform:rotate(-10deg)]">
@@ -351,9 +357,12 @@ function SwipeCard({ person, isTop, depth, command, onDecide, nudge }) {
 function CardsScreen({ deck, likesCount, command, setCommand, onDecide, onReset, nudge }) {
   const { t } = useI18n();
   const [view, setView] = useState('cards');
+  // Ücretsiz hesaptaki günlük beğeni hakkı (uygulamadaki gibi 5'ten geri sayar)
+  const [likesLeft, setLikesLeft] = useState(5);
   const top = deck[0];
   const decide = (person, dir) => {
     setCommand(null);
+    if (dir > 0) setLikesLeft((n) => Math.max(0, n - 1));
     onDecide(person, dir);
   };
   return (
@@ -414,13 +423,22 @@ function CardsScreen({ deck, likesCount, command, setCommand, onDecide, onReset,
                 .reverse()
             )}
           </div>
+          <p className="mt-1.5 flex items-center justify-center gap-1 text-[8.5px] font-semibold text-paper-muted">
+            <Heart size={8} fill="currentColor" className="text-coral" /> {t('Bugün {left} beğeni hakkın kaldı', { left: likesLeft })}
+          </p>
           {/* Yuvarlak karar düğmeleri (uygulamadaki gibi) */}
-          <div className="mt-2 flex items-end justify-center gap-6">
+          <div className="mt-1.5 flex items-end justify-center gap-5">
             <div className="flex flex-col items-center gap-0.5">
               <button type="button" disabled={!top} onClick={() => setCommand({ dir: -1, n: Date.now() })} aria-label={t('Geç')} className="flex h-10 w-10 items-center justify-center rounded-full border border-line bg-surface text-coral shadow-md transition-transform active:scale-90 disabled:opacity-40">
                 <X size={18} strokeWidth={2.6} />
               </button>
               <span className="text-[7.5px] font-semibold text-paper-muted">{t('Geç')}</span>
+            </div>
+            <div className="flex flex-col items-center gap-0.5">
+              <button type="button" disabled={!top} onClick={() => setCommand({ dir: 1, n: Date.now() })} aria-label={t('Süper Beğen')} className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#2e9bff] to-[#4f46e5] text-white shadow-md transition-transform active:scale-90 disabled:opacity-40">
+                <Star size={15} weight="fill" />
+              </button>
+              <span className="text-[7.5px] font-semibold text-paper-muted">{t('Süper')}</span>
             </div>
             <div className="flex flex-col items-center gap-0.5">
               <button type="button" disabled={!top} onClick={() => setCommand({ dir: 1, n: Date.now() })} aria-label={t('Beğen')} className="flex h-12 w-12 items-center justify-center rounded-full bg-accent-fill text-white shadow-lg transition-transform active:scale-90 disabled:opacity-40">

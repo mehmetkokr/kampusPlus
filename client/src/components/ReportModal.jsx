@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { X as CloseIcon } from './icons';
 import api from '../api';
 import { useI18n } from '../i18n';
+import Select from './Select';
 
 const REASONS = [
   { value: 'spam', label: 'Spam' },
@@ -54,12 +55,13 @@ export default function ReportModal({ targetType, targetId, onClose }) {
           <form onSubmit={handleSubmit} style={{ padding: '12px 4px', display: 'flex', flexDirection: 'column', gap: 12 }}>
             {error && <p className="error-text">{error}</p>}
             <div>
-              <label className="muted" style={{ fontSize: '0.85rem', display: 'block', marginBottom: 6 }}>{t("Sebep")}</label>
-              <select value={reason} onChange={(e) => setReason(e.target.value)} style={{ width: '100%' }}>
-                {REASONS.map((r) => (
-                  <option key={r.value} value={r.value}>{t(r.label)}</option>
-                ))}
-              </select>
+              <label htmlFor="report-reason" className="muted" style={{ fontSize: '0.85rem', display: 'block', marginBottom: 6 }}>{t("Sebep")}</label>
+              <Select
+                id="report-reason"
+                value={reason}
+                onChange={setReason}
+                options={REASONS.map((r) => ({ value: r.value, label: t(r.label) }))}
+              />
             </div>
             <div>
               <label className="muted" style={{ fontSize: '0.85rem', display: 'block', marginBottom: 6 }}>{t("Açıklama (opsiyonel)")}</label>

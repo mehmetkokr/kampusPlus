@@ -125,16 +125,10 @@ html:not([data-theme='light']) .adm {
   white-space: nowrap;
 }
 .adm-brand .mark {
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   flex-shrink: 0;
-  border-radius: 10px;
-  background: var(--adm-brand);
-  color: #fff;
-  display: grid;
-  place-items: center;
-  font-size: 1.05rem;
-  font-weight: 700;
+  display: block;
 }
 .adm-brand .dot { color: var(--adm-brand-text); }
 .adm-brand small {

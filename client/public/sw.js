@@ -5,10 +5,10 @@
 //   önbellekten verilir (ikinci açılış anında).
 // - API, dosyalar ve gerçek zamanlı bağlantı hiç önbelleğe alınmaz.
 // - Anlık bildirimleri gösterir, tıklanınca ilgili sayfayı açar.
-const VERSION = 'kp-v5';
+const VERSION = 'kp-v6';
 const SHELL_CACHE = `${VERSION}-shell`;
 const ASSET_CACHE = `${VERSION}-assets`;
-const SHELL = ['/offline.html', '/offline.js', '/icon-192.png?v=2', '/favicon.svg?v=2'];
+const SHELL = ['/offline.html', '/offline.js', '/icon-192.png?v=3', '/favicon.svg?v=3'];
 const MAX_ASSETS = 80;
 
 self.addEventListener('install', (event) => {
@@ -74,7 +74,7 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(title, {
       body: data.body || '',
-      icon: '/icon-192.png?v=2',
+      icon: '/icon-192.png?v=3',
       tag: data.tag,
       renotify: Boolean(data.tag),
       data: { url: data.url || '/notifications' },

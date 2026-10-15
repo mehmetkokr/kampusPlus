@@ -24,7 +24,7 @@ const FAQS = [
   },
   {
     q: 'Kullanması ücretli mi?',
-    a: 'Doğrulama, keşfet, eşleşme, sohbet ve kulüpler ücretsiz; ücretsiz hesapla günde 5 kişiyi beğenebilirsin. Haftalık, aylık ya da yıllık Premium ile daha fazla (aylık ve yıllıkta sınırsız) beğeni, profilini öne çıkaran Boost, seni beğenenleri görme ve diğer üniversitelerdeki öğrencilere ulaşma hakkı kazanırsın.',
+    a: 'Doğrulama, keşfet, eşleşme, sohbet ve kulüpler ücretsiz; ücretsiz hesapla günde 5 kişiyi beğenebilirsin. Haftalık, aylık ya da yıllık Premium ile daha fazla (aylık ve yıllıkta sınırsız) beğeni, Süper Beğeni, profilini öne çıkaran Boost, Gizli mod, gelişmiş filtreler, seni beğenenleri görme ve diğer üniversitelerdeki öğrencilere ulaşma hakkı kazanırsın.',
   },
   {
     q: 'Size nasıl ulaşabilirim?',

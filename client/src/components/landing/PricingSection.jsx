@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Check, Crown, Heart, Rocket } from '../icons';
+import { ArrowRight, Check, Crown, Heart, Rocket, Star } from '../icons';
 import api from '../../api';
 import Reveal from './Reveal';
 import { useI18n } from '../../i18n';
@@ -13,8 +13,8 @@ import { PLAN_BADGE, PLAN_ORDER, PERIOD_LABEL, formatTL, savingVsWeekly } from '
 const FREE = ['Kendi kampüsünde keşfet ve Kart Modu', 'Eşleşme ve sınırsız sohbet', 'Kulüpler, akış, hikâyeler ve etkinlikler', 'Onaylı öğrenci rozeti'];
 const PREMIUM = [
   "Türkiye'deki tüm üniversitelerden kişileri keşfet",
-  'Aramada üniversite sınırı olmadan sonuç gör',
   'Seni kimlerin beğendiğini gör',
+  'Gizli mod ve gelişmiş filtreler',
   'Kart Modu’nda son kararını geri al',
 ];
 
@@ -113,6 +113,9 @@ export default function PricingSection() {
                 <ul className="landing-price-perks mt-3">
                   <li>
                     <Heart size={15} weight="fill" /> {p.dailyLikes === null ? t('Sınırsız beğeni') : t('Günde {n} beğeni', { n: p.dailyLikes ?? '—' })}
+                  </li>
+                  <li>
+                    <Star size={15} weight="fill" /> {t('Günde {n} Süper Beğeni', { n: p.dailySuperLikes ?? '—' })}
                   </li>
                   <li>
                     <Rocket size={15} weight="fill" /> {t('{n} Boost', { n: p.boosts ?? '—' })}

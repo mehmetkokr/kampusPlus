@@ -17,6 +17,7 @@ export function planPerks(plan, t) {
   if (!plan) return [];
   return [
     plan.dailyLikes === null ? t('Sınırsız beğeni') : t('Günde {n} beğeni', { n: plan.dailyLikes }),
+    t('Günde {n} Süper Beğeni', { n: plan.dailySuperLikes }),
     plan.boosts === 1 ? t('1 Boost') : t('{n} Boost', { n: plan.boosts }),
   ];
 }

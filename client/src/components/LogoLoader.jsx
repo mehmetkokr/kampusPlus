@@ -17,9 +17,9 @@ export default function LogoLoader({ label = 'Yükleniyor', mode = 'inline' }) {
       <div className="ll-stage" aria-hidden="true">
         <div className="ll-mark">
           <svg viewBox="0 0 64 64">
-            <path className="ll-k" pathLength="1" d="M19 14h7.5v20.2L37.6 23h9.2L34.7 34.6 48 50h-9.4l-9.4-11.4-2.7 2.6V50H19z" />
-            <circle className="ll-ring" cx="52.5" cy="46" r="4.2" />
-            <circle className="ll-dot" cx="52.5" cy="46" r="4.2" />
+            <path className="ll-k" pathLength="1" d="M17 16h7.5v20.2L35.6 25h9.2L32.7 36.6 46 52h-9.4l-9.4-11.4-2.7 2.6V52H17z" />
+            <circle className="ll-ring" cx="50" cy="15" r="6.2" />
+            <path className="ll-dot" d="M50 8.8v12.4M43.8 15h12.4" />
           </svg>
           <span className="ll-sheen" />
         </div>

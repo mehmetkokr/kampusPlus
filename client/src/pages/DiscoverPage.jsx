@@ -29,6 +29,7 @@ import PaywallModal from '../components/PaywallModal';
 import { useConfirm } from '../context/ConfirmContext';
 import { useI18n } from '../i18n';
 import { Crown } from '../components/icons';
+import Select from '../components/Select';
 
 function timeAgo(dateStr) {
   const diffMs = Date.now() - new Date(dateStr).getTime();
@@ -441,14 +442,19 @@ export default function DiscoverPage() {
               onChange={(e) => setFilterDepartment(e.target.value)}
               placeholder={t("örn. Yönetim Bilişim Sistemleri")}
             />
-            <label>{t("Sınıf")}</label>
-            <select value={filterClassYear} onChange={(e) => setFilterClassYear(e.target.value)}>
-              <option value="">{t("Farketmez")}</option>
-              <option value="1">{t("1. Sınıf")}</option>
-              <option value="2">{t("2. Sınıf")}</option>
-              <option value="3">{t("3. Sınıf")}</option>
-              <option value="4">{t("4. Sınıf")}</option>
-            </select>
+            <label htmlFor="discover-filter-class">{t("Sınıf")}</label>
+            <Select
+              id="discover-filter-class"
+              value={filterClassYear}
+              onChange={setFilterClassYear}
+              options={[
+                { value: '', label: t('Farketmez') },
+                { value: '1', label: t('1. Sınıf') },
+                { value: '2', label: t('2. Sınıf') },
+                { value: '3', label: t('3. Sınıf') },
+                { value: '4', label: t('4. Sınıf') },
+              ]}
+            />
             <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
               <button className="btn-secondary" style={{ flex: 1 }} onClick={clearFilters}>
                 {t("Temizle")}

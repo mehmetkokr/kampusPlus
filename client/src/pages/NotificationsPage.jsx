@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Heart, MessageCircle, UserPlus, Users, Bell, Trash2, BadgeCheck, FileX, CalendarPlus, CalendarClock, Megaphone } from '../components/icons';
+import { Heart, Star, MessageCircle, UserPlus, Users, Bell, Trash2, BadgeCheck, FileX, CalendarPlus, CalendarClock, Megaphone } from '../components/icons';
 import api from '../api';
 import { API_BASE_URL } from '../config';
 import { useToast } from '../context/ToastContext';
@@ -13,6 +13,7 @@ const TYPE_ICON = {
   follow: UserPlus,
   message: MessageCircle,
   match: Heart,
+  super_like: Star,
   club_join: Users,
   like: Heart,
   comment: MessageCircle,

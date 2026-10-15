@@ -25,15 +25,16 @@ test('yeni öğrenci okul e-postasıyla kaydolur ve başlangıç adımını tama
   for (const [i, d] of [...'123456'].entries()) {
     await page.getByLabel(`Kodun ${i + 1}. hanesi`).fill(d);
   }
-  await page.getByRole('button', { name: 'Hesabı oluştur' }).click();
-
+  // Son hane girilince kod kendiliğinden gönderilir; doğrulandı animasyonundan sonra başlangıç adımı
+  await expect(page.getByRole('heading', { name: 'E-postan doğrulandı' })).toBeVisible();
   await expect(page).toHaveURL(/\/welcome/);
   await expect(page.getByRole('heading', { name: 'Seni biraz tanıyalım' })).toBeVisible();
   await page.getByLabel('Gün').fill('15');
   await page.getByLabel('Ay').fill('06');
   await page.getByLabel('Yıl').fill('2004');
   await page.getByLabel('Bölüm').fill('Fizik');
-  await page.getByLabel('Sınıf').selectOption({ index: 2 });
+  await page.getByRole('combobox', { name: 'Sınıf' }).click();
+  await page.getByRole('option', { name: '2. Sınıf' }).click();
   await page.getByRole('button', { name: /Devam et/ }).click();
 
   // Bilgiler kaydedildi: sonraki adıma geçildi ve analitik olayı yazıldı

@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { CalendarDays, ChevronLeft, ChevronRight } from './icons';
 import { useI18n } from '../i18n';
+import Select from './Select';
 
 // Doğum tarihi alanı: Gün / Ay / Yıl kutularına elle yazılır (otomatik bir
 // sonraki kutuya geçer, "12.05.2004" yapıştırılabilir) ya da takvim düğmesiyle
@@ -237,16 +238,20 @@ export default function BirthDateInput({ id, value, onChange, minAge = 18, maxAg
             <button type="button" onClick={() => stepMonth(-1)} aria-label={t('Önceki ay')}>
               <ChevronLeft size={18} />
             </button>
-            <select value={viewMonth} onChange={(e) => setViewMonth(Number(e.target.value))} aria-label={t('Ay')}>
-              {monthNames.map((name, i) => (
-                <option key={name} value={i}>{name}</option>
-              ))}
-            </select>
-            <select value={viewYear} onChange={(e) => setViewYear(Number(e.target.value))} aria-label={t('Yıl')}>
-              {years.map((yr) => (
-                <option key={yr} value={yr}>{yr}</option>
-              ))}
-            </select>
+            <Select
+              className="is-compact"
+              value={viewMonth}
+              onChange={(v) => setViewMonth(Number(v))}
+              aria-label={t('Ay')}
+              options={monthNames.map((name, i) => ({ value: i, label: name }))}
+            />
+            <Select
+              className="is-compact"
+              value={viewYear}
+              onChange={(v) => setViewYear(Number(v))}
+              aria-label={t('Yıl')}
+              options={years.map((yr) => ({ value: yr, label: String(yr) }))}
+            />
             <button type="button" onClick={() => stepMonth(1)} aria-label={t('Sonraki ay')}>
               <ChevronRight size={18} />
             </button>

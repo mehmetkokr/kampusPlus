@@ -83,11 +83,11 @@
   height: 100%;
   overflow: hidden;
   border-radius: 23.5%;
-  background: linear-gradient(145deg, #3b9bff, #0052b8);
+  background: linear-gradient(135deg, #2e9bff, #4f46e5);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.35),
     inset 0 -1px 0 rgba(0, 0, 0, 0.18),
-    0 18px 36px -14px rgba(0, 60, 160, 0.6);
+    0 18px 36px -14px rgba(60, 70, 220, 0.6);
   opacity: 0;
   transform: scale(0.92);
   animation:
@@ -101,8 +101,9 @@
   transform-box: fill-box;
   transform-origin: center;
 }
-.ll-dot { fill: #fff; }
-.ll-ring { fill: none; stroke: #fff; stroke-width: 1.2; opacity: 0; animation: ll-ring 2.4s cubic-bezier(0.22, 1, 0.36, 1) 0.9s infinite; }
+/* "+": açık mavi, yuvarlak uçlu; halka da onun merkezinden yayılır */
+.ll-dot { fill: none; stroke: #9bd7ff; stroke-width: 4.4; stroke-linecap: round; }
+.ll-ring { fill: none; stroke: #9bd7ff; stroke-width: 1.2; opacity: 0; animation: ll-ring 2.4s cubic-bezier(0.22, 1, 0.36, 1) 0.9s infinite; }
 
 /* Camın üzerinden geçen ışık */
 .ll-sheen {
@@ -168,9 +169,10 @@ html:not([data-intro='seen']) .logo-loader.is-intro .ll-k {
     ll-draw 0.75s cubic-bezier(0.65, 0, 0.35, 1) 0.25s forwards,
     ll-fill 0.3s ease-out 0.85s forwards;
 }
+/* "+" dönerek yerine oturur */
 html:not([data-intro='seen']) .logo-loader.is-intro .ll-dot {
-  transform: scale(0);
-  animation: ll-pop 0.45s cubic-bezier(0.34, 1.6, 0.64, 1) 0.95s forwards;
+  transform: scale(0) rotate(-135deg);
+  animation: ll-plus 0.6s cubic-bezier(0.34, 1.5, 0.64, 1) 0.95s forwards;
 }
 html:not([data-intro='seen']) .logo-loader.is-intro .ll-ring { animation-delay: 1.15s; }
 html:not([data-intro='seen']) .logo-loader.is-intro .ll-sheen { animation-delay: 1.5s; }
@@ -197,12 +199,12 @@ html:not([data-intro='seen']) .logo-loader.is-intro .ll-word {
 .ll-word span:nth-child(5) { animation-delay: 1.25s; }
 .ll-word span:nth-child(6) { animation-delay: 1.3s; }
 .ll-word .ll-word-dot {
-  color: #0a84ff;
+  color: #2e9bff;
   opacity: 1;
   transform: scale(0);
   animation: ll-pop 0.45s cubic-bezier(0.34, 1.6, 0.64, 1) 1.45s forwards;
 }
-[data-theme='light'] .ll-word .ll-word-dot { color: #0071e3; }
+[data-theme='light'] .ll-word .ll-word-dot { color: #4f46e5; }
 
 /* Sayfaya geçiş: logo büyüyüp solar, arkasındaki sayfa ortaya çıkar */
 .logo-loader.is-leaving {
@@ -218,6 +220,7 @@ html:not([data-intro='seen']) .logo-loader.is-intro .ll-word {
 @keyframes ll-draw { to { stroke-dashoffset: 0; } }
 @keyframes ll-fill { to { fill-opacity: 1; } }
 @keyframes ll-pop { to { transform: scale(1); } }
+@keyframes ll-plus { to { transform: scale(1) rotate(0); } }
 @keyframes ll-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes ll-out { to { opacity: 0; } }
 @keyframes ll-zoom { to { transform: scale(1.12); } }

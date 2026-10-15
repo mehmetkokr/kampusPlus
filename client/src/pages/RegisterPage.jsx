@@ -5,7 +5,7 @@ import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import AuthBackdrop from '../components/AuthBackdrop';
-import LogoLoader from '../components/LogoLoader';
+import OtpInput from '../components/OtpInput';
 import UniversitySelect from '../components/UniversitySelect';
 import { minDuration } from '../utils/wait';
 import { toTitleCaseTR, normalizeEmail } from '../utils/text';
@@ -54,6 +54,9 @@ export default function RegisterPage() {
   // Doğrulama kodu adımı
   const [code, setCode] = useState(Array(CODE_LENGTH).fill(''));
   const [codeError, setCodeError] = useState('');
+  // Kod kutularının durumu: idle | verifying | success | error (bkz. OtpInput)
+  const [otpStatus, setOtpStatus] = useState('idle');
+  const submittedCode = useRef('');
   const [resendIn, setResendIn] = useState(0);
   const [devConsole, setDevConsole] = useState(false);
   const codeRefs = useRef([]);
@@ -153,6 +156,7 @@ export default function RegisterPage() {
       return next;
     });
     setCodeError('');
+    setOtpStatus('idle');
     if (chunk) codeRefs.current[Math.min(i + chunk.length, CODE_LENGTH - 1)]?.focus();
   }
 
@@ -171,15 +175,26 @@ export default function RegisterPage() {
     codeRefs.current[Math.min(digits.length, CODE_LENGTH - 1)]?.focus();
   }
 
+  // Son hane girilince kod kendiliğinden gönderilir (aynı kod iki kez gönderilmez)
+  useEffect(() => {
+    const joined = code.join('');
+    if (step !== 'code' || joined.length !== CODE_LENGTH || loading || submittedCode.current === joined) return;
+    register();
+    // register her çizimde yeniden tanımlanır; yalnızca kod değişince tetiklenmeli
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [code, step]);
+
   // 2. adım → kodla birlikte hesabı oluştur
   async function register(e) {
-    e.preventDefault();
+    e?.preventDefault();
     const joined = code.join('');
     if (joined.length !== CODE_LENGTH) return setCodeError(tx('6 haneli kodun tamamını gir.'));
+    if (loading) return;
+    submittedCode.current = joined;
 
     setLoading(true);
-    const waitSuccess = minDuration(1400);
-    const waitError = minDuration(600);
+    setOtpStatus('verifying');
+    const waitVerify = minDuration(700);
     try {
       const res = await api.post('/auth/register', {
         ...form,
@@ -190,19 +205,26 @@ export default function RegisterPage() {
         consentTransfer: consents.transfer,
         consentMarketing: consents.marketing,
       });
-      await waitSuccess();
+      await waitVerify();
+      // Doğrulandı animasyonu (kutular birleşir, onay işareti ve parçacıklar) bitsin
+      setOtpStatus('success');
+      await new Promise((r) => setTimeout(r, window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 400 : 1500));
       login(res.data.token, res.data.user, true, res.data.fileToken);
       // Yeni hesap: başlangıç adımları (seni tanıyalım, fotoğraf, ilgi alanları, takip)
       navigate('/welcome');
     } catch (err) {
-      await waitError();
+      await waitVerify();
       const data = err.response?.data || {};
       if (data.codeError) {
+        setOtpStatus('error');
+        submittedCode.current = '';
         setCodeError(data.error);
         if (data.codeError !== 'invalid') setResendIn(0); // süresi doldu / kilitlendi → hemen yeni kod istenebilsin
         setCode(Array(CODE_LENGTH).fill(''));
         codeRefs.current[0]?.focus();
       } else {
+        setOtpStatus('idle');
+        submittedCode.current = '';
         toast.error(data.error || 'Kayıt sırasında bir hata oluştu.');
         // Kod dışı bir hata (ör. e-posta alındı) → bilgileri düzeltmek için geri dön
         if (err.response?.status === 400 || err.response?.status === 409) setStep('details');
@@ -215,7 +237,6 @@ export default function RegisterPage() {
   return (
     <div className="auth-screen">
       <AuthBackdrop />
-      {loading && <LogoLoader mode="overlay" label={tx("Hesabın oluşturuluyor")} />}
 
       <ThemeToggle className="auth-theme-toggle" />
 
@@ -385,26 +406,31 @@ export default function RegisterPage() {
               <span className="code-step-icon" aria-hidden="true">
                 <Mail size={22} />
               </span>
-              <h2>{tx("E-postanı doğrula")}</h2>
-              <p className="muted">
-                {tx('{email} adresine 6 haneli bir kod gönderdik. Kod 10 dakika geçerli.', { email: normalizeEmail(form.email) })}
+              <h2>{otpStatus === 'success' ? tx('E-postan doğrulandı') : tx('E-postanı doğrula')}</h2>
+              <p className="muted" aria-live="polite">
+                {otpStatus === 'success'
+                  ? tx('Hesabın hazırlanıyor…')
+                  : otpStatus === 'verifying'
+                    ? tx('Kod kontrol ediliyor…')
+                    : tx('{email} adresine 6 haneli bir kod gönderdik. Kod 10 dakika geçerli.', { email: normalizeEmail(form.email) })}
               </p>
 
-              <div className="code-inputs" onPaste={onCodePaste}>
-                {code.map((d, i) => (
-                  <input
-                    key={i}
-                    ref={(el) => (codeRefs.current[i] = el)}
-                    value={d}
-                    onChange={(e) => setDigit(i, e.target.value)}
-                    onKeyDown={(e) => onCodeKeyDown(i, e)}
-                    inputMode="numeric"
-                    autoComplete={i === 0 ? 'one-time-code' : 'off'}
-                    aria-label={tx('Kodun {n}. hanesi', { n: i + 1 })}
-                    className={codeError ? 'is-invalid' : ''}
-                  />
-                ))}
-              </div>
+              <OtpInput
+                length={CODE_LENGTH}
+                value={code}
+                status={otpStatus}
+                onPaste={onCodePaste}
+                label={tx('Doğrulama kodu')}
+                inputProps={(i) => ({
+                  ref: (el) => (codeRefs.current[i] = el),
+                  onChange: (e) => setDigit(i, e.target.value),
+                  onKeyDown: (e) => onCodeKeyDown(i, e),
+                  inputMode: 'numeric',
+                  autoComplete: i === 0 ? 'one-time-code' : 'off',
+                  'aria-label': tx('Kodun {n}. hanesi', { n: i + 1 }),
+                  className: [code[i] ? 'is-filled' : '', codeError ? 'is-invalid' : ''].join(' ').trim(),
+                })}
+              />
               {codeError && <p className="error-text code-error">{codeError}</p>}
 
               {devConsole && (
@@ -414,7 +440,7 @@ export default function RegisterPage() {
               )}
 
               <button className="btn" type="submit" disabled={loading || code.join('').length !== CODE_LENGTH}>
-                {tx("Hesabı oluştur")}
+                {otpStatus === 'verifying' ? tx('Kontrol ediliyor…') : otpStatus === 'success' ? tx('Doğrulandı') : tx('Hesabı oluştur')}
               </button>
 
               <div className="code-actions">

@@ -24,6 +24,7 @@ import ThemeToggle from '../components/ThemeToggle';
 import { useAuth } from '../context/AuthContext';
 import { Avatar } from './ui';
 import './admin.css';
+import BrandMark from '../components/BrandMark';
 
 // Panelin yazı tipi yalnızca panel açıldığında yüklenir
 const FONT_HREF = 'https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap';
@@ -73,7 +74,7 @@ const COLLAPSE_KEY = 'kp-admin-collapsed';
 function Brand() {
   return (
     <Link to="/admin" className="adm-brand" style={{ textDecoration: 'none' }} aria-label="kampüs· yönetim">
-      <span className="mark" aria-hidden="true">k</span>
+      <BrandMark className="mark" size={32} />
       <span className="txt">
         kampüs<span className="dot">·</span> <small>yönetim</small>
       </span>

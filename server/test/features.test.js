@@ -71,6 +71,12 @@ async function createUser(email, extra = {}) {
   });
 }
 
+// Ayrı bir üniversite: destede yalnızca bu testin kullanıcıları olsun
+async function isolatedUni(tag) {
+  const u = await prisma.university.create({ data: { name: `İzole ${tag} Üniversitesi`, emailDomain: `${tag}.edu.tr` } });
+  return u.id;
+}
+
 async function tokenFor(email) {
   const u = await prisma.user.findUnique({ where: { email } });
   return jwt.sign({ userId: u.id, tokenVersion: u.tokenVersion }, process.env.JWT_SECRET, { expiresIn: '1h' });
@@ -348,4 +354,69 @@ test('KVKK onayları: eski hesap onay ister, iki onay da zorunlu, ticari ileti i
   assert.equal(me.marketingConsent, true);
   const off = await api('PUT', '/api/profile/me/consents', { token, body: { marketing: false } });
   assert.equal(off.data.marketingConsent, false);
+});
+
+test('süper beğeni: ücretsize kapalı, Premium günlük hakla, karşı tarafa bildirim ve destede önde', async () => {
+  const extra = { department: 'Felsefe', classYear: 2, birthDate: new Date('2003-01-01'), age: 23, schoolEmailVerifiedAt: new Date(), swipeEnabled: true, universityId: await isolatedUni('super') };
+  const a = await createUser('super-a@test.edu.tr', extra);
+  const b = await createUser('super-b@test.edu.tr', extra);
+  for (let i = 0; i < 3; i++) await createUser(`super-dolgu-${i}@test.edu.tr`, extra);
+  const ta = await tokenFor(a.email);
+
+  const free = await api('POST', `/api/matches/like/${b.id}`, { token: ta, body: { super: true } });
+  assert.equal(free.status, 403);
+  assert.equal(free.data.code, 'PREMIUM_REQUIRED');
+
+  await prisma.user.update({ where: { id: a.id }, data: { isPremium: true, premiumPlan: 'weekly', premiumUntil: new Date(Date.now() + 7 * 86400000) } });
+  const ok = await api('POST', `/api/matches/like/${b.id}`, { token: ta, body: { super: true } });
+  assert.equal(ok.status, 200, JSON.stringify(ok.data));
+  assert.equal(ok.data.superLikes.left, 0);
+  assert.equal(ok.data.likes.used, 0, 'süper beğeni normal hakkı harcamaz');
+  const n = await prisma.notification.findFirst({ where: { userId: b.id, type: 'super_like', actorId: a.id } });
+  assert.ok(n, 'süper beğeni bildirimi gitmeli');
+
+  const c = await createUser('super-c@test.edu.tr', extra);
+  const limit = await api('POST', `/api/matches/like/${c.id}`, { token: ta, body: { super: true } });
+  assert.equal(limit.status, 429);
+  assert.equal(limit.data.code, 'SUPER_LIKE_LIMIT');
+
+  const deck = (await api('GET', '/api/profile/discover', { token: await tokenFor(b.email) })).data;
+  assert.equal(deck[0].id, a.id, 'süper beğenen destenin başında');
+  assert.equal(deck[0].superLikedYou, true);
+});
+
+test('gizli mod: yalnızca Premium açar, açıkken yalnızca beğendiği kişiye görünür', async () => {
+  const extra = { department: 'Mimarlık', classYear: 3, birthDate: new Date('2003-01-01'), age: 23, schoolEmailVerifiedAt: new Date(), swipeEnabled: true, universityId: await isolatedUni('gizli') };
+  const ghost = await createUser('gizli-ben@test.edu.tr', extra);
+  const liked = await createUser('gizli-begendigim@test.edu.tr', extra);
+  const other = await createUser('gizli-diger@test.edu.tr', extra);
+  const tg = await tokenFor(ghost.email);
+
+  assert.equal((await api('PUT', '/api/premium/incognito', { token: tg, body: { enabled: true } })).status, 403);
+  await prisma.user.update({ where: { id: ghost.id }, data: { isPremium: true, premiumPlan: 'monthly', premiumUntil: new Date(Date.now() + 30 * 86400000) } });
+  const on = await api('PUT', '/api/premium/incognito', { token: tg, body: { enabled: true } });
+  assert.equal(on.status, 200);
+  assert.equal(on.data.incognito, true);
+  await api('POST', `/api/matches/like/${liked.id}`, { token: tg });
+
+  const seenByOther = deckIds((await api('GET', '/api/profile/discover', { token: await tokenFor(other.email) })).data);
+  const seenByLiked = deckIds((await api('GET', '/api/profile/discover', { token: await tokenFor(liked.email) })).data);
+  assert.ok(!seenByOther.includes(ghost.id), 'gizli moddaki kişi başkasına görünmez');
+  assert.ok(seenByLiked.includes(ghost.id), 'beğendiği kişiye görünür');
+});
+
+test('Kart Modu filtreleri yalnızca Premium için uygulanır', async () => {
+  const base = { department: 'Hukuk', schoolEmailVerifiedAt: new Date(), swipeEnabled: true, universityId: await isolatedUni('filtre') };
+  const me = await createUser('filtre-ben@test.edu.tr', { ...base, classYear: 2, birthDate: new Date('2003-01-01'), age: 23 });
+  const y1 = await createUser('filtre-birinci@test.edu.tr', { ...base, classYear: 1, birthDate: new Date('2006-01-01'), age: 20 });
+  const y4 = await createUser('filtre-dorduncu@test.edu.tr', { ...base, classYear: 4, birthDate: new Date('2001-01-01'), age: 25 });
+  const token = await tokenFor(me.email);
+  const free = deckIds((await api('GET', '/api/profile/discover?classYear=1', { token })).data);
+  assert.ok(free.includes(y4.id), 'ücretsizde filtre yok sayılır');
+
+  await prisma.user.update({ where: { id: me.id }, data: { isPremium: true, premiumPlan: 'monthly', premiumUntil: new Date(Date.now() + 30 * 86400000) } });
+  const byClass = deckIds((await api('GET', '/api/profile/discover?classYear=1', { token })).data);
+  assert.ok(byClass.includes(y1.id) && !byClass.includes(y4.id));
+  const byAge = deckIds((await api('GET', '/api/profile/discover?minAge=24&maxAge=30', { token })).data);
+  assert.ok(byAge.includes(y4.id) && !byAge.includes(y1.id));
 });

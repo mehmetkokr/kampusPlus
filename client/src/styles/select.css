@@ -1,0 +1,106 @@
+/* ==========================================================================
+   Seçim kutusu (components/Select.jsx): düğme ve açılır liste
+   Düğme metin alanlarıyla aynı yükseklik ve kenarlıkta; liste cam yüzeyli,
+   yumuşak gölgeli, iOS açılır menüsü gibi küçülerek açılır.
+   ========================================================================== */
+.ui-select {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  margin: 0 0 10px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+.ui-select:hover:not(:disabled) { border-color: color-mix(in srgb, var(--accent-fill) 45%, var(--border)); }
+.ui-select:focus-visible,
+.ui-select.is-open {
+  outline: none;
+  border-color: color-mix(in srgb, var(--accent-fill) 75%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-fill) 20%, transparent);
+}
+.ui-select.is-invalid { border-color: color-mix(in srgb, var(--coral) 80%, transparent); }
+.ui-select:disabled { opacity: 0.55; cursor: default; }
+.ui-select-value { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ui-select.is-placeholder .ui-select-value { color: var(--text-faint); }
+.ui-select-chevron { flex: none; color: var(--text-muted); transition: transform 0.2s cubic-bezier(0.23, 1, 0.32, 1); }
+.ui-select.is-open .ui-select-chevron { transform: rotate(180deg); color: var(--amber-soft); }
+
+.ui-select-list {
+  position: fixed;
+  z-index: 3000;
+  max-height: 300px;
+  margin: 0;
+  padding: 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 24px 48px -16px rgba(0, 0, 0, 0.55),
+    0 4px 12px -4px rgba(0, 0, 0, 0.25);
+  transform-origin: top center;
+  animation: ui-select-in 0.18s cubic-bezier(0.23, 1, 0.32, 1);
+}
+.ui-select-list.is-up { transform-origin: bottom center; }
+[data-theme='light'] .ui-select-list {
+  border-color: rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 24px 48px -18px rgba(0, 0, 0, 0.25), 0 4px 12px -4px rgba(0, 0, 0, 0.08);
+}
+@keyframes ui-select-in {
+  from { opacity: 0; transform: scale(0.96) translateY(-4px); }
+}
+.ui-select-list.is-up { animation-name: ui-select-in-up; }
+@keyframes ui-select-in-up {
+  from { opacity: 0; transform: scale(0.96) translateY(4px); }
+}
+
+.ui-select-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-size: 15px;
+  color: var(--text);
+  cursor: pointer;
+  user-select: none;
+}
+.ui-select-option.is-active { background: color-mix(in srgb, var(--accent-fill) 16%, transparent); }
+.ui-select-option.is-selected { font-weight: 650; }
+.ui-select-option[aria-disabled='true'] { opacity: 0.4; cursor: default; }
+.ui-select-check { flex: none; color: var(--amber-soft); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-select-list { animation: none; }
+  .ui-select-chevron { transition: none; }
+}
+
+/* Takvim başlığındaki gibi dar alanlarda küçük sürüm */
+.ui-select.is-compact {
+  width: auto;
+  min-height: 36px;
+  margin: 0;
+  padding: 0 10px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+}

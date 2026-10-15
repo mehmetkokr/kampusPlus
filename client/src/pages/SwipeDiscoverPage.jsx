@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { VerifiedBadge } from '@/components/ui/icon-badge';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Flag, ArrowLeft, Layers, Heart, X, RotateCcw } from '../components/icons';
+import { Flag, ArrowLeft, Layers, Heart, X, RotateCcw, Star, SlidersHorizontal } from '../components/icons';
 import PaywallModal from '../components/PaywallModal';
 import PageHeader from '../components/PageHeader';
 import PhotoCarousel from '../components/PhotoCarousel';
@@ -17,6 +17,7 @@ import { UserPlus as UserPlusIcon, UserCheck as UserCheckIcon } from '../compone
 import { useI18n } from '../i18n';
 import { FileText, Telescope } from '../components/icons';
 import { formatTime } from '../lib/premium';
+import SwipeFilters, { activeFilterCount, filterParams, readSavedFilters } from '../components/SwipeFilters';
 
 const SWIPE_THRESHOLD = 110;
 
@@ -29,8 +30,11 @@ export default function SwipeDiscoverPage() {
   // Son karar (Premium'da geri alınabilir): { userId, type: 'like' | 'pass' }
   const [lastDecision, setLastDecision] = useState(null);
   const [showPaywall, setShowPaywall] = useState(false);
-  // Premium penceresi neden açıldı: 'undo' (geri al) ya da 'likes' (beğeni hakkı doldu)
+  // Premium penceresi neden açıldı: 'undo' | 'likes' | 'super' | 'filters'
   const [paywallReason, setPaywallReason] = useState('undo');
+  // Gelişmiş filtreler (Premium): yaş aralığı, sınıf, ne arıyor
+  const [filters, setFilters] = useState(readSavedFilters);
+  const [showFilters, setShowFilters] = useState(false);
   // Bugünkü beğeni hakkı: { limit, used, left, resetsAt } (limit null = sınırsız)
   const [likeQuota, setLikeQuota] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -89,15 +93,16 @@ export default function SwipeDiscoverPage() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  // Açılışta ve filtreler değişince deste yeniden yüklenir
   useEffect(() => {
     loadCandidates();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [filters]);
 
   async function loadCandidates() {
     setLoading(true);
     try {
-      const res = await api.get('/profile/discover');
+      const res = await api.get('/profile/discover', { params: user?.isPremium ? filterParams(filters) : {} });
       setCandidates(res.data);
       setIndex(0);
     } catch (err) {
@@ -155,6 +160,37 @@ export default function SwipeDiscoverPage() {
         return;
       }
       toast.error(err.response?.data?.error || 'Beğeni gönderilemedi.');
+    }
+  }
+
+  // Süper Beğeni (Premium): karşı tarafa bildirim gider, onun destesinde öne çıkarsın
+  async function handleSuperLike() {
+    const target = candidates[index];
+    if (!target) return;
+    if (!user?.isPremium) {
+      openPaywall('super');
+      return;
+    }
+    advanceCard();
+    try {
+      const res = await api.post(`/matches/like/${target.id}`, { super: true });
+      setLastDecision(res.data.matched ? null : { userId: target.id, type: 'like' });
+      if (res.data.matched) {
+        setCelebration({ other: target, matchId: res.data.match?.id });
+        loadLikes();
+      } else {
+        toast.success(t('{name}, onu Süper Beğendiğini görecek.', { name: target.fullName.split(' ')[0] }));
+      }
+    } catch (err) {
+      setIndex((i) => Math.max(0, i - 1));
+      const data = err.response?.data || {};
+      if (data.code === 'SUPER_LIKE_LIMIT') {
+        toast.error(t('Bugünkü Süper Beğeni hakkın doldu · yenilenme {time}', { time: formatTime(data.resetsAt) }));
+      } else if (data.code === 'PREMIUM_REQUIRED') {
+        openPaywall('super');
+      } else {
+        toast.error(data.error || t('Süper Beğeni gönderilemedi.'));
+      }
     }
   }
 
@@ -307,7 +343,24 @@ export default function SwipeDiscoverPage() {
 
   return (
     <div className="container">
-      <PageHeader compact tone="rose" icon={Layers} title={t("Kart Modu")} onBack={() => navigate('/discover')} />
+      <PageHeader
+        compact
+        tone="rose"
+        icon={Layers}
+        title={t('Kart Modu')}
+        onBack={() => navigate('/discover')}
+        actions={
+          <button
+            type="button"
+            className="swipe-filter-btn"
+            onClick={() => (user?.isPremium ? setShowFilters(true) : openPaywall('filters'))}
+            aria-label={t('Filtreler')}
+          >
+            <SlidersHorizontal size={20} />
+            {user?.isPremium && activeFilterCount(filters) > 0 && <span className="swipe-filter-count">{activeFilterCount(filters)}</span>}
+          </button>
+        }
+      />
 
       <SegmentedControl
         ariaLabel={t('Kart Modu sekmeleri')}
@@ -347,6 +400,11 @@ export default function SwipeDiscoverPage() {
           {drag.x < -30 && <span className="swipe-stamp pass" style={{ opacity: Math.min(1, -drag.x / SWIPE_THRESHOLD) }}>{t("Geç")}</span>}
 
           <div className="swipe-card-photo">
+            {current.superLikedYou && (
+              <span className="swipe-super-badge">
+                <Star size={14} weight="fill" /> {t('Seni Süper Beğendi')}
+              </span>
+            )}
             <PhotoCarousel
               photos={current.photos}
               index={photoIndex}
@@ -480,6 +538,18 @@ export default function SwipeDiscoverPage() {
               <span aria-hidden="true">{t('Geç')}</span>
             </div>
             <div className="swipe-action">
+              <button
+                type="button"
+                className="swipe-btn super"
+                onClick={handleSuperLike}
+                aria-label={t('Süper Beğen')}
+                title={user?.isPremium ? t('Süper Beğen') : t('Süper Beğen (Premium)')}
+              >
+                <Star size={24} weight="fill" />
+              </button>
+              <span aria-hidden="true">{t('Süper')}</span>
+            </div>
+            <div className="swipe-action">
               <button type="button" className="swipe-btn like" onClick={() => handleLike(current.id)} aria-label={t('Beğen')} title={t('Beğen (→)')}>
                 <Heart size={32} fill="currentColor" strokeWidth={0} />
               </button>
@@ -499,11 +569,24 @@ export default function SwipeDiscoverPage() {
               .catch(() => {})
           }
           contextText={
-            paywallReason === 'likes'
-              ? t('Bugünkü {n} beğeni hakkını kullandın. Premium ile daha fazla, aylık ve yıllık planda sınırsız beğen.', { n: likeQuota?.limit ?? 5 })
-              : t('Yanlışlıkla geçtiğin ya da beğendiğin kişiyi geri getir.')
+            {
+              likes: t('Bugünkü {n} beğeni hakkını kullandın. Premium ile daha fazla, aylık ve yıllık planda sınırsız beğen.', { n: likeQuota?.limit ?? 5 }),
+              super: t('Süper Beğeni ile karşı taraf onu beğendiğini hemen öğrenir ve destesinde ilk sen çıkarsın.'),
+              filters: t('Gelişmiş filtrelerle Kart Modu’nda yaşa, sınıfa ve ne aradığına göre süz.'),
+            }[paywallReason] || t('Yanlışlıkla geçtiğin ya da beğendiğin kişiyi geri getir.')
           }
           hideScope
+        />
+      )}
+
+      {showFilters && (
+        <SwipeFilters
+          value={filters}
+          onClose={() => setShowFilters(false)}
+          onApply={(next) => {
+            setFilters(next);
+            setShowFilters(false);
+          }}
         />
       )}
 

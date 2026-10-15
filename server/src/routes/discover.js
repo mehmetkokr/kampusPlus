@@ -5,7 +5,7 @@ const express = require('express');
 const prisma = require('../lib/prisma');
 const { requireAuth } = require('../middleware/auth');
 const { getOnlineUserIds } = require('../socket');
-const { isPremiumActive, isBoosting } = require('../lib/premium');
+const { isPremiumActive, isBoosting, incognitoVisibleTo } = require('../lib/premium');
 const { discoverableUserWhere, sharesActivity } = require('../lib/privacy');
 
 const router = express.Router();
@@ -83,11 +83,14 @@ router.get('/home', requireAuth, async (req, res) => {
     const [suggested, [newUsersToday, newPostsToday, newClubsToday], onlineUsers, [swipeCount, myClubCount], trendingClubs, recentPosts] = await Promise.all([
       (async () => {
         // ---------- Önerilen Kişiler ----------
+        const visibleWhere = discoverableUserWhere(me.universityId);
         const candidateWhere = {
-          ...discoverableUserWhere(me.universityId),
+          ...visibleWhere,
           universityId: me.universityId,
           id: { notIn: excludeIds },
           verificationStatus: { in: ['auto_verified', 'verified'] },
+          // gizli moddakiler yalnızca beğendiklerine görünür; yıllık doğrulama koşulu korunur
+          AND: [...(visibleWhere.AND || []), incognitoVisibleTo(me.id)],
         };
         if (department) candidateWhere.department = department;
         if (classYear) candidateWhere.classYear = Number(classYear);
@@ -295,6 +298,7 @@ router.get('/search', requireAuth, async (req, res) => {
     const baseWhere = {
       AND: [
         discoverableUserWhere(me.universityId),
+        incognitoVisibleTo(req.userId),
         {
           OR: [
             { fullName: { contains: q } },

@@ -17,6 +17,7 @@ import { API_BASE_URL } from '../config';
 import { useI18n } from '../i18n';
 import ThemeToggle from './ThemeToggle';
 import { useChatUnread } from '../hooks/useChatUnread';
+import BrandMark from './BrandMark';
 
 // Kart Modu'nu kapatan kullanıcı menüde onu görmez
 export function navItemsFor(user) {
@@ -65,7 +66,7 @@ function SideNav({ chatUnread }) {
   return (
     <aside className="side-nav" aria-label={t("Ana menü")}>
       <Link to="/discover" className="side-nav-brand">
-        <span className="side-nav-logo">{t("k")}</span>
+        <BrandMark className="side-nav-logo" size={36} />
         <span className="side-nav-wordmark">
           {t("kampüs")}<span className="dot">·</span>
         </span>

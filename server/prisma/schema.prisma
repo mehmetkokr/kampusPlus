@@ -134,6 +134,8 @@ model User {
   // Keşfet'te öne çıkarır. Haklar plan satın alınınca eklenir, süre bitse de kalır.
   boostCredits     Int       @default(0)
   boostUntil       DateTime?
+  // Gizli mod (Premium): yalnızca beğendiği kişilerin Kart Modu ve Keşfet'inde görünür
+  incognito        Boolean   @default(false)
 
   // KVKK: kullanım şartları/aydınlatma onayı, yurt dışına aktarım açık rızası
   // (sunucular yurt dışında) ve isteğe bağlı ticari ileti izni (6563 s. Kanun)
@@ -254,6 +256,8 @@ model Like {
   fromUserId Int
   toUser     User     @relation("LikesReceived", fields: [toUserId], references: [id], onDelete: Cascade)
   toUserId   Int
+  // Süper Beğeni: karşı tarafa bildirim gider, onun destesinde öne çıkar
+  isSuper    Boolean  @default(false)
   createdAt  DateTime @default(now())
 
   @@unique([fromUserId, toUserId]) // bir kullanıcı aynı kişiyi sadece bir kez beğenebilir
