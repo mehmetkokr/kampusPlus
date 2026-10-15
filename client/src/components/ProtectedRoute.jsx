@@ -2,6 +2,7 @@ import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { needsBasics, useAuth } from '../context/AuthContext';
 import LogoLoader from './LogoLoader';
+import ConsentGate from './ConsentGate';
 
 export default function ProtectedRoute({ children }) {
   const { token, user, loading } = useAuth();
@@ -20,5 +21,11 @@ export default function ProtectedRoute({ children }) {
     return <Navigate to="/welcome" replace />;
   }
 
-  return children;
+  // Güncellenen şartlar ve KVKK onayı alınana kadar onay penceresi üstte durur
+  return (
+    <>
+      {children}
+      <ConsentGate />
+    </>
+  );
 }

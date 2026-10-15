@@ -342,6 +342,11 @@ export default function AdminCampaigns() {
               <div>
                 <strong>{previewLoading && !preview ? '…' : fmt(preview?.count ?? 0)}</strong> <span>öğrenci</span>
                 <span style={{ display: 'block' }}>{describeAudience(audience, uniName)}</span>
+                {preview && (
+                  <span style={{ display: 'block', fontSize: 12 }}>
+                    E-posta yalnızca ticari ileti izni verenlere gider: {fmt(preview.emailCount ?? 0)} öğrenci
+                  </span>
+                )}
               </div>
             </div>
           </div>

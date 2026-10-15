@@ -20,4 +20,6 @@ export const SITE = {
   name: 'kampüs·',
   url: initialSiteUrl(),
   contactEmail: import.meta.env.VITE_CONTACT_EMAIL || 'destek@kampusplus.com.tr',
+  // Geliştiricinin GitHub hesabı (tanıtım sayfası alt bilgisi ve iletişim)
+  github: import.meta.env.VITE_GITHUB_URL || 'https://github.com/mehmetkokr',
 };

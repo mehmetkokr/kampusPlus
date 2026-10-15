@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft } from '../components/icons';
 import { SITE } from '../constants/site';
+import api from '../api';
+import { formatTL } from '../lib/premium';
 
 // Yasal sayfalar: Gizlilik Politikası (KVKK aydınlatma metni), Kullanım
 // Şartları ve Topluluk Kuralları. Metinler taslaktır; yayına almadan önce bir
 // hukukçuya kontrol ettirilmeli (veri sorumlusu unvanı, adres vb. eklenmeli).
-const UPDATED = '11 Ekim 2026';
+const UPDATED = '15 Ekim 2026';
 
 const DOCS = {
   gizlilik: {
@@ -22,6 +24,9 @@ const DOCS = {
         'Uygulama istatistikleri: hangi sayfaların açıldığı ve kayıt adımları. Giriş yapmadıysan bunlar tarayıcında üretilen rastgele bir kimlikle sayılır; IP adresi, konum veya cihaz bilgisi kaydedilmez.',
         'Hata raporları: uygulamada bir hata oluşursa hatanın teknik ayrıntısı, açık olan sayfa ve tarayıcı türü.',
         'Anlık bildirimleri açarsan, tarayıcının bu cihaz için verdiği bildirim adresi.',
+        'Premium ve ödeme: seçtiğin plan, satın alma tarihi, tutar, Mesafeli Satış Sözleşmesi onayının zamanı ve otomatik yenileme tercihin. Kart bilgilerin ödeme kuruluşunda işlenir; bizde saklanmaz.',
+        'Beğeni hakkı ve Boost: o gün kaç beğeni gönderdiğin, Boost hakkı sayın ve Boost’un başlayıp bittiği zaman.',
+        'Onaylar: kullanım şartlarını, yurt dışına aktarım açık rızasını ve (verdiysen) ticari ileti iznini verdiğin tarih.',
       ]],
       ['Verileri ne için kullanıyoruz?', [
         'Öğrenci olduğunu doğrulamak ve kampüs topluluğunu yalnızca gerçek öğrencilere açık tutmak. Bu yüzden yılda bir okul e-postanla yeniden doğrulama isteriz; doğrulanmayan profil listelerden gizlenir (hesap silinmez).',
@@ -29,9 +34,16 @@ const DOCS = {
         'Güvenliği sağlamak: şikayetleri incelemek, kötüye kullanımı engellemek.',
         'Sana bildirim ve hesabınla ilgili e-postalar göndermek.',
         'Hataları bulup düzeltmek ve uygulamanın hangi bölümlerinin işe yaradığını anlamak.',
+        'Premium haklarını uygulamak: günlük beğeni sınırını saymak, Boost süresince profilini öne çıkarmak, üyeliği yenilemek ve ödeme kayıtlarını yasal süre boyunca saklamak.',
+        'Yalnızca izin verdiysen: kampanya, etkinlik ve yenilikleri e-postayla duyurmak.',
       ]],
       ['Hukuki sebep', [
-        'Kişisel verilerin, KVKK m.5/2 (c) uyarınca üyelik sözleşmesinin kurulması ve ifası, (f) uyarınca platform güvenliği için meşru menfaat ve gerektiğinde açık rızan kapsamında işlenir.',
+        'Kişisel verilerin KVKK m.5/2 (c) uyarınca üyelik ve Premium sözleşmesinin kurulması ve ifası, (ç) uyarınca hukuki yükümlülüklerimiz (ör. ödeme ve fatura kayıtlarının saklanması) ve (f) uyarınca platform güvenliği için meşru menfaat kapsamında işlenir.',
+        'Verilerinin yurt dışındaki sunucularda saklanması KVKK m.9 kapsamında açık rızana dayanır. Ticari elektronik iletiler (kampanya e-postaları) 6563 sayılı Kanun uyarınca yalnızca ayrıca izin verirsen gönderilir.',
+      ]],
+      ['Yurt dışına aktarım', [
+        'Hizmeti çalıştırdığımız altyapı sağlayıcılarının sunucuları yurt dışındadır: uygulama sunucusu ve veritabanı (ABD), e-posta gönderimi (Avrupa Birliği), alan adı, DNS ve destek e-postası yönlendirmesi (ABD ve dünya genelindeki sunucular).',
+        'Bu sağlayıcılar verilerine yalnızca hizmeti sunmak için ve sözleşmeyle bağlı olarak erişir. Kayıt olurken bu aktarıma açık rıza verirsin; rızanı geri çekersen hizmet sunulamayacağından hesabını silmen gerekir.',
       ]],
       ['Kimlerle paylaşıyoruz?', [
         'Verilerini satmayız ve reklam amacıyla üçüncü taraflarla paylaşmayız.',
@@ -42,6 +54,8 @@ const DOCS = {
       ['Profilini kimler görebilir?', [
         'Profilin varsayılan olarak yalnızca doğrulanmış öğrencilere görünür. Ayarlar > Gizlilik bölümünden "Yalnızca Üniversitem" ya da "Kimseye Gösterme" seçebilir, çevrimiçi durumunu ve Kart Modu\'nu kapatabilirsin.',
         'Doğum tarihin kimseye gösterilmez; profilinde yalnızca yaşın görünür.',
+        'Birini beğendiğinde, o kişi Premium üyeyse seni "Seni beğenenler" listesinde görebilir. Beğenmediğin kişiye ne yaptığın (ör. "geç") söylenmez.',
+        'Boost kullandığında profilin kısa süre kampüsündeki öğrencilere daha önce gösterilir. Kimin Boost ya da Premium aldığı başka kullanıcılara söylenmez.',
       ]],
       ['Saklama süresi', [
         'Hesabını sildiğinde profilin, fotoğrafların, paylaşımların, mesajların ve yüklediğin belge kalıcı olarak silinir. Kanunen saklanması zorunlu kayıtlar yasal süre boyunca tutulur.',
@@ -49,11 +63,14 @@ const DOCS = {
         'Uygulama istatistikleri 180 gün, hata kayıtları son görülmelerinden itibaren 90 gün saklanır. Hesabını silersen istatistikler hesabından ayrılır ve anonim kalır.',
         'Anlık bildirim adresi, bildirimleri kapattığında ya da bu cihazda çıkış yaptığında silinir.',
         'Kart Modu’ndaki “geç” kararın 30 gün boyunca o kişiyi sana tekrar göstermemek için kullanılır.',
+        'Ödeme ve fatura kayıtları vergi ve ticaret mevzuatı gereği 10 yıl saklanır; hesabını silsen de bu süre boyunca tutulur.',
+        'Onay kayıtları (ne zaman neyi onayladığın), olası bir uyuşmazlıkta ispat için hesabın silindikten sonra en fazla 10 yıl saklanır.',
       ]],
       ['Haklarını nasıl kullanırsın? (KVKK m.11)', [
         'Verilerinin işlenip işlenmediğini öğrenme, bilgi talep etme, düzeltilmesini veya silinmesini isteme ve itiraz etme haklarına sahipsin.',
         `Taleplerini ${SITE.contactEmail} adresine yazabilirsin; en geç 30 gün içinde yanıtlanır. Hesabını Ayarlar > Hesabı Sil ile kendin de silebilirsin.`,
         'Hakkında tuttuğumuz verilerin bir kopyasını Ayarlar > Güvenlik ve Veriler > Verilerimi İndir ile hemen alabilirsin.',
+        'Ticari ileti iznini Ayarlar > İzinler ve onaylar bölümünden istediğin an kapatabilirsin. Açık rızanı geri çekmek için de bize yazabilirsin; geri çekme, o ana kadar yapılan işlemleri etkilemez.',
       ]],
       ['Çerezler ve yerel depolama', [
         'Oturumunu açık tutmak, tema ve dil tercihini hatırlamak ve ziyaretleri saymak için (rastgele üretilmiş bir kimlik) tarayıcının yerel depolamasını kullanırız. Reklam veya üçüncü taraf takip çerezi kullanmayız.',
@@ -82,14 +99,58 @@ const DOCS = {
       ['Yaptırımlar', [
         'Kuralları ihlal eden içerikleri kaldırabilir, hesapları geçici ya da kalıcı olarak kapatabiliriz. Ciddi durumlarda yetkili makamlarla iş birliği yaparız.',
       ]],
-      ['Premium', [
-        'Premium üyelik, seçtiğin dönem sonunda otomatik yenilenir. Otomatik yenilemeyi Ayarlar\'dan istediğin an kapatabilirsin; üyeliğin dönem sonuna kadar devam eder.',
+      ['Beğeni hakkı, Premium ve Boost', [
+        'Ücretsiz hesapla günde 5 kişiyi beğenebilirsin; hak her gün Türkiye saatiyle 00:00’da yenilenir ve kullanılmayan hak ertesi güne devretmez.',
+        'Premium haftalık, aylık ve yıllık planlarla sunulur. Haftalık planda günlük beğeni hakkı 50, aylık ve yıllık planda sınırsızdır. Planların güncel ücreti ve hakları satın alma ekranında ve Ayarlar > Premium bölümünde gösterilir.',
+        'Her plan satın alındığında hesabına Boost hakkı eklenir (haftalık 1, aylık 3, yıllık 36). Bir Boost, profilini 30 dakika boyunca kampüsündeki öğrencilerin Kart Modu ve Keşfet listelerinde öne çıkarır. Kullanılan Boost geri alınamaz; kullanılmayan Boost hakkın üyeliğin bitse de hesabında kalır.',
+        'Premium üyelik seçtiğin dönem sonunda aynı planla otomatik yenilenir. Otomatik yenilemeyi Ayarlar’dan istediğin an kapatabilirsin; üyeliğin dönem sonuna kadar devam eder.',
+        'Satın alma koşulları, cayma hakkı ve uyuşmazlık yolları Mesafeli Satış Sözleşmesi’nde yer alır.',
       ]],
       ['Sorumluluğun sınırı', [
         'Kullanıcıların birbiriyle çevrim dışı buluşmalarından doğan sonuçlardan sorumlu değiliz. İlk buluşmaları kampüs içinde ve kalabalık yerlerde yapmanı öneririz.',
       ]],
       ['Değişiklikler', [
         'Bu şartları güncelleyebiliriz. Önemli değişiklikleri uygulama içinden duyururuz.',
+      ]],
+    ],
+  },
+  'mesafeli-satis-sozlesmesi': {
+    title: 'Mesafeli Satış Sözleşmesi ve Ön Bilgilendirme',
+    lead: '6502 sayılı Tüketicinin Korunması Hakkında Kanun ve Mesafeli Sözleşmeler Yönetmeliği kapsamında, Premium üyelik satın almadan önce bilmen gerekenler.',
+    plans: true,
+    sections: [
+      ['1. Taraflar', [
+        `Satıcı: ${SITE.name} (ticari unvan, adres ve vergi numarası ödeme sistemi açılmadan önce burada yer alacaktır). E-posta: ${SITE.contactEmail}`,
+        'Alıcı: Premium üyelik satın alan, kayıtlı ve 18 yaşını doldurmuş kullanıcı. Alıcının bilgileri hesabındaki bilgilerdir.',
+      ]],
+      ['2. Sözleşmenin konusu', [
+        'Elektronik ortamda anında ifa edilen dijital hizmet: seçilen dönem (haftalık, aylık ya da yıllık) boyunca Premium üyelik ve plana bağlı beğeni ile Boost hakları.',
+        'Premium ile tüm üniversitelerdeki öğrencileri keşfedebilir ve arayabilir, seni beğenenleri görebilir, Kart Modu’nda son kararını geri alabilir ve planına göre daha fazla beğeni hakkı ile Boost kullanabilirsin.',
+      ]],
+      ['3. Ücret ve ödeme', [
+        'Planların ücreti yukarıdaki tabloda ve satın alma ekranında, vergiler dahil olarak gösterilir. Ödeme banka ya da kredi kartıyla, lisanslı bir ödeme kuruluşu aracılığıyla alınır; kart bilgilerin bizde saklanmaz.',
+      ]],
+      ['4. Süre ve otomatik yenileme', [
+        'Üyelik ödemenin onaylandığı anda başlar ve seçilen dönem sonunda aynı plan ve o günkü ücretle otomatik yenilenir. Yenilemeyi Ayarlar > Premium bölümünden dönem bitmeden istediğin an kapatabilirsin; üyeliğin dönem sonuna kadar sürer.',
+        'Ücret değişirse yeni ücret, yenilemeden önce uygulama içinden bildirilir.',
+      ]],
+      ['5. Cayma hakkı', [
+        'Mesafeli Sözleşmeler Yönetmeliği m.15/1 (ğ) uyarınca, elektronik ortamda anında ifa edilen ve tüketicinin onayıyla ifasına başlanan hizmetlerde cayma hakkı kullanılamaz.',
+        'Satın alma sırasında hizmetin hemen başlamasını onayladığın ve bu nedenle cayma hakkının sona ereceğini kabul ettiğin için, ödemeden sonra cayma hakkın bulunmaz. Hizmetten kaynaklanan bir sorun olursa bize yaz; mevzuat çerçevesinde değerlendiririz.',
+      ]],
+      ['6. Beğeni ve Boost hakları', [
+        'Günlük beğeni hakkı Türkiye saatiyle her gün 00:00’da yenilenir; kullanılmayan hak devretmez.',
+        'Bir Boost 30 dakika sürer. Kullanılan Boost geri alınamaz ve iade edilmez; kullanılmayan Boost hakları üyelik sona erse de hesapta kalır, hesap silinince sona erer.',
+      ]],
+      ['7. Hesabın kapatılması', [
+        'Kullanım Şartları’na ya da Topluluk Kuralları’na aykırılık nedeniyle kapatılan hesaplarda kalan üyelik süresi için iade, mevzuatın izin verdiği ölçüde yapılmaz.',
+      ]],
+      ['8. Şikâyet ve uyuşmazlık', [
+        `Şikâyetlerini ${SITE.contactEmail} adresine iletebilirsin.`,
+        'Uyuşmazlıklarda, Ticaret Bakanlığı’nca her yıl ilan edilen parasal sınırlar içinde tüketici hakem heyetlerine, bu sınırların üzerinde tüketici mahkemelerine başvurabilirsin.',
+      ]],
+      ['9. Onay', [
+        'Alıcı, satın almadan önce bu ön bilgilendirmeyi ve sözleşmeyi okuduğunu ve hizmetin hemen başlamasını onayladığını elektronik ortamda kabul eder. Onayın zamanı satın alma kaydında saklanır.',
       ]],
     ],
   },
@@ -118,6 +179,55 @@ const DOCS = {
   },
 };
 
+// Güncel planlar sunucudan okunur (ücret değişince metin elle güncellenmez)
+function PlanTable() {
+  const [info, setInfo] = useState(null);
+  useEffect(() => {
+    api
+      .get('/premium/plans')
+      .then((res) => setInfo(res.data))
+      .catch(() => {});
+  }, []);
+  if (!info) return null;
+  const period = { weekly: '7 gün', monthly: '30 gün', yearly: '365 gün' };
+  return (
+    <section>
+      <h2>Planlar ve ücretler</h2>
+      <div className="legal-table-wrap">
+        <table className="legal-table">
+          <thead>
+            <tr>
+              <th scope="col">Plan</th>
+              <th scope="col">Süre</th>
+              <th scope="col">Ücret (vergiler dahil)</th>
+              <th scope="col">Günlük beğeni</th>
+              <th scope="col">Boost</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">Ücretsiz</th>
+              <td>Süresiz</td>
+              <td>₺0</td>
+              <td>{info.freeDailyLikes}</td>
+              <td>—</td>
+            </tr>
+            {info.plans.map((p) => (
+              <tr key={p.key}>
+                <th scope="row">{p.label}</th>
+                <td>{period[p.key] || `${p.days} gün`}</td>
+                <td>{formatTL(p.amount)}</td>
+                <td>{p.dailyLikes === null ? 'Sınırsız' : p.dailyLikes}</td>
+                <td>{`${p.boosts} × ${info.boostMinutes} dk`}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 export default function LegalPage({ doc }) {
   const d = DOCS[doc];
   return (
@@ -128,6 +238,7 @@ export default function LegalPage({ doc }) {
       <h1>{d.title}</h1>
       <p className="legal-lead">{d.lead}</p>
       <p className="legal-updated">Son güncelleme: {UPDATED}</p>
+      {d.plans && <PlanTable />}
       {d.sections.map(([heading, paras]) => (
         <section key={heading}>
           <h2>{heading}</h2>
@@ -140,6 +251,7 @@ export default function LegalPage({ doc }) {
         <Link to="/gizlilik">Gizlilik Politikası</Link>
         <Link to="/kullanim-sartlari">Kullanım Şartları</Link>
         <Link to="/topluluk-kurallari">Topluluk Kuralları</Link>
+        <Link to="/mesafeli-satis-sozlesmesi">Mesafeli Satış Sözleşmesi</Link>
       </nav>
     </div>
   );

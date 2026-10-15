@@ -431,7 +431,18 @@ html:not([data-theme='light']) .landing-hero-gradient::after {
   stroke-width: 0.03;
   stroke-linejoin: round;
 }
-.landing-map-flat circle { fill: var(--amber-soft); }
+.landing-map-flat circle {
+  fill: var(--amber-soft);
+  opacity: 0.8;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: landing-map-dot 5.33s ease-in-out infinite;
+}
+/* 3D haritadaki dalga: nokta kısa bir an büyüyüp parlar, sonra yerine döner */
+@keyframes landing-map-dot {
+  0%, 14%, 100% { transform: scale(1); opacity: 0.8; }
+  6% { transform: scale(2.3); opacity: 1; }
+}
 .landing-map-tip {
   position: absolute;
   z-index: 2;
@@ -471,5 +482,90 @@ html:not([data-theme='light']) .landing-hero-gradient::after {
   .landing-map-frame { aspect-ratio: 16 / 9; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .landing-map-layer, .landing-map-3d { transition: none; animation: none; }
+  .landing-map-layer, .landing-map-3d, .landing-map-flat circle { transition: none; animation: none; }
+}
+
+/* ---------- Planlar (Ücretsiz / Premium) ---------- */
+.landing-price {
+  font-family: var(--font-serif);
+  font-size: clamp(2.25rem, 1.8rem + 1.6vw, 2.875rem);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.035em;
+  color: var(--color-paper);
+  font-variant-numeric: tabular-nums;
+}
+.landing-price-check {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 1.375rem;
+  height: 1.375rem;
+  margin-top: 0.0625rem;
+  border-radius: 50%;
+}
+.landing-price-check.is-free { color: var(--color-paper-muted); background: var(--color-line-soft); }
+.landing-price-check.is-premium { color: #fff; background: var(--accent-fill); }
+
+/* Premium kartı: hafif mavi parıltı ve ince mavi kenar; öne çıkar ama bağırmaz */
+.landing-price-premium {
+  position: relative;
+  border-radius: 1.5rem;
+  background:
+    radial-gradient(120% 70% at 100% 0%, color-mix(in srgb, var(--accent-fill) 16%, transparent), transparent 60%),
+    var(--color-surface);
+  box-shadow:
+    inset 0 0 0 1.5px color-mix(in srgb, var(--accent-fill) 55%, transparent),
+    0 30px 60px -36px color-mix(in srgb, var(--accent-fill) 60%, transparent);
+}
+.landing-price-soon {
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--color-amber);
+  background: color-mix(in srgb, var(--accent-fill) 14%, transparent);
+}
+
+/* Planın beğeni ve boost hakları */
+.landing-price-perks { display: grid; gap: 0.4rem; padding: 0.75rem 0.875rem; border-radius: 0.875rem; background: var(--color-line-soft); }
+.landing-price-perks li { display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; font-weight: 650; color: var(--color-paper); }
+.landing-price-perks svg { flex: none; color: var(--color-amber); }
+
+/* "EN POPÜLER" / "EN AVANTAJLI" rozeti kartın üst kenarında */
+.landing-price-badge {
+  position: absolute;
+  top: -0.7rem;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  color: #fff;
+  background: var(--accent-fill);
+}
+
+/* ---------- İletişim (alt bilgi) ---------- */
+.landing-contact-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-height: 2.75rem;
+  font-size: 0.9063rem;
+  color: var(--color-paper-muted);
+  transition: color 0.2s ease;
+}
+.landing-contact-link:hover { color: var(--color-paper); }
+.landing-contact-link:focus-visible { outline: 2px solid var(--color-amber); outline-offset: 3px; border-radius: 8px; }
+.landing-contact-icon {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  color: var(--color-paper);
+  box-shadow: inset 0 0 0 1px var(--color-line);
 }

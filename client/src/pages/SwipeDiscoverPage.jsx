@@ -16,6 +16,7 @@ import { INTENT_LABEL, INTENT_CHIP_CLASS, parseIntents } from '../constants/inte
 import { UserPlus as UserPlusIcon, UserCheck as UserCheckIcon } from '../components/icons';
 import { useI18n } from '../i18n';
 import { FileText, Telescope } from '../components/icons';
+import { formatTime } from '../lib/premium';
 
 const SWIPE_THRESHOLD = 110;
 
@@ -28,6 +29,10 @@ export default function SwipeDiscoverPage() {
   // Son karar (Premium'da geri alınabilir): { userId, type: 'like' | 'pass' }
   const [lastDecision, setLastDecision] = useState(null);
   const [showPaywall, setShowPaywall] = useState(false);
+  // Premium penceresi neden açıldı: 'undo' (geri al) ya da 'likes' (beğeni hakkı doldu)
+  const [paywallReason, setPaywallReason] = useState('undo');
+  // Bugünkü beğeni hakkı: { limit, used, left, resetsAt } (limit null = sınırsız)
+  const [likeQuota, setLikeQuota] = useState(null);
   const [loading, setLoading] = useState(true);
   const [followedIds, setFollowedIds] = useState(new Set());
   const [reportingUserId, setReportingUserId] = useState(null);
@@ -49,6 +54,18 @@ export default function SwipeDiscoverPage() {
   // henüz yansımamış olabilir (hızlı dokunuşlarda yanlış kararı önler).
   const dragXRef = useRef(0);
   const cardRef = useRef(null);
+
+  useEffect(() => {
+    api
+      .get('/premium/status')
+      .then((res) => setLikeQuota(res.data.likes))
+      .catch(() => {});
+  }, []);
+
+  function openPaywall(reason) {
+    setPaywallReason(reason);
+    setShowPaywall(true);
+  }
 
   function loadLikes() {
     api
@@ -112,10 +129,16 @@ export default function SwipeDiscoverPage() {
 
   async function handleLike(targetUserId) {
     const target = candidates.find((c) => c.id === targetUserId);
+    // Günlük hak bittiyse kart ilerlemez; Premium planları gösterilir
+    if (likeQuota && likeQuota.left === 0) {
+      openPaywall('likes');
+      return;
+    }
     // Kartı hemen ilerlet (akıcı his), isteği arkada gönder
     advanceCard();
     try {
       const res = await api.post(`/matches/like/${targetUserId}`);
+      if (res.data.likes) setLikeQuota(res.data.likes);
       // Eşleşmeye dönüşen beğeni geri alınamaz
       setLastDecision(res.data.matched ? null : { userId: targetUserId, type: 'like' });
       if (res.data.matched) {
@@ -124,6 +147,13 @@ export default function SwipeDiscoverPage() {
         loadLikes();
       }
     } catch (err) {
+      if (err.response?.data?.code === 'LIKE_LIMIT') {
+        // Kart geri gelir: beğeni kaydedilmedi
+        setIndex((i) => Math.max(0, i - 1));
+        setLikeQuota((q) => ({ ...(q || {}), limit: err.response.data.limit, left: 0, resetsAt: err.response.data.resetsAt }));
+        openPaywall('likes');
+        return;
+      }
       toast.error(err.response?.data?.error || 'Beğeni gönderilemedi.');
     }
   }
@@ -140,7 +170,7 @@ export default function SwipeDiscoverPage() {
   async function handleUndo() {
     if (!lastDecision || index === 0) return;
     if (!user?.isPremium) {
-      setShowPaywall(true);
+      openPaywall('undo');
       return;
     }
     try {
@@ -421,6 +451,14 @@ export default function SwipeDiscoverPage() {
             )}
           </div>
 
+          {likeQuota && likeQuota.limit !== null && (
+            <p className={`swipe-quota ${likeQuota.left === 0 ? 'is-empty' : ''}`} aria-live="polite">
+              <Heart size={13} fill="currentColor" />{' '}
+              {likeQuota.left === 0
+                ? t('Bugünkü beğeni hakkın doldu · yenilenme {time}', { time: formatTime(likeQuota.resetsAt) })
+                : t('Bugün {left} beğeni hakkın kaldı', { left: likeQuota.left })}
+            </p>
+          )}
           <div className="swipe-actions" role="group" aria-label={t('Bu profil için karar ver')}>
             <div className="swipe-action">
               <button
@@ -451,7 +489,23 @@ export default function SwipeDiscoverPage() {
         </div>
       )}
 
-      {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} contextText={t('Yanlışlıkla geçtiğin ya da beğendiğin kişiyi geri getir.')} />}
+      {showPaywall && (
+        <PaywallModal
+          onClose={() => setShowPaywall(false)}
+          onUpgraded={() =>
+            api
+              .get('/premium/status')
+              .then((res) => setLikeQuota(res.data.likes))
+              .catch(() => {})
+          }
+          contextText={
+            paywallReason === 'likes'
+              ? t('Bugünkü {n} beğeni hakkını kullandın. Premium ile daha fazla, aylık ve yıllık planda sınırsız beğen.', { n: likeQuota?.limit ?? 5 })
+              : t('Yanlışlıkla geçtiğin ya da beğendiğin kişiyi geri getir.')
+          }
+          hideScope
+        />
+      )}
 
       {reportingUserId && (
         <ReportModal

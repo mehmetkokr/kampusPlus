@@ -234,6 +234,7 @@ export default function App() {
       <Route path="/gizlilik" element={<LegalPage doc="gizlilik" />} />
       <Route path="/kullanim-sartlari" element={<LegalPage doc="kullanim-sartlari" />} />
       <Route path="/topluluk-kurallari" element={<LegalPage doc="topluluk-kurallari" />} />
+      <Route path="/mesafeli-satis-sozlesmesi" element={<LegalPage doc="mesafeli-satis-sozlesmesi" />} />
 
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

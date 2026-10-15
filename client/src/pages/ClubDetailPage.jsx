@@ -58,6 +58,13 @@ const SLOW_MODE = [
 
 const isMuted = (m) => !!m?.mutedUntil && new Date(m.mutedUntil) > new Date();
 
+// <input type="datetime-local"> için yerel saatle "şimdi" (geçmiş tarih seçilemesin)
+function localDateTimeNow() {
+  const d = new Date();
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 16);
+}
+
 export default function ClubDetailPage() {
   const { t } = useI18n();
   const confirm = useConfirm();
@@ -562,13 +569,16 @@ export default function ClubDetailPage() {
             const mon = date.toLocaleDateString('tr-TR', { month: 'short' });
             const time = date.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
             return (
-              <div key={ev.id} className="event-row">
+              <div key={ev.id} className={`event-row ${ev.isPast ? 'is-past' : ''}`}>
                 <div className="event-date">
                   <span className="day">{day}</span>
                   <span className="mon">{mon}</span>
                 </div>
                 <div className="event-info" style={{ flex: 1 }}>
-                  <h4>{t(ev.title)}</h4>
+                  <h4>
+                    {t(ev.title)}
+                    {ev.isPast && <span className="event-ended">{t('Sona erdi')}</span>}
+                  </h4>
                   {ev.description && (
                     <p className="muted" style={{ fontSize: 12.5, margin: '2px 0 4px' }}>
                       {ev.description}
@@ -608,7 +618,7 @@ export default function ClubDetailPage() {
                     )}
                     {t('{n} katılımcı', { n: ev.goingCount })}
                   </button>
-                  {isMember && (
+                  {isMember && !ev.isPast && (
                     <button type="button" className={`event-pill event-join ${ev.imGoing ? 'is-going' : ''}`} onClick={() => handleRsvp(ev.id)}>
                       {ev.imGoing ? t('Katılıyorsun') : t('Katıl')}
                     </button>
@@ -1039,6 +1049,7 @@ function CreateEventModal({ clubId, onClose, onCreated }) {
     setError('');
     if (!title.trim()) return setError('Etkinlik başlığı gerekli.');
     if (!startsAt) return setError('Tarih ve saat seç.');
+    if (new Date(startsAt).getTime() < Date.now() - 5 * 60 * 1000) return setError('Etkinlik tarihi geçmişte olamaz.');
     setSaving(true);
     try {
       await api.post(`/clubs/${clubId}/events`, { title, description, location, startsAt });
@@ -1065,7 +1076,7 @@ function CreateEventModal({ clubId, onClose, onCreated }) {
           <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('örn. Haftalık Buluşma')} required />
 
           <label>{t('Tarih & Saat')}</label>
-          <input type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} required />
+          <input type="datetime-local" value={startsAt} min={localDateTimeNow()} onChange={(e) => setStartsAt(e.target.value)} required />
 
           <label>{t('Konum (opsiyonel)')}</label>
           <input value={location} onChange={(e) => setLocation(e.target.value)} placeholder={t('örn. Mühendislik Fakültesi, B Blok')} />

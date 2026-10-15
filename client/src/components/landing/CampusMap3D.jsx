@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { isSmallScreen } from '../../utils/webgl';
 import * as THREE from 'three';
 import data from './turkeyMap.json';
 
@@ -225,7 +226,8 @@ export default function CampusMap3D({ mode = 'dark', active = true, animate = tr
   const colors = COLORS[mode] || COLORS.dark;
   return (
     <Canvas
-      dpr={[1, 1.75]}
+      // Telefonda çözünürlük biraz düşük tutulur (GPU ve pil)
+      dpr={[1, isSmallScreen() ? 1.5 : 1.75]}
       camera={CAMERA}
       gl={GL}
       // Görünmezken "demand": yalnızca ilk kare (ve gerekirse sığdırma) çizilir,

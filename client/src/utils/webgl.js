@@ -59,6 +59,18 @@ export function prefersLightweight() {
   return false;
 }
 
+// Türkiye haritası için daha esnek kural: harita artık tek bir örneklenmiş
+// çizim ve yalnızca ekrandayken kare üretiyor, telefonlarda da akıcı.
+// Yalnızca veri tasarrufu açıksa ya da cihaz gerçekten zayıfsa (2 çekirdek /
+// 2 GB ve altı) yüklenmez; o zaman düz harita CSS ile canlandırılır.
+export function mapPrefersLightweight() {
+  if (typeof window === 'undefined') return true;
+  const nav = window.navigator || {};
+  if (nav.connection?.saveData) return true;
+  if ((nav.hardwareConcurrency || 8) <= 2 || (nav.deviceMemory || 8) <= 2) return true;
+  return false;
+}
+
 // Ağır 3D parçası ne zaman yüklensin: WebGL varsa, veri tasarrufu kapalıysa ve
 // sayfa ilk çizimini bitirdikten sonra (tarayıcı boşa çıkınca)
 export function useDeferredWebGL(delay = 1200) {

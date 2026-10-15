@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Mail } from '../icons';
+import { GithubLogo, Mail } from '../icons';
 import { useI18n } from '../../i18n';
 import { SITE } from '../../constants/site';
 
@@ -21,6 +21,7 @@ const COLUMNS = [
       { label: 'Gizlilik Politikası', to: '/gizlilik' },
       { label: 'Kullanım Şartları', to: '/kullanim-sartlari' },
       { label: 'Topluluk Kuralları', to: '/topluluk-kurallari' },
+      { label: 'Mesafeli Satış Sözleşmesi', to: '/mesafeli-satis-sozlesmesi' },
     ],
   },
   {
@@ -28,7 +29,7 @@ const COLUMNS = [
     links: [
       { label: 'SSS', href: '#sss' },
       { label: 'Şikayet Bildir', to: '/topluluk-kurallari' },
-      { label: 'İletişim', href: 'mailto:' + SITE.contactEmail },
+      { label: 'İletişim', href: '#iletisim' },
     ],
   },
 ];
@@ -46,11 +47,25 @@ export default function Footer() {
             <p className="mt-3 max-w-xs text-[0.8125rem] leading-relaxed text-paper-muted">
               {t("Yalnızca doğrulanmış üniversite öğrencileri için kapalı bir kampüs topluluğu.")}
             </p>
-            <div className="mt-5 flex gap-3">
-              <a href={`mailto:${SITE.contactEmail}`} aria-label={t("E-posta")} className="rounded-full border border-line p-2 text-paper-muted transition-colors hover:text-paper">
-                <Mail size={16} />
-              </a>
-            </div>
+            {/* Bize ulaş: e-posta adresi ve GitHub açıkça yazılı (yalnızca simge değil) */}
+            <ul id="iletisim" className="mt-6 space-y-2.5 scroll-mt-24" aria-label={t('Bize ulaş')}>
+              <li>
+                <a href={`mailto:${SITE.contactEmail}`} className="landing-contact-link">
+                  <span className="landing-contact-icon" aria-hidden="true">
+                    <Mail size={16} />
+                  </span>
+                  {SITE.contactEmail}
+                </a>
+              </li>
+              <li>
+                <a href={SITE.github} target="_blank" rel="noopener noreferrer" className="landing-contact-link">
+                  <span className="landing-contact-icon" aria-hidden="true">
+                    <GithubLogo size={16} />
+                  </span>
+                  {SITE.github.replace(/^https?:\/\//, '')}
+                </a>
+              </li>
+            </ul>
           </div>
 
           {COLUMNS.map((col) => (

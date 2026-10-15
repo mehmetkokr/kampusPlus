@@ -43,6 +43,10 @@ export default function RegisterPage() {
     passwordConfirm: '',
     universityId: '',
   });
+  // KVKK: şartlar + aydınlatma ve yurt dışına aktarım rızası zorunlu,
+  // kampanya/yenilik e-postaları (ticari ileti) isteğe bağlı
+  const [consents, setConsents] = useState({ terms: false, transfer: false, marketing: false });
+  const toggleConsent = (key) => (e) => setConsents((c) => ({ ...c, [key]: e.target.checked }));
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false); // hesap oluşturuluyor
   const [sending, setSending] = useState(false); // kod gönderiliyor
@@ -102,6 +106,10 @@ export default function RegisterPage() {
     if (form.password !== form.passwordConfirm) {
       document.getElementById('reg-pass2')?.focus();
       return toast.error('Şifreler birbiriyle eşleşmiyor.');
+    }
+    if (!consents.terms || !consents.transfer) {
+      document.getElementById('reg-consent-terms')?.focus();
+      return toast.error(tx('Devam etmek için kullanım şartlarını ve veri aktarımı onayını kabul etmelisin.'));
     }
 
     setSending(true);
@@ -178,6 +186,9 @@ export default function RegisterPage() {
         fullName: toTitleCaseTR(form.fullName),
         email: normalizeEmail(form.email),
         code: joined,
+        consentTerms: consents.terms,
+        consentTransfer: consents.transfer,
+        consentMarketing: consents.marketing,
       });
       await waitSuccess();
       login(res.data.token, res.data.user, true, res.data.fileToken);
@@ -336,6 +347,33 @@ export default function RegisterPage() {
                 )}
 
                 <p className="field-hint register-next-note">{tx("Doğum tarihi, bölüm ve ne aradığın gibi bilgileri e-postanı doğruladıktan sonra soracağız.")}</p>
+
+                <fieldset className="consent-group">
+                  <legend className="sr-only">{tx('Onaylar')}</legend>
+                  <label className="consent-row">
+                    <input id="reg-consent-terms" type="checkbox" checked={consents.terms} onChange={toggleConsent('terms')} required />
+                    <span>
+                      <Link to="/kullanim-sartlari" target="_blank" rel="noopener">{tx('Kullanım Şartları')}</Link>
+                      {tx('’nı ve ')}
+                      <Link to="/topluluk-kurallari" target="_blank" rel="noopener">{tx('Topluluk Kuralları')}</Link>
+                      {tx('’nı kabul ediyorum; kişisel verilerimin ')}
+                      <Link to="/gizlilik" target="_blank" rel="noopener">{tx('KVKK Aydınlatma Metni')}</Link>
+                      {tx('’ne göre işleneceğini okudum.')} <em>{tx('(zorunlu)')}</em>
+                    </span>
+                  </label>
+                  <label className="consent-row">
+                    <input type="checkbox" checked={consents.transfer} onChange={toggleConsent('transfer')} required />
+                    <span>
+                      {tx('Hizmetin çalışması için verilerimin yurt dışındaki sunucularda (ABD ve AB) saklanmasına ve işlenmesine açık rıza veriyorum.')} <em>{tx('(zorunlu)')}</em>
+                    </span>
+                  </label>
+                  <label className="consent-row">
+                    <input type="checkbox" checked={consents.marketing} onChange={toggleConsent('marketing')} />
+                    <span>
+                      {tx('Kampanya, etkinlik ve yeniliklerden e-postayla haberdar olmak istiyorum.')} <em>{tx('(isteğe bağlı)')}</em>
+                    </span>
+                  </label>
+                </fieldset>
 
                 <button className="btn" type="submit" disabled={sending}>
                   {sending ? tx("Kod gönderiliyor…") : tx("Devam et")}

@@ -6,6 +6,8 @@ import { API_BASE_URL } from '../config';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import PaywallModal from '../components/PaywallModal';
+import PremiumCenter from '../components/PremiumCenter';
+import ConsentSettings from '../components/ConsentSettings';
 import PageHeader from '../components/PageHeader';
 import PushSettings from '../components/PushSettings';
 import AccountSecurity from '../components/AccountSecurity';
@@ -19,7 +21,7 @@ const VISIBILITY_OPTIONS = [
 ];
 
 export default function SettingsPage() {
-  const { t, lang, setLang } = useI18n();
+  const { t, setLang } = useI18n();
   const navigate = useNavigate();
   const { user, setUser, logout } = useAuth();
   const toast = useToast();
@@ -46,21 +48,8 @@ export default function SettingsPage() {
   const [deleteError, setDeleteError] = useState('');
 
   const [showPaywall, setShowPaywall] = useState(false);
-  const [cancelling, setCancelling] = useState(false);
+  const [premiumKey, setPremiumKey] = useState(0);
 
-  async function handleCancelPremium() {
-    if (!(await confirm({ title: 'Otomatik yenileme kapatılsın mı?', message: 'Premium üyeliğin mevcut süre dolana kadar devam eder, sonra yenilenmez.', confirmLabel: 'Yenilemeyi kapat' }))) return;
-    setCancelling(true);
-    try {
-      const res = await api.post('/premium/cancel');
-      setUser((prev) => ({ ...prev, premiumAutoRenew: res.data.premiumAutoRenew }));
-      toast.success('Otomatik yenileme kapatıldı.');
-    } catch (err) {
-      toast.error(err.response?.data?.error || 'İşlem tamamlanamadı.');
-    } finally {
-      setCancelling(false);
-    }
-  }
 
   useEffect(() => {
     if (user) {
@@ -201,39 +190,17 @@ export default function SettingsPage() {
         onBack={() => navigate('/profile')}
       />
 
-      {/* ---------- Premium ---------- */}
-      <div className={`settings-premium-card ${user.isPremium ? 'is-active' : ''}`}>
-        <div className="settings-premium-card-top">
-          <Crown size={20} color={user.isPremium ? 'var(--amber)' : 'var(--text-muted)'} />
-          <h4>{user.isPremium ? t("Premium Üyesin") : t("KampüsPlus Premium")}</h4>
-          {user.isPremium && <span className="premium-badge">{t("AKTİF")}</span>}
-        </div>
-        {user.isPremium ? (
-          <>
-            <p>
-              {user.premiumUntil
-                ? t('Üyeliğin {date} tarihine kadar aktif. Tüm üniversitelerdeki kişileri görebilirsin.', { date: new Date(user.premiumUntil).toLocaleDateString(lang === 'en' ? 'en-GB' : 'tr-TR') })
-                : t("Tüm üniversitelerdeki kişileri görebilirsin.")}
-            </p>
-            {user.premiumUntil && user.premiumAutoRenew === false ? (
-              <p className="muted">{t("Otomatik yenileme kapalı. Süre dolunca üyeliğin yenilenmez.")}</p>
-            ) : user.premiumUntil ? (
-              <button className="btn-secondary" onClick={handleCancelPremium} disabled={cancelling}>
-                {cancelling ? t("İşleniyor...") : t("Otomatik Yenilemeyi Kapat")}
-              </button>
-            ) : null}
-          </>
-        ) : (
-          <>
-            <p>{t('Şu an sadece {uni} içindeki kişileri görebiliyorsun. Premium ile tüm üniversitelerden kişilerle tanış, aramada sınır olmadan sonuç gör.', { uni: user.university?.name || '' })}</p>
-            <button className="btn-premium-cta" onClick={() => setShowPaywall(true)}>
-              <Crown size={16} /> {t("Premium'a Geç")}
-            </button>
-          </>
-        )}
-      </div>
+      {/* ---------- Premium: durum, beğeni hakkı, boost, planlar ---------- */}
+      <PremiumCenter key={premiumKey} onOpenPaywall={() => setShowPaywall(true)} />
 
-      {showPaywall && <PaywallModal onClose={() => setShowPaywall(false)} />}
+      {showPaywall && (
+        <PaywallModal
+          onClose={() => setShowPaywall(false)}
+          onUpgraded={() => setPremiumKey((k) => k + 1)}
+          contextText={t('Daha fazla beğeni, Boost ve tüm Türkiye için bir plan seç.')}
+          hideScope
+        />
+      )}
 
       {/* ---------- Bildirimler ---------- */}
       <div className="card">
@@ -432,6 +399,9 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
+
+      {/* ---------- İzinler ve onaylar (KVKK) ---------- */}
+      <ConsentSettings />
 
       {/* ---------- Görünüm ve Dil ---------- */}
       <div className="card" style={{ marginTop: 16 }}>

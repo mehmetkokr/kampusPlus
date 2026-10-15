@@ -599,7 +599,7 @@ router.post('/comments/:id/like', requireAuth, async (req, res) => {
 // HİKAYELER (24 saat)
 // ---------------------------------------------------------
 
-const STORY_LIFETIME_MS = 12 * 60 * 60 * 1000;
+const STORY_LIFETIME_MS = 24 * 60 * 60 * 1000;
 
 // GET /api/stories — karşılıklı takipleştiklerim + kendim, süresi dolmamış, yazara göre gruplu
 router.get('/stories', requireAuth, async (req, res) => {
@@ -637,7 +637,7 @@ router.get('/stories', requireAuth, async (req, res) => {
   }
 });
 
-// POST /api/stories — yeni hikaye paylaş (12 saat sonra otomatik süresi dolar)
+// POST /api/stories — yeni hikaye paylaş (24 saat sonra otomatik süresi dolar)
 router.post('/stories', requireAuth, upload.single('photo'), verifyUpload('photo'), async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ error: 'Fotoğraf gerekli.' });

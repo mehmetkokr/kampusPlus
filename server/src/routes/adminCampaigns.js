@@ -84,8 +84,9 @@ async function sendEmails(recipients, content) {
 router.post('/campaigns/preview', async (req, res) => {
   try {
     const where = audienceWhere(req.body.audience);
-    const [count, sample] = await Promise.all([
+    const [count, emailCount, sample] = await Promise.all([
       prisma.user.count({ where }),
+      prisma.user.count({ where: { ...where, marketingConsent: true } }),
       prisma.user.findMany({
         where,
         select: { id: true, fullName: true, university: { select: { name: true } } },
@@ -93,7 +94,7 @@ router.post('/campaigns/preview', async (req, res) => {
         take: 5,
       }),
     ]);
-    res.json({ count, sample });
+    res.json({ count, emailCount, sample });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Hedef kitle hesaplanamadı.' });
@@ -154,7 +155,7 @@ router.post('/campaigns', async (req, res) => {
     const audience = normalizeAudience(req.body.audience);
     const recipients = await prisma.user.findMany({
       where: audienceWhere(audience),
-      select: { id: true, email: true, fullName: true },
+      select: { id: true, email: true, fullName: true, marketingConsent: true },
     });
     if (!recipients.length) return res.status(400).json({ error: 'Bu filtrelerle eşleşen öğrenci yok.' });
 
@@ -190,8 +191,10 @@ router.post('/campaigns', async (req, res) => {
     }
 
     // E-postalar arka planda gider; sayı bitince kampanyaya yazılır
+    // E-posta yalnızca ticari ileti izni veren öğrencilere gider (6563 s. Kanun);
+    // uygulama içi bildirim ve duyuru bandı herkese
     if (v.channels.includes('email')) {
-      sendEmails(recipients, { title: v.title, text: v.text, link: v.link })
+      sendEmails(recipients.filter((r) => r.marketingConsent), { title: v.title, text: v.text, link: v.link })
         .then((sent) => prisma.campaign.update({ where: { id: campaign.id }, data: { emailCount: sent } }))
         .catch((err) => console.error('Kampanya e-posta sayısı yazılamadı:', err));
     }

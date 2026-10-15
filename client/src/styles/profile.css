@@ -2,7 +2,11 @@
    Profilim (pf-*): ortalanmış profil kartı, 2×3 galeri, çip seçimleri,
    sabit "Değişiklikleri kaydet"
    ========================================================================== */
-.pf-page { padding-bottom: 24px; }
+/* Alt boşluk yalnızca masaüstünde daraltılır; telefonda .container'ın alt
+   boşluğu yüzen menünün (dock) altında son öğenin kalmamasını sağlar */
+@media (min-width: 1024px) {
+  .pf-page { padding-bottom: 24px; }
+}
 .pf-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 2px 14px; }
 .pf-header h1 { margin: 0; font-size: 30px; font-weight: 800; letter-spacing: -0.03em; color: var(--text); }
 .pf-header-actions { display: flex; align-items: center; gap: 8px; }

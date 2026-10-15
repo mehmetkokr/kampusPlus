@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown } from '../icons';
 import Reveal from './Reveal';
 import { useI18n } from '../../i18n';
+import { SITE } from '../../constants/site';
 
 const FAQS = [
   {
@@ -23,9 +24,15 @@ const FAQS = [
   },
   {
     q: 'Kullanması ücretli mi?',
-    a: 'Doğrulama, keşfet, eşleşme, sohbet ve kulüpler ücretsiz. İsteğe bağlı Premium ile seni beğenenleri görebilir ve aramada diğer üniversitelerdeki öğrencilere de ulaşabilirsin.',
+    a: 'Doğrulama, keşfet, eşleşme, sohbet ve kulüpler ücretsiz; ücretsiz hesapla günde 5 kişiyi beğenebilirsin. Haftalık, aylık ya da yıllık Premium ile daha fazla (aylık ve yıllıkta sınırsız) beğeni, profilini öne çıkaran Boost, seni beğenenleri görme ve diğer üniversitelerdeki öğrencilere ulaşma hakkı kazanırsın.',
+  },
+  {
+    q: 'Size nasıl ulaşabilirim?',
+    a: 'Soru, öneri ve destek talepleri için {email} adresine yazabilirsin. En kısa sürede yanıtlarız.',
   },
 ];
+const PARAMS = { email: SITE.contactEmail };
+const fill = (text) => text.replace(/\{(\w+)\}/g, (m, k) => PARAMS[k] ?? m);
 
 export default function FAQSection() {
   const { t } = useI18n();
@@ -42,7 +49,7 @@ export default function FAQSection() {
       mainEntity: FAQS.map((f) => ({
         '@type': 'Question',
         name: f.q,
-        acceptedAnswer: { '@type': 'Answer', text: f.a },
+        acceptedAnswer: { '@type': 'Answer', text: fill(f.a) },
       })),
     });
     document.head.appendChild(el);
@@ -82,7 +89,7 @@ export default function FAQSection() {
                         exit={{ height: 0, opacity: 0 }}
                         transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
                       >
-                        <p className="px-5 pb-4 text-[0.8438rem] leading-relaxed text-paper-muted">{t(f.a)}</p>
+                        <p className="px-5 pb-4 text-[0.8438rem] leading-relaxed text-paper-muted">{t(f.a, PARAMS)}</p>
                       </motion.div>
                     )}
                   </AnimatePresence>

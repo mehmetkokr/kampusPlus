@@ -5,7 +5,7 @@ const { requireAuth } = require('../middleware/auth');
 const { createNotification } = require('../lib/notifications');
 const { isBlockedEitherWay, getBlockedUserIds } = require('../lib/block');
 const { previewOf } = require('../lib/chat');
-const { isPremiumActive } = require('../lib/premium');
+const { isPremiumActive, likeQuota } = require('../lib/premium');
 const { reachCheck } = require('../lib/privacy');
 const fs = require('fs');
 const path = require('path');
@@ -28,7 +28,7 @@ router.post('/like/:userId', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'Bu kullanıcıyla etkileşime giremezsin.' });
     }
     // Kart Modu kapalıysa (beğenen ya da beğenilen) beğeni gönderilemez
-    const REACH_SELECT = { id: true, swipeEnabled: true, universityId: true, profileVisibility: true, isAdmin: true, isFrozen: true, isBanned: true, isPremium: true, premiumUntil: true };
+    const REACH_SELECT = { id: true, swipeEnabled: true, universityId: true, profileVisibility: true, isAdmin: true, isFrozen: true, isBanned: true, isPremium: true, premiumUntil: true, premiumPlan: true };
     const [me, target] = await Promise.all([
       prisma.user.findUnique({ where: { id: fromUserId }, select: REACH_SELECT }),
       Number.isInteger(toUserId) ? prisma.user.findUnique({ where: { id: toUserId }, select: REACH_SELECT }) : null,
@@ -39,6 +39,19 @@ router.post('/like/:userId', requireAuth, async (req, res) => {
     if (!reach.ok) return res.status(reach.status).json({ error: reach.error, code: reach.code });
     if (!me.swipeEnabled || !target.swipeEnabled) {
       return res.status(403).json({ error: "Bu kullanıcı Kart Modu'nu kullanmıyor." });
+    }
+
+    // Günlük beğeni sınırı (ücretsiz 5, haftalık plan 50, aylık/yıllık sınırsız).
+    // Aynı kişiyi yeniden beğenmek yeni hak harcamaz.
+    const alreadyLiked = await prisma.like.findUnique({ where: { fromUserId_toUserId: { fromUserId, toUserId } }, select: { id: true } });
+    let quota = await likeQuota(prisma, me);
+    if (!alreadyLiked && quota.left === 0) {
+      return res.status(429).json({
+        error: 'Bugünkü beğeni hakkın doldu.',
+        code: 'LIKE_LIMIT',
+        limit: quota.limit,
+        resetsAt: quota.resetsAt,
+      });
     }
 
     // Önce "geç" demiş olsa bile (Premium geri alma vb.) beğeni geçerli olur
@@ -74,7 +87,8 @@ router.post('/like/:userId', requireAuth, async (req, res) => {
       ]);
     }
 
-    res.json({ liked: true, matched: !!match, match });
+    if (!alreadyLiked && quota.left !== null) quota = { ...quota, used: quota.used + 1, left: quota.left - 1 };
+    res.json({ liked: true, matched: !!match, match, likes: quota });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Beğeni işlenemedi.' });

@@ -68,7 +68,7 @@ otomatik çalışır (`.github/workflows/ci.yml`).
 - **Hesap:** okul e-postasına 6 haneli kodla kayıt, yılda bir okul e-postasıyla yeniden doğrulama (mezunlar listelerden gizlenir), okul e-postasını değiştirme (aynı üniversite, kodla), şifre değiştirme, şifremi unuttum, verilerimi indir (KVKK), hesabı dondurma/silme, öğrenci belgesiyle onaylı rozet
 - **Keşfet:** liste ve Kart Modu (swipe), karşılıklı beğenide eşleşme, "Seni beğenenler", ilgi alanı ve "ne arıyorsun" etiketleri; "geç" denen kişi 30 gün gelmez, Premium'da son karar geri alınır
 - **Sohbet:** fotoğraf, sesli mesaj ve dosya eki, okundu bilgisi, yanıtlama (alıntı), emoji tepkileri, mesaj geri alma, mesaj şikâyeti, eşleşmeyi kaldırma, engelleme; sohbet listesinde son mesaj, saat ve okunmamış sayısı, menüde okunmamış rozeti
-- **Akış:** gönderi, yorum, beğeni, kaydetme, 12 saatlik hikâyeler, takip
+- **Akış:** gönderi, yorum, beğeni, kaydetme, 24 saatlik hikâyeler, takip
 - **Kulüpler:** roller (başkan/yönetici), atma/yasaklama/susturma, kulüp sohbeti, sabitleme, anketler, etkinlikler ve katılım, etkinlikten önce katılımcılara hatırlatma
 - **Bildirimler:** uygulama içinde anlık; bildirim izni verilen cihazlara uygulama kapalıyken de (Web Push). iPhone'da uygulama ana ekrana eklenince çalışır
 - **Telefona yükleme (PWA):** ana ekrana eklenir, tam ekran açılır, internet yokken bilgi ekranı gösterir

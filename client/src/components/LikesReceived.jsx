@@ -85,7 +85,8 @@ export default function LikesReceived({ data, onChanged, onGoCards }) {
 
         {showPaywall && (
           <PaywallModal
-            contextText={`${count} kişi seni beğendi. Premium ile kim olduklarını gör ve hemen eşleş.`}
+            contextText={t('{count} kişi seni beğendi. Premium ile kim olduklarını gör ve hemen eşleş.', { count })}
+            hideScope
             onClose={() => setShowPaywall(false)}
             onUpgraded={onChanged}
           />

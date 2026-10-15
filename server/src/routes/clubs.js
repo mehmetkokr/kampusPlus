@@ -15,6 +15,12 @@ const { numericIdParams, optionalId } = require('../lib/idParams');
 const router = express.Router();
 
 numericIdParams(router);
+
+// Etkinlik başladıktan 24 saat sonra "bitti" sayılır (bitiş saati tutulmuyor)
+const EVENT_DURATION_MS = 24 * 60 * 60 * 1000;
+const EVENT_MAX_AHEAD_MS = 366 * 24 * 60 * 60 * 1000;
+const PAST_EVENTS_SHOWN = 5;
+const isEventOver = (startsAt) => new Date(startsAt).getTime() + EVENT_DURATION_MS < Date.now();
 const MEMBER_SELECT = {
   id: true,
   role: true,
@@ -441,7 +447,9 @@ router.get('/:id/events', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'Etkinlikleri görmek için kulübe üye olmalısın.' });
     }
 
-    const events = await prisma.event.findMany({
+    // Yaklaşanlar yakından uzağa; bitenler en sona, en yeniden eskiye ve en
+    // fazla PAST_EVENTS_SHOWN tane (önceden en eski etkinlik hep en üstte kalıyordu)
+    const allEvents = await prisma.event.findMany({
       where: { clubId },
       orderBy: { startsAt: 'asc' },
       include: {
@@ -453,14 +461,17 @@ router.get('/:id/events', requireAuth, async (req, res) => {
       },
     });
 
+    const upcoming = allEvents.filter((e) => !isEventOver(e.startsAt));
+    const past = allEvents.filter((e) => isEventOver(e.startsAt)).reverse().slice(0, PAST_EVENTS_SHOWN);
     res.json(
-      events
+      [...upcoming, ...past]
         .map((e) => ({
           id: e.id,
           title: e.title,
           description: e.description,
           location: e.location,
           startsAt: e.startsAt,
+          isPast: isEventOver(e.startsAt),
           creator: e.creator,
           goingCount: e.rsvps.length,
           imGoing: e.rsvps.some((r) => r.userId === req.userId),
@@ -493,6 +504,8 @@ router.post('/:id/events', requireAuth, async (req, res) => {
     if (location.error) return res.status(400).json({ error: location.error });
     const startsAt = new Date(req.body.startsAt);
     if (!req.body.startsAt || Number.isNaN(startsAt.getTime())) return res.status(400).json({ error: 'Etkinlik tarihi gerekli.' });
+    if (startsAt.getTime() < Date.now() - 5 * 60 * 1000) return res.status(400).json({ error: 'Etkinlik tarihi geçmişte olamaz.' });
+    if (startsAt.getTime() > Date.now() + EVENT_MAX_AHEAD_MS) return res.status(400).json({ error: 'Etkinlik en fazla bir yıl sonrası için planlanabilir.' });
 
     const event = await prisma.event.create({
       data: {
@@ -573,9 +586,19 @@ router.post('/:id/events/:eventId/rsvp', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'Katılmak için kulübe üye olmalısın.' });
     }
 
+    // Etkinlik gerçekten bu kulübün olmalı: aksi halde bir kulübün üyesi, başka
+    // bir kulübün etkinliğine adresi değiştirerek katılabilirdi
+    const event = await prisma.event.findUnique({ where: { id: eventId }, select: { clubId: true, startsAt: true } });
+    if (!event || event.clubId !== clubId) return res.status(404).json({ error: 'Etkinlik bulunamadı.' });
+
     const existing = await prisma.eventRSVP.findUnique({
       where: { eventId_userId: { eventId, userId: req.userId } },
     });
+
+    // Bitmiş etkinliğe yeni katılım olmaz (vazgeçmek serbest)
+    if (!existing && isEventOver(event.startsAt)) {
+      return res.status(400).json({ error: 'Bu etkinlik sona erdi.' });
+    }
 
     if (existing) {
       await prisma.eventRSVP.delete({ where: { id: existing.id } });
@@ -796,7 +819,7 @@ router.post('/:id/polls/:pollId/vote', requireAuth, async (req, res) => {
     if (poll.closed) return res.status(400).json({ error: 'Bu anket kapandı.' });
 
     const validIds = new Set(poll.options.map((o) => o.id));
-    let optionIds = [...new Set((req.body.optionIds || []).map(Number))].filter((id) => validIds.has(id));
+    let optionIds = [...new Set((Array.isArray(req.body.optionIds) ? req.body.optionIds : []).map(Number))].filter((id) => validIds.has(id));
     if (!poll.multiple) optionIds = optionIds.slice(0, 1);
 
     await prisma.$transaction([

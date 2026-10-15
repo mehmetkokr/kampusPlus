@@ -166,3 +166,4 @@ Wifi WifiHigh
 X X
 XCircle XCircle
 ZapIcon Lightning
+GithubLogo GithubLogo

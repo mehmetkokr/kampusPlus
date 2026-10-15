@@ -166,8 +166,15 @@ test('premium: satın alma, iptal sonrası süre sonuna kadar devam', async () =
   assert.equal(status.data.isPremium, false);
   assert.equal(status.data.checkoutAvailable, true);
 
-  const bought = await api('POST', '/api/premium/activate', { token, body: { plan: 'monthly' } });
+  const noConsent = await api('POST', '/api/premium/activate', { token, body: { plan: 'monthly' } });
+  assert.equal(noConsent.status, 400, 'sözleşme onayı olmadan satın alınamaz');
+  assert.equal(noConsent.data.code, 'CONSENT_REQUIRED');
+
+  const bought = await api('POST', '/api/premium/activate', { token, body: { plan: 'monthly', consent: true } });
   assert.equal(bought.status, 200);
+  assert.equal(bought.data.plan, 'monthly');
+  assert.equal(bought.data.boostCredits, 3);
+  assert.equal(bought.data.likes.limit, null, 'aylık planda beğeni sınırsız');
   assert.equal(bought.data.premiumAutoRenew, true);
 
   const cancelled = await api('POST', '/api/premium/cancel', { token });
@@ -178,7 +185,7 @@ test('premium: satın alma, iptal sonrası süre sonuna kadar devam', async () =
   assert.equal(me.data.premiumAutoRenew, false);
   assert.ok(new Date(me.data.premiumUntil) > new Date());
 
-  const renewed = await api('POST', '/api/premium/activate', { token, body: { plan: 'monthly' } });
+  const renewed = await api('POST', '/api/premium/activate', { token, body: { plan: 'monthly', consent: true } });
   assert.equal(renewed.data.premiumAutoRenew, true);
 });
 
@@ -563,4 +570,48 @@ test('geçersiz kimlikli adresler 500 değil 404 döner', async () => {
   }
   assert.equal((await api('POST', '/api/users/abc/block', { token })).status, 404);
   assert.equal((await api('DELETE', '/api/matches/0', { token })).status, 404);
+});
+
+test('premium planları herkese açık, kişisel veri içermez', async () => {
+  const res = await api('GET', '/api/premium/plans');
+  assert.equal(res.status, 200);
+  assert.equal(typeof res.data.checkoutAvailable, 'boolean');
+  assert.deepEqual(res.data.plans.map((p) => p.key), ['weekly', 'monthly', 'yearly']);
+  for (const p of res.data.plans) assert.deepEqual(Object.keys(p).sort(), ['amount', 'boosts', 'dailyLikes', 'days', 'key', 'label']);
+  assert.equal(res.data.freeDailyLikes, 5);
+  assert.equal(res.data.boostMinutes, 30);
+});
+
+test('kulüp etkinlikleri: geçmiş tarih reddedilir, başka kulübün etkinliğine katılınamaz, bitenler sonda', async () => {
+  const owner = await createUser('etkinlik-baskan@test.edu.tr');
+  const token = await tokenFor('etkinlik-baskan@test.edu.tr');
+  const mkClub = (name) =>
+    prisma.club.create({
+      data: { name, universityId: owner.universityId, creatorId: owner.id, memberships: { create: { userId: owner.id, role: 'owner' } } },
+    });
+  const clubA = await mkClub('Etkinlik Kulübü A');
+  const other = await createUser('etkinlik-diger@test.edu.tr');
+  const clubB = await prisma.club.create({
+    data: { name: 'Etkinlik Kulübü B', universityId: other.universityId, creatorId: other.id, memberships: { create: { userId: other.id, role: 'owner' } } },
+  });
+
+  const past = await api('POST', `/api/clubs/${clubA.id}/events`, { token, body: { title: 'Eski', startsAt: new Date(Date.now() - 86400000).toISOString() } });
+  assert.equal(past.status, 400);
+  const far = await api('POST', `/api/clubs/${clubA.id}/events`, { token, body: { title: 'Çok ileri', startsAt: new Date(Date.now() + 400 * 86400000).toISOString() } });
+  assert.equal(far.status, 400);
+  const ok = await api('POST', `/api/clubs/${clubA.id}/events`, { token, body: { title: 'Yakında', startsAt: new Date(Date.now() + 86400000).toISOString() } });
+  assert.equal(ok.status, 201, JSON.stringify(ok.data));
+
+  // Başka kulübün etkinliği, A kulübünün adresiyle katılınamaz
+  const evB = await prisma.event.create({ data: { clubId: clubB.id, creatorId: other.id, title: 'B etkinliği', startsAt: new Date(Date.now() + 86400000) } });
+  const cross = await api('POST', `/api/clubs/${clubA.id}/events/${evB.id}/rsvp`, { token });
+  assert.equal(cross.status, 404);
+
+  // Biten etkinlik: listede sonda, isPast işaretli, yeni katılım yok
+  const old = await prisma.event.create({ data: { clubId: clubA.id, creatorId: owner.id, title: 'Bitti', startsAt: new Date(Date.now() - 2 * 86400000) } });
+  const list = await api('GET', `/api/clubs/${clubA.id}/events`, { token });
+  assert.equal(list.status, 200);
+  assert.deepEqual(list.data.map((e) => [e.title, e.isPast]), [['Yakında', false], ['Bitti', true]]);
+  const late = await api('POST', `/api/clubs/${clubA.id}/events/${old.id}/rsvp`, { token });
+  assert.equal(late.status, 400);
 });

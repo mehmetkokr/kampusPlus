@@ -11,6 +11,11 @@ test('yeni öğrenci okul e-postasıyla kaydolur ve başlangıç adımını tama
   await page.getByLabel('Üniversite E-posta Adresi').fill(email);
   await page.getByLabel('Şifre', { exact: true }).fill(PASSWORD);
   await page.getByLabel('Şifre (tekrar)').fill(PASSWORD);
+  // Zorunlu onaylar verilmeden kod gönderilmez
+  await page.getByRole('button', { name: 'Devam et' }).click();
+  await expect(page.getByRole('heading', { name: 'E-postanı doğrula' })).toBeHidden();
+  await page.getByRole('checkbox', { name: /Kullanım Şartları/ }).check();
+  await page.getByRole('checkbox', { name: /yurt dışındaki sunucularda/ }).check();
   await page.getByRole('button', { name: 'Devam et' }).click();
 
   await expect(page.getByRole('heading', { name: 'E-postanı doğrula' })).toBeVisible();
@@ -36,6 +41,8 @@ test('yeni öğrenci okul e-postasıyla kaydolur ve başlangıç adımını tama
   const user = await db().user.findUnique({ where: { email } });
   expect(user.department).toBe('Fizik');
   expect(user.schoolEmailVerifiedAt).not.toBeNull();
+  expect(user.transferConsentAt).not.toBeNull();
+  expect(user.marketingConsent).toBe(false);
   expect(await db().analyticsEvent.count({ where: { userId: user.id, name: { in: ['signup', 'onboarding_done'] } } })).toBe(2);
 });
 

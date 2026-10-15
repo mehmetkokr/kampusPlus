@@ -7,6 +7,7 @@ import SafetySection from '../components/landing/SafetySection';
 import WhySection from '../components/landing/WhySection';
 import ClubLeadersSection from '../components/landing/ClubLeadersSection';
 import FAQSection from '../components/landing/FAQSection';
+import PricingSection from '../components/landing/PricingSection';
 import CTASection from '../components/landing/CTASection';
 import Footer from '../components/landing/Footer';
 import StickyCTA from '../components/landing/StickyCTA';
@@ -24,6 +25,7 @@ export default function LandingPage() {
         <WhySection />
         <ClubLeadersSection />
         <SafetySection />
+        <PricingSection />
         <FAQSection />
         <CTASection />
       </main>

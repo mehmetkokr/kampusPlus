@@ -21,6 +21,7 @@ const { toTitleCaseTR, normalizeEmail, escapeHtml } = require('../lib/text');
 const { parseBirthDate } = require('../lib/age');
 const { ALLOWED_INTENTS } = require('../lib/intents');
 const { isSchoolEmail } = require('../lib/schoolEmail');
+const { CONSENT_VERSION } = require('../lib/premium');
 
 // ---------------------------------------------------------
 // Kayıt e-posta doğrulama kodu
@@ -221,6 +222,18 @@ router.post('/register', registerLimiter, upload.private.single('studentDoc'), v
       return res.status(400).json({ error: 'Şifreler birbiriyle eşleşmiyor.' });
     }
 
+    // KVKK: kullanım şartları + aydınlatma onayı ve yurt dışına aktarım açık
+    // rızası zorunlu; ticari ileti izni isteğe bağlı. Form çok parçalı da
+    // gelebildiği için "true" metni de kabul edilir. Kod hakkı harcanmadan önce.
+    const yes = (v) => v === true || v === 'true';
+    const consentTerms = yes(req.body.consentTerms);
+    const consentTransfer = yes(req.body.consentTransfer);
+    const consentMarketing = yes(req.body.consentMarketing);
+    if (!consentTerms || !consentTransfer) {
+      await discardUpload(req);
+      return res.status(400).json({ error: 'Devam etmek için kullanım şartlarını ve veri aktarımı onayını kabul etmelisin.', code: 'CONSENT_REQUIRED' });
+    }
+
     // E-posta doğrulama kodu
     const record = await prisma.emailVerificationCode.findUnique({ where: { email } });
     if (!record || new Date(record.expiresAt) < new Date()) {
@@ -292,6 +305,11 @@ router.post('/register', registerLimiter, upload.private.single('studentDoc'), v
         intent: intentValue,
         verificationStatus,
         schoolEmailVerifiedAt: new Date(),
+        termsAcceptedAt: new Date(),
+        transferConsentAt: new Date(),
+        marketingConsent: consentMarketing,
+        marketingConsentAt: consentMarketing ? new Date() : null,
+        consentVersion: CONSENT_VERSION,
       },
     });
 

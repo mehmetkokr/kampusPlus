@@ -22,7 +22,7 @@ function parseBirthDate(input) {
   const date = new Date(input);
   if (Number.isNaN(date.getTime())) return { error: 'Geçerli bir doğum tarihi giriniz.' };
   const age = ageFromBirthDate(date);
-  if (age < MIN_AGE) return { error: `Kampüs+'a katılmak için en az ${MIN_AGE} yaşında olmalısın.` };
+  if (age < MIN_AGE) return { error: `kampüs·'e katılmak için en az ${MIN_AGE} yaşında olmalısın.` };
   if (age > MAX_AGE) return { error: 'Geçerli bir doğum tarihi giriniz.' };
   return { date, age };
 }

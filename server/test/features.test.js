@@ -281,3 +281,71 @@ test('yönetici uyarısı: aynı tür uyarı aralık dolmadan tekrar gönderilme
   assert.equal(await alertAdmins('deneme', alert), false, 'ikinci uyarı bastırılmalı');
   assert.equal(await alertAdmins('baska-tur', alert), true, 'farklı tür ayrı sayılmalı');
 });
+
+test('beğeni sınırı: ücretsiz günde 5, haftalık plan 50, aylık sınırsız; aynı kişiyi tekrar beğenmek hak harcamaz', async () => {
+  const extra = { department: 'Kimya', classYear: 1, birthDate: new Date('2003-01-01'), age: 23, schoolEmailVerifiedAt: new Date() };
+  const me = await createUser('kota-ben@test.edu.tr', extra);
+  const token = await tokenFor(me.email);
+  const others = [];
+  for (let i = 0; i < 7; i++) others.push(await createUser(`kota-${i}@test.edu.tr`, extra));
+
+  for (let i = 0; i < 5; i++) {
+    const r = await api('POST', `/api/matches/like/${others[i].id}`, { token });
+    assert.equal(r.status, 200, JSON.stringify(r.data));
+    assert.equal(r.data.likes.left, 4 - i);
+  }
+  const again = await api('POST', `/api/matches/like/${others[0].id}`, { token });
+  assert.equal(again.status, 200, 'zaten beğenilmiş kişi hak harcamaz');
+  const sixth = await api('POST', `/api/matches/like/${others[5].id}`, { token });
+  assert.equal(sixth.status, 429);
+  assert.equal(sixth.data.code, 'LIKE_LIMIT');
+  assert.ok(new Date(sixth.data.resetsAt) > new Date());
+
+  await prisma.user.update({ where: { id: me.id }, data: { isPremium: true, premiumPlan: 'weekly', premiumUntil: new Date(Date.now() + 7 * 86400000) } });
+  const weekly = await api('POST', `/api/matches/like/${others[5].id}`, { token });
+  assert.equal(weekly.status, 200);
+  assert.equal(weekly.data.likes.limit, 50);
+
+  await prisma.user.update({ where: { id: me.id }, data: { premiumPlan: 'monthly' } });
+  const monthly = await api('POST', `/api/matches/like/${others[6].id}`, { token });
+  assert.equal(monthly.data.likes.left, null);
+});
+
+test('boost: hak yoksa başlamaz, başlayınca hak düşer ve profil destenin başına gelir', async () => {
+  const extra = { department: 'Tarih', classYear: 3, birthDate: new Date('2003-01-01'), age: 23, schoolEmailVerifiedAt: new Date() };
+  const viewer = await createUser('boost-bakan@test.edu.tr', extra);
+  const filler = [];
+  for (let i = 0; i < 3; i++) filler.push(await createUser(`boost-dolgu-${i}@test.edu.tr`, extra));
+  const booster = await createUser('boost-ben@test.edu.tr', extra);
+  const tBooster = await tokenFor(booster.email);
+
+  const none = await api('POST', '/api/premium/boost', { token: tBooster });
+  assert.equal(none.status, 402);
+  assert.equal(none.data.code, 'NO_BOOSTS');
+
+  await prisma.user.update({ where: { id: booster.id }, data: { boostCredits: 2 } });
+  const started = await api('POST', '/api/premium/boost', { token: tBooster });
+  assert.equal(started.status, 200, JSON.stringify(started.data));
+  assert.equal(started.data.boostCredits, 1);
+  assert.ok(new Date(started.data.boostUntil) > new Date());
+  assert.equal((await api('POST', '/api/premium/boost', { token: tBooster })).status, 409, 'aynı anda ikinci boost yok');
+
+  const deck = (await api('GET', '/api/profile/discover', { token: await tokenFor(viewer.email) })).data;
+  assert.equal(deckIds(deck)[0], booster.id, 'boosttaki profil destenin başında');
+  assert.ok(!('boostUntil' in deck[0]) && !('boosted' in deck[0]), 'kimin boost aldığı açıklanmaz');
+});
+
+test('KVKK onayları: eski hesap onay ister, iki onay da zorunlu, ticari ileti izni ayrı', async () => {
+  const u = await createUser('onay@test.edu.tr');
+  const token = await tokenFor(u.email);
+  assert.equal((await api('GET', '/api/profile/me', { token })).data.consentRequired, true);
+  assert.equal((await api('PUT', '/api/profile/me/consents', { token, body: { terms: true, transfer: false } })).status, 400);
+  const ok = await api('PUT', '/api/profile/me/consents', { token, body: { terms: true, transfer: true, marketing: true } });
+  assert.equal(ok.status, 200);
+  assert.equal(ok.data.consentRequired, false);
+  const me = (await api('GET', '/api/profile/me', { token })).data;
+  assert.equal(me.consentRequired, false);
+  assert.equal(me.marketingConsent, true);
+  const off = await api('PUT', '/api/profile/me/consents', { token, body: { marketing: false } });
+  assert.equal(off.data.marketingConsent, false);
+});

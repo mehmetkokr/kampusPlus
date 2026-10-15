@@ -22,6 +22,7 @@ const PUBLIC_PAGES = {
   '/gizlilik': { title: 'Gizlilik Politikası', desc: 'kampüs· kişisel verilerini nasıl işler? KVKK aydınlatma metni.', priority: '0.3', changefreq: 'yearly' },
   '/kullanim-sartlari': { title: 'Kullanım Şartları', desc: 'kampüs· kullanım şartları.', priority: '0.3', changefreq: 'yearly' },
   '/topluluk-kurallari': { title: 'Topluluk Kuralları', desc: 'kampüs· topluluğunu güvenli tutan kurallar.', priority: '0.3', changefreq: 'yearly' },
+  '/mesafeli-satis-sozlesmesi': { title: 'Mesafeli Satış Sözleşmesi', desc: 'kampüs· Premium planları, ücretler, otomatik yenileme ve cayma hakkı bilgilendirmesi.', priority: '0.3', changefreq: 'yearly' },
 };
 
 // Oturum gerektiren uygulama sayfaları (React Router yolları)

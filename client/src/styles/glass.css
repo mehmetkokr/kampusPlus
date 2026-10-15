@@ -613,6 +613,20 @@
 .club-card { border-radius: 22px; }
 .suggest-card { border-radius: 22px; }
 .event-row { border-radius: 20px; }
+/* Bitmiş etkinlik: soluk, tarihi gri, "Sona erdi" etiketi; katılım düğmesi gizli */
+.event-row.is-past { opacity: 0.62; }
+.event-row.is-past .event-date { filter: grayscale(1); }
+.event-ended {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 650;
+  vertical-align: 2px;
+  color: var(--text-muted);
+  background: var(--surface-2);
+}
 
 .match-row,
 .club-card,
@@ -4993,3 +5007,141 @@ button.announcement-main { cursor: pointer; }
 
 /* Açık temada altın Premium düğmesi beyaz yazıyla (koyu yazı turuncu zeminde okunmuyordu) */
 [data-theme='light'] .btn-premium-cta { color: #ffffff; }
+
+/* ---------- Ayarlar > Premium merkezi ---------- */
+.premium-center-loading { display: grid; place-items: center; min-height: 120px; color: var(--text-muted); }
+.premium-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  margin: 14px 0;
+}
+.premium-stats > div {
+  display: grid;
+  gap: 2px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--glass-soft, var(--surface-2));
+  border: 1px solid var(--glass-border, var(--border));
+}
+.premium-stats dt { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 650; color: var(--text-muted); }
+.premium-stats dt svg { color: var(--amber-soft); }
+.premium-stats dd { margin: 2px 0 0; font-size: 18px; font-weight: 800; letter-spacing: -0.01em; color: var(--text); font-variant-numeric: tabular-nums; }
+.premium-stats dd.premium-stat-note { margin: 0; font-size: 11.5px; font-weight: 400; letter-spacing: 0; color: var(--text-faint); }
+.premium-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.premium-actions > button {
+  display: inline-flex;
+  flex: 1 1 180px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  margin: 0;
+  width: auto;
+  border-radius: 999px;
+}
+.premium-table-wrap { overflow-x: auto; border-radius: 14px; border: 1px solid var(--glass-border, var(--border)); }
+.premium-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.premium-table th,
+.premium-table td { padding: 10px 10px; text-align: left; vertical-align: top; }
+.premium-table td:first-of-type { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.premium-table-period { display: block; font-size: 11px; color: var(--text-faint); }
+.premium-table thead th { font-size: 11.5px; font-weight: 700; color: var(--text-muted); background: var(--glass-soft, var(--surface-2)); }
+.premium-table tbody th { font-weight: 700; color: var(--text); }
+.premium-table tbody tr + tr { border-top: 1px solid var(--glass-border, var(--border)); }
+.premium-table tr.is-current { background: color-mix(in srgb, var(--accent-fill) 12%, transparent); }
+.premium-table tr.is-current th::after { content: ' ✓'; color: var(--amber-soft); }
+.premium-footnote { margin: 10px 0 0; font-size: 12px; line-height: 1.5; color: var(--text-faint); }
+.premium-cancel {
+  min-height: 44px;
+  margin-top: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Kart Modu: bugünkü beğeni hakkı */
+.swipe-quota {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.swipe-quota svg { color: var(--coral, #ff375f); }
+.swipe-quota.is-empty { color: var(--text); }
+
+/* ---------- KVKK onayları (kayıt formu ve onay penceresi) ---------- */
+.consent-group { display: grid; gap: 10px; margin: 16px 0 6px; padding: 0; border: 0; }
+.consent-row,
+.paywall-consent {
+  /* Genel form etiketi stili (büyük harf, kalın, aralıklı) burada istenmez */
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+}
+.consent-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  text-align: left;
+  cursor: pointer;
+}
+.consent-row input { flex: none; width: 18px; height: 18px; margin-top: 1px; accent-color: var(--accent-fill); }
+.consent-row a { color: var(--amber-soft); font-weight: 600; }
+.consent-row em { font-style: normal; color: var(--text-faint); }
+.consent-gate { z-index: 1500; }
+.consent-gate-sheet { display: grid; gap: 12px; max-width: 460px; }
+.consent-gate-icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto;
+  border-radius: 50%;
+  color: #fff;
+  background: var(--accent-fill);
+}
+.consent-gate-sheet h3 { margin: 0; text-align: center; font-size: 19px; }
+.consent-gate-lead { margin: 0 0 4px; text-align: center; font-size: 13px; line-height: 1.5; color: var(--text-muted); }
+.consent-gate-foot { margin: 0; text-align: center; font-size: 12px; color: var(--text-faint); }
+.consent-gate-logout {
+  min-height: 32px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.consent-dates { display: grid; gap: 8px; margin: 12px 0 0; }
+.consent-dates > div { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+.consent-dates dt { color: var(--text-muted); }
+.consent-dates dd { margin: 0; font-weight: 600; color: var(--text); text-align: right; }
+
+/* Mesafeli satış sözleşmesindeki plan tablosu */
+.legal-table-wrap { overflow-x: auto; border-radius: 14px; border: 1px solid var(--border); }
+.legal-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.legal-table th,
+.legal-table td { padding: 10px 12px; text-align: left; white-space: nowrap; }
+.legal-table thead th { font-size: 12.5px; color: var(--text-muted); background: var(--surface-2); }
+.legal-table tbody tr + tr { border-top: 1px solid var(--border); }
+
+/* Metin içindeki bağlantılar yalnızca renkle değil alt çizgiyle de ayırt edilir */
+.consent-row a,
+.paywall-consent a,
+.consent-settings-lead a { text-decoration: underline; text-underline-offset: 2px; }

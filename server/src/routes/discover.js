@@ -5,7 +5,7 @@ const express = require('express');
 const prisma = require('../lib/prisma');
 const { requireAuth } = require('../middleware/auth');
 const { getOnlineUserIds } = require('../socket');
-const { isPremiumActive } = require('../lib/premium');
+const { isPremiumActive, isBoosting } = require('../lib/premium');
 const { discoverableUserWhere, sharesActivity } = require('../lib/privacy');
 
 const router = express.Router();
@@ -92,11 +92,23 @@ router.get('/home', requireAuth, async (req, res) => {
         if (department) candidateWhere.department = department;
         if (classYear) candidateWhere.classYear = Number(classYear);
 
-        const candidates = await prisma.user.findMany({
-          where: candidateWhere,
-          select: { ...CARD_SELECT, interests: true, hobbies: true, _count: { select: { followers: true } } },
-          take: 60,
+        // Boost'taki profiller önce alınır (60 kişilik sınıra takılmasınlar) ve
+        // listenin başında gösterilir
+        const suggestSelect = { ...CARD_SELECT, interests: true, hobbies: true, boostUntil: true, _count: { select: { followers: true } } };
+        const boostedNow = await prisma.user.findMany({
+          where: { ...candidateWhere, boostUntil: { gt: new Date() } },
+          select: suggestSelect,
+          orderBy: { boostUntil: 'desc' },
+          take: 10,
         });
+        const candidates = [
+          ...boostedNow,
+          ...(await prisma.user.findMany({
+            where: { ...candidateWhere, id: { notIn: [...excludeIds, ...boostedNow.map((b) => b.id)] } },
+            select: suggestSelect,
+            take: 60,
+          })),
+        ];
 
         // Ortak takip edilen kişi sayısını hesapla (basit "ortak arkadaş" yaklaşımı)
         const candidateFollowingRows = await prisma.follow.findMany({
@@ -136,13 +148,15 @@ router.get('/home', requireAuth, async (req, res) => {
             followerCount: c._count.followers,
             mutualCount,
             commonTags,
+            boosted: isBoosting(c),
             online: sharesActivity(c) && onlineIds.has(c.id),
             lastActiveLabel: sharesActivity(c) ? lastActiveLabel(c.lastSeenAt, onlineIds.has(c.id)) : null,
           };
         });
         // Ortak arkadaş, sonra ortak ilgi alanı sayısına göre öne çıkar
-        suggested.sort((a, b) => b.mutualCount - a.mutualCount || b.commonTags.length - a.commonTags.length);
-        suggested = suggested.slice(0, 20);
+        suggested.sort((a, b) => Number(b.boosted) - Number(a.boosted) || b.mutualCount - a.mutualCount || b.commonTags.length - a.commonTags.length);
+        // Kimin boost satın aldığı başkalarına açıklanmaz: işaret yalnızca sıralamada kullanılır
+        suggested = suggested.slice(0, 20).map(({ boosted: _boosted, ...rest }) => rest);
         return suggested;
       })(),
       (async () => {

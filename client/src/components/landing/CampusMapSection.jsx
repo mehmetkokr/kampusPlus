@@ -4,12 +4,13 @@ import { MapPin } from '../icons';
 import api from '../../api';
 import Reveal from './Reveal';
 import { useI18n } from '../../i18n';
-import { hasWebGL, prefersLightweight, useNearViewport, useThemeMode } from '../../utils/webgl';
+import { hasWebGL, mapPrefersLightweight, useNearViewport, useThemeMode } from '../../utils/webgl';
 import data from './turkeyMap.json';
 
 // "Türkiye genelinde" bölümü: 81 ilin hepsinde en az bir üniversite var.
 // WebGL varsa kabartma 3D harita (ekrana yaklaşınca yüklenir ve yalnızca
-// görünürken çizilir); yoksa aynı veriden düz bir SVG harita.
+// görünürken çizilir, telefonlarda da); yoksa aynı veriden düz bir SVG harita,
+// illeri soldan sağa tarayan aynı ışık dalgasıyla.
 const CampusMap3D = lazy(() => import('./CampusMap3D'));
 
 const pts = data.rings.flat();
@@ -27,7 +28,8 @@ function FlatMap() {
         <polygon key={i} points={ring.map(([x, y]) => `${x},${-y}`).join(' ')} />
       ))}
       {data.provinces.map((p) => (
-        <circle key={p.name} cx={p.x} cy={-p.y} r="0.08" />
+        // 3D haritadaki dalgayla aynı zamanlama: soldan sağa ~3,3 sn'de tarar
+        <circle key={p.name} cx={p.x} cy={-p.y} r="0.08" style={{ animationDelay: `${(((p.x - MIN_X) / (MAX_X - MIN_X)) * 3.33).toFixed(2)}s` }} />
       ))}
     </svg>
   );
@@ -48,8 +50,8 @@ export default function CampusMapSection() {
     io.observe(el);
     return () => io.disconnect();
   }, [boxRef]);
-  // Telefonda ve zayıf cihazda düz harita kalır (3D sahne yüklenmez)
-  const [webgl] = useState(() => typeof window !== 'undefined' && hasWebGL() && !prefersLightweight());
+  // Veri tasarrufunda ve çok zayıf cihazda düz (CSS ile canlanan) harita kalır
+  const [webgl] = useState(() => typeof window !== 'undefined' && hasWebGL() && !mapPrefersLightweight());
   const [loaded, setLoaded] = useState(false);
   const [ready, setReady] = useState(false); // 3D'nin ilk karesi çizildi
   const [uniCount, setUniCount] = useState(null);

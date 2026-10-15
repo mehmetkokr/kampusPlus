@@ -31,15 +31,19 @@ model University {
 // kimliğini tutmak için ayrıldı.
 // ----------------------------
 model PaymentLog {
-  id          Int      @id @default(autoincrement())
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId      Int
-  plan        String   @default("monthly") // monthly | yearly
-  amount      Float
-  provider    String   @default("mock") // mock | iyzico
-  providerRef String?
-  status      String   @default("success") // success | failed | refunded
-  createdAt   DateTime @default(now())
+  id            Int       @id @default(autoincrement())
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        Int
+  plan          String    @default("monthly") // weekly | monthly | yearly
+  amount        Float
+  provider      String    @default("mock") // mock | iyzico
+  providerRef   String?
+  status        String    @default("success") // success | failed | refunded
+  // Satın alırken verilen boost hakkı ve mesafeli satış sözleşmesi /
+  // cayma hakkı onayının zamanı (6502 s. Kanun, Mesafeli Sözleşmeler Yön.)
+  boostsGranted Int       @default(0)
+  consentAt     DateTime?
+  createdAt     DateTime  @default(now())
 
   @@index([userId])
 }
@@ -123,6 +127,21 @@ model User {
   // Otomatik yenilemeyi kapatmak erişimi hemen kesmez: premiumUntil dolana
   // kadar premium sürer, sonra yenilenmez.
   premiumAutoRenew Boolean   @default(true)
+  // Satın alınan plan (weekly | monthly | yearly); günlük beğeni sınırını belirler.
+  // Eski üyeliklerde boştur ve aylık gibi (sınırsız) sayılır.
+  premiumPlan      String?
+  // Boost: profili kısa süre (bkz. lib/premium.js BOOST_MINUTES) Kart Modu ve
+  // Keşfet'te öne çıkarır. Haklar plan satın alınınca eklenir, süre bitse de kalır.
+  boostCredits     Int       @default(0)
+  boostUntil       DateTime?
+
+  // KVKK: kullanım şartları/aydınlatma onayı, yurt dışına aktarım açık rızası
+  // (sunucular yurt dışında) ve isteğe bağlı ticari ileti izni (6563 s. Kanun)
+  termsAcceptedAt    DateTime?
+  transferConsentAt  DateTime?
+  marketingConsent   Boolean   @default(false)
+  marketingConsentAt DateTime?
+  consentVersion     String?
 
   paymentLogs PaymentLog[]
 
@@ -143,8 +162,8 @@ model User {
   schoolEmailVerifiedAt DateTime?
 
   // Yöneticiler için iki adımlı doğrulama (TOTP, ör. Google Authenticator)
-  totpSecret  String?
-  totpEnabled Boolean @default(false)
+  totpSecret   String?
+  totpEnabled  Boolean @default(false)
   // En son kabul edilen 30 sn'lik pencere: aynı kod iki kez kullanılamasın
   totpLastStep Int?
 
@@ -223,6 +242,7 @@ model User {
   clubPollVotes    ClubPollVote[] @relation("ClubPollVotes")
 
   @@index([universityId])
+  @@index([boostUntil])
 }
 
 // ----------------------------
@@ -238,6 +258,7 @@ model Like {
 
   @@unique([fromUserId, toUserId]) // bir kullanıcı aynı kişiyi sadece bir kez beğenebilir
   @@index([toUserId])
+  @@index([fromUserId, createdAt]) // günlük beğeni sınırı sayımı
 }
 
 // ----------------------------

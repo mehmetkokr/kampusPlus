@@ -11,7 +11,7 @@ const { disconnectUser } = require('../socket');
 const { requireAuth } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 const { verifyUpload } = require('../lib/fileValidation');
-const { isPremiumActive } = require('../lib/premium');
+const { isPremiumActive, activePlan, isBoosting, CONSENT_VERSION } = require('../lib/premium');
 const { runDocumentOcr } = require('../lib/ocr');
 const fsp = require('fs/promises');
 const { removeUploadedFile, deleteUserWithFiles } = require('../lib/uploads');
@@ -83,7 +83,6 @@ router.get('/me', requireAuth, async (req, res) => {
         notifyMessages: true,
         profileVisibility: true,
         showActivityStatus: true,
-  swipeEnabled: true,
         swipeEnabled: true,
         theme: true,
         language: true,
@@ -91,6 +90,13 @@ router.get('/me', requireAuth, async (req, res) => {
         isPremium: true,
         premiumUntil: true,
         premiumAutoRenew: true,
+        premiumPlan: true,
+        boostCredits: true,
+        boostUntil: true,
+        termsAcceptedAt: true,
+        transferConsentAt: true,
+        marketingConsent: true,
+        consentVersion: true,
         birthDate: true,
         createdAt: true,
         schoolEmailVerifiedAt: true,
@@ -101,10 +107,54 @@ router.get('/me', requireAuth, async (req, res) => {
     // gerçek (anlık) durumuyla döndür.
     // Özel dosyaları (sohbet ekleri, belge) açmak için kısa ömürlü anahtar
     const fileToken = signFileToken({ id: req.userId, tokenVersion: req.tokenVersion });
-    res.json(withLiveAge({ ...user, isPremium: isPremiumActive(user), fileToken, reverify: reverifyInfo(user) }));
+    // Onay metinleri güncellendiyse ya da hiç alınmadıysa (eski hesaplar)
+    // uygulama girişte bir kez onay ister
+    const consentRequired = user.consentVersion !== CONSENT_VERSION || !user.termsAcceptedAt || !user.transferConsentAt;
+    res.json(
+      withLiveAge({
+        ...user,
+        isPremium: isPremiumActive(user),
+        premiumPlan: activePlan(user),
+        boostUntil: isBoosting(user) ? user.boostUntil : null,
+        consentRequired,
+        fileToken,
+        reverify: reverifyInfo(user),
+      })
+    );
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Profil alınamadı.' });
+  }
+});
+
+// PUT /api/profile/me/consents { terms, transfer, marketing }
+// Kullanım şartları/aydınlatma ve yurt dışına aktarım rızası hizmet için
+// zorunludur (vermek istemeyen hesabını silebilir); ticari ileti izni her an
+// açılıp kapatılabilir.
+router.put('/me/consents', requireAuth, async (req, res) => {
+  try {
+    const { terms, transfer, marketing } = req.body || {};
+    const data = {};
+    if (terms !== undefined || transfer !== undefined) {
+      if (terms !== true || transfer !== true) {
+        return res.status(400).json({ error: 'Hizmeti kullanmaya devam etmek için iki onay da gerekli.', code: 'CONSENT_REQUIRED' });
+      }
+      const now = new Date();
+      Object.assign(data, { termsAcceptedAt: now, transferConsentAt: now, consentVersion: CONSENT_VERSION });
+    }
+    if (typeof marketing === 'boolean') {
+      Object.assign(data, { marketingConsent: marketing, marketingConsentAt: marketing ? new Date() : null });
+    }
+    if (Object.keys(data).length === 0) return res.status(400).json({ error: 'Değişiklik yok.' });
+    const user = await prisma.user.update({
+      where: { id: req.userId },
+      data,
+      select: { termsAcceptedAt: true, transferConsentAt: true, marketingConsent: true, consentVersion: true },
+    });
+    res.json({ ...user, consentRequired: user.consentVersion !== CONSENT_VERSION || !user.termsAcceptedAt || !user.transferConsentAt });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Onay kaydedilemedi.' });
   }
 });
 
@@ -499,32 +549,44 @@ router.get('/discover', requireAuth, async (req, res) => {
 
     const myIntents = (me.intent || 'friendship').split(',').map((s) => s.trim()).filter(Boolean);
 
-    const candidates = await prisma.user.findMany({
-      where: {
-        ...discoverableUserWhere(me.universityId),
-        universityId: me.universityId,
-        id: { notIn: excludeIds },
-        verificationStatus: { in: ['auto_verified', 'verified'] },
-        swipeEnabled: true, // Kart Modu'nu kapatanlar destede görünmez
-      },
-      select: {
-        id: true,
-        fullName: true,
-        age: true,
-        department: true,
-        classYear: true,
-        bio: true,
-        photoUrl: true,
-        interests: true,
-        hobbies: true,
-        intent: true,
-        birthDate: true,
-        studentDocStatus: true,
-        university: { select: { name: true } },
-        photos: { orderBy: { position: 'asc' }, select: { id: true, url: true, position: true } },
-      },
+    const deckWhere = {
+      ...discoverableUserWhere(me.universityId),
+      universityId: me.universityId,
+      id: { notIn: excludeIds },
+      verificationStatus: { in: ['auto_verified', 'verified'] },
+      swipeEnabled: true, // Kart Modu'nu kapatanlar destede görünmez
+    };
+    const deckSelect = {
+      id: true,
+      fullName: true,
+      age: true,
+      department: true,
+      classYear: true,
+      bio: true,
+      photoUrl: true,
+      interests: true,
+      hobbies: true,
+      intent: true,
+      birthDate: true,
+      studentDocStatus: true,
+      university: { select: { name: true } },
+      photos: { orderBy: { position: 'asc' }, select: { id: true, url: true, position: true } },
+    };
+    // Boost: şu an öne çıkarılan profiller her zaman destenin başına gelir
+    const now = new Date();
+    const boosted = await prisma.user.findMany({
+      where: { ...deckWhere, boostUntil: { gt: now } },
+      select: deckSelect,
+      orderBy: { boostUntil: 'desc' },
+      take: 10,
+    });
+    const rest = await prisma.user.findMany({
+      where: { ...deckWhere, id: { notIn: [...excludeIds, ...boosted.map((b) => b.id)] } },
+      select: deckSelect,
       take: 60,
     });
+    const boostedIds = new Set(boosted.map((b) => b.id));
+    const candidates = [...boosted, ...rest];
 
     // En az bir ortak "ne arıyorsun" etiketi olan adayları öne çıkar; ortak
     // etiketi olmayanlar da listenin sonunda yer alır (eskiden tamamen
@@ -538,8 +600,8 @@ router.get('/discover', requireAuth, async (req, res) => {
     const iWantDating = wantsDating(me.intent);
     const visibleCandidates = candidates.filter((c) => iWantDating || visibleIntentFor(c.intent, me.intent) !== null);
     const sorted = visibleCandidates
-      .map((c) => ({ c, score: overlapCount(c) }))
-      .sort((a, b) => b.score - a.score)
+      .map((c) => ({ c, boosted: boostedIds.has(c.id), score: overlapCount(c) }))
+      .sort((a, b) => Number(b.boosted) - Number(a.boosted) || b.score - a.score)
       .map(({ c }) => c);
 
     res.json(

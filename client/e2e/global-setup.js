@@ -1,6 +1,10 @@
 // Deneme verisi: bir üniversite, iki öğrenci; Mert, Ayşe'yi önceden beğenmiş
 // (Ayşe beğenince eşleşme olur).
+import { createRequire } from 'node:module';
 import { db, bcrypt, PASSWORD, UNI_DOMAIN, USERS } from './db.js';
+
+// Onay sürümü sunucuyla aynı olsun (yoksa girişte onay penceresi açılır)
+const { CONSENT_VERSION } = createRequire(import.meta.url)('../../server/src/lib/premium.js');
 
 export default async function globalSetup() {
   const prisma = db();
@@ -17,6 +21,9 @@ export default async function globalSetup() {
     intent: 'friendship',
     bio: 'Deneme hesabı',
     schoolEmailVerifiedAt: new Date(),
+    termsAcceptedAt: new Date(),
+    transferConsentAt: new Date(),
+    consentVersion: CONSENT_VERSION,
   };
   const ayse = await prisma.user.create({ data: { ...base, ...USERS.ayse } });
   const mert = await prisma.user.create({ data: { ...base, ...USERS.mert } });

@@ -37,7 +37,7 @@ export default function WhySection() {
     <section id="neden" className="relative py-24 sm:py-28">
       <div className="mx-auto max-w-5xl px-4 sm:px-6">
         <Reveal className="mx-auto max-w-xl text-center">
-          <p className="landing-eyebrow">{t('Neden kampüs·?')}</p>
+          <p className="landing-eyebrow">{t('Farkımız')}</p>
           <h2 className="landing-h2 mt-3">{t('Neden kampüs·?')}</h2>
           <p className="mx-auto mt-4 max-w-md text-[1.0625rem] leading-relaxed text-paper-muted">
             {t('Diğer sosyal uygulamalardan ayrıldığımız noktalar.')}

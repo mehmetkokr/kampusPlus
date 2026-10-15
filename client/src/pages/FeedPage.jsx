@@ -45,7 +45,7 @@ const PAGE_SIZE = 10;
 const CAPTION_MAX = 280;
 
 // Akış sekmeleri: kampüsteki herkes, takip ettiklerim, benim paylaşımlarım.
-// Gönderiler sen silene kadar kalır; hikayeler 12 saat sonra kaybolur.
+// Gönderiler sen silene kadar kalır; hikayeler 24 saat sonra kaybolur.
 const TABS = [
   { value: 'campus', label: 'Kampüs' },
   { value: 'following', label: 'Takip' },
@@ -243,7 +243,7 @@ export default function FeedPage() {
     formData.append('photo', await compressImage(edited));
     try {
       await api.post('/stories', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
-      toast.success('Hikayen 12 saat boyunca karşılıklı takipleştiklerine görünür.');
+      toast.success('Hikayen 24 saat boyunca karşılıklı takipleştiklerine görünür.');
       loadStoriesAndSidebar();
     } catch (err) {
       toast.error('Hikaye paylaşılamadı.');

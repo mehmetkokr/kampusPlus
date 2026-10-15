@@ -10,6 +10,7 @@ const LINKS = [
   { href: '#ozellikler', label: 'Özellikler' },
   { href: '#kulupler', label: 'Kulüpler' },
   { href: '#guvenlik', label: 'Güvenlik' },
+  { href: '#premium', label: 'Premium' },
   { href: '#sss', label: 'SSS' },
 ];
 
