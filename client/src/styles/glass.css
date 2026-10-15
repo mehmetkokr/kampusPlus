@@ -1747,8 +1747,8 @@ img:not([src]) {
 .side-nav-pill::after { background: var(--accent-solid); box-shadow: none; }
 .side-nav-logo, .side-nav-upsell-icon { color: #ffffff; }
 
-/* Premium: altın, düz */
-.premium-badge { background: var(--gold); color: #1c1a0a; box-shadow: none; }
+/* Premium: k+ logosunun mavi-çivit geçişi (sitenin her yerinde aynı) */
+.premium-badge { background: linear-gradient(135deg, #2e9bff, #4f46e5); color: #ffffff; box-shadow: none; }
 
 /* İstatistik değerleri: degrade yazı yok */
 
@@ -1778,7 +1778,7 @@ img:not([src]) {
 .switch input:checked + .switch-track {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
 }
-.btn-premium-cta { background: var(--gold); color: #1c1a0a; }
+.btn-premium-cta { background: linear-gradient(135deg, #2e9bff, #4f46e5); color: #ffffff; }
 
 /* ==========================================================================
    Hikaye görüntüleyici: üst çubuk, ⋯ menüsü, görüntüleyenler paneli
@@ -3863,8 +3863,8 @@ select option:disabled {
   gap: 3px;
   padding: 3px 7px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--gold) 18%, transparent);
-  color: var(--gold);
+  background: linear-gradient(135deg, #2e9bff, #4f46e5);
+  color: #ffffff;
   font-size: 10.5px;
   font-weight: 800;
 }
@@ -4783,8 +4783,36 @@ button.announcement-main { cursor: pointer; }
   width: min(100%, 380px);
   text-align: center;
 }
-.match-faces { display: flex; margin-bottom: 14px; }
-.match-faces > span + span { margin-left: -22px; }
+.match-faces { position: relative; display: flex; margin-bottom: 18px; }
+.match-faces > span:nth-child(2) { margin-left: -22px; }
+/* Buluşma noktasındaki kalp: iki fotoğrafın arasında, altta */
+.match-heart {
+  position: absolute;
+  left: 50%;
+  bottom: -10px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin-left: -22px;
+  border-radius: 50%;
+  color: #fff;
+  background: linear-gradient(135deg, #ff5a7a, #ff2d55);
+  border: 3px solid var(--surface);
+  box-shadow: 0 10px 24px -8px rgba(255, 45, 85, 0.65);
+}
+.match-initials {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  font-size: 34px;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  color: #fff;
+  background: linear-gradient(135deg, #2e9bff, #4f46e5);
+}
 .match-face {
   display: grid;
   place-items: center;
@@ -4795,7 +4823,7 @@ button.announcement-main { cursor: pointer; }
   border: 4px solid var(--surface);
   background: var(--surface-2);
   color: var(--text-faint);
-  box-shadow: 0 0 0 3px var(--amber-soft), 0 18px 40px -18px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.5);
 }
 .match-face img { width: 100%; height: 100%; object-fit: cover; }
 .match-content h2 {
@@ -4989,10 +5017,7 @@ button.announcement-main { cursor: pointer; }
 }
 .social-badge svg { position: relative; filter: drop-shadow(0 1px 1px rgba(0, 30, 90, 0.35)); }
 
-/* Açık temada altın rozet yazısı yeterli kontrastta (WCAG AA) */
-[data-theme='light'] .quick-badge { color: #8a3d00; }
 
-/* Açık temada altın Premium düğmesi beyaz yazıyla (koyu yazı turuncu zeminde okunmuyordu) */
 [data-theme='light'] .btn-premium-cta { color: #ffffff; }
 
 /* ---------- Ayarlar > Premium merkezi ---------- */

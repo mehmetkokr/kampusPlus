@@ -50,7 +50,7 @@ export function formatNotification(n, t = plain) {
       };
     case 'birthday':
       return {
-        text: t('İyi ki doğdun! kampüs· ailesi olarak seni kutluyoruz.'),
+        text: t('İyi ki doğdun! kampüs+ ailesi olarak seni kutluyoruz.'),
         link: '/profile',
       };
     case 'weekly_summary':

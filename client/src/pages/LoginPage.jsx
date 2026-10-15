@@ -76,7 +76,7 @@ export default function LoginPage() {
 
       <div className="auth-content">
         <div className="auth-wordmark">
-          {t("kampüs")}<span className="dot">·</span>
+          {t("kampüs")}<span className="dot">+</span>
         </div>
         <p className="auth-tagline">{t("sadece kendi üniversitenden insanlarla tanış")}</p>
 

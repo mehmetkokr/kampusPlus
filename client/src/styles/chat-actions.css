@@ -55,12 +55,21 @@
 }
 .msg-quote:disabled { cursor: default; font-style: italic; }
 
-/* Tepki çipleri */
+/* Emojiler cihazın kendi renkli emoji yazı tipiyle (iPhone/Mac'te Apple emojileri) */
+.msg-reaction,
+.msg-actions-emoji button {
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', 'Segoe UI Symbol', sans-serif;
+}
+
+/* Tepki çipleri: balonun alt köşesine yaslanan küçük kapsül (iMessage gibi) */
 .msg-reactions {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  margin-top: -2px;
+  margin-top: -12px;
+  padding: 0 6px;
 }
 .msg-reaction {
   display: inline-flex;
@@ -68,64 +77,98 @@
   gap: 3px;
   min-height: 28px;
   padding: 0 8px;
-  border: 1px solid var(--border);
+  border: 2px solid var(--bg);
   border-radius: 999px;
-  background: var(--surface);
+  background: var(--surface-2);
   color: var(--text);
-  font: inherit;
-  font-size: 14px;
+  font-size: 15px;
+  line-height: 1;
   cursor: pointer;
+  box-shadow: 0 4px 12px -6px rgba(0, 0, 0, 0.45);
+  animation: msg-reaction-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-.msg-reaction span { font-size: 12px; font-weight: 600; color: var(--text-muted); font-variant-numeric: tabular-nums; }
-.msg-reaction.mine {
-  border-color: color-mix(in srgb, var(--amber-soft) 60%, transparent);
-  background: color-mix(in srgb, var(--amber-soft) 14%, var(--surface));
-}
+.msg-reaction span { font-family: var(--font-body); font-size: 12px; font-weight: 650; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.msg-reaction.mine { background: color-mix(in srgb, var(--accent-fill) 22%, var(--surface-2)); }
+.msg-reaction.mine span { color: var(--text); }
+@keyframes msg-reaction-pop { from { transform: scale(0.4); opacity: 0; } }
 
-/* Mesaja dokununca açılan eylem çubuğu */
+/* Mesaja dokununca: üstte cam kapsül tepki çubuğu, altta seçenek listesi */
 .msg-actions {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 8px;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: var(--surface);
-  box-shadow: 0 12px 32px -18px rgba(0, 0, 0, 0.55);
-  animation: msg-actions-in 0.16s cubic-bezier(0.23, 1, 0.32, 1);
+  align-items: inherit;
+  gap: 8px;
+  animation: msg-actions-in 0.2s cubic-bezier(0.23, 1, 0.32, 1);
 }
 @keyframes msg-actions-in {
-  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  from { opacity: 0; transform: translateY(-6px) scale(0.96); }
 }
-.msg-actions-emoji { display: flex; gap: 2px; }
+.msg-actions-emoji {
+  display: flex;
+  gap: 2px;
+  padding: 5px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--text) 9%, transparent);
+  background: color-mix(in srgb, var(--surface) 86%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: 0 14px 34px -14px rgba(0, 0, 0, 0.55);
+}
 .msg-actions-emoji button {
-  width: 40px;
-  height: 40px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
   border: 0;
-  border-radius: 12px;
+  border-radius: 50%;
   background: none;
-  font-size: 22px;
+  font-size: 27px;
+  line-height: 1;
   cursor: pointer;
-  transition: transform 0.15s ease, background 0.15s ease;
+  /* Emojiler sırayla, hafif yaylanarak belirir */
+  animation: msg-emoji-in 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 28ms);
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.15s ease;
 }
+@keyframes msg-emoji-in { from { transform: scale(0.3) translateY(8px); opacity: 0; } }
 .msg-actions-emoji button:hover,
-.msg-actions-emoji button:focus-visible { background: var(--surface-2); transform: scale(1.12); outline: none; }
-.msg-actions-row { display: flex; gap: 4px; flex-wrap: wrap; }
+.msg-actions-emoji button:focus-visible { transform: scale(1.22) translateY(-3px); outline: none; }
+.msg-actions-emoji button:focus-visible { background: color-mix(in srgb, var(--accent-fill) 16%, transparent); }
+.msg-actions-emoji button:active { transform: scale(0.92); }
+.msg-actions-emoji button.is-picked { background: color-mix(in srgb, var(--accent-fill) 26%, transparent); }
+
+.msg-actions-row {
+  display: flex;
+  flex-direction: column;
+  min-width: 190px;
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--text) 9%, transparent);
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: 0 14px 34px -14px rgba(0, 0, 0, 0.5);
+}
 .msg-actions-row button {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 6px;
-  min-height: 40px;
-  padding: 0 12px;
+  justify-content: space-between;
+  flex-direction: row-reverse;
+  gap: 12px;
+  min-height: 44px;
+  padding: 0 14px;
   border: 0;
-  border-radius: 10px;
-  background: var(--surface-2);
+  background: none;
   color: var(--text);
   font: inherit;
-  font-size: 13.5px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 500;
+  text-align: left;
   cursor: pointer;
 }
+.msg-actions-row button + button { border-top: 1px solid color-mix(in srgb, var(--text) 8%, transparent); }
+.msg-actions-row button:hover,
+.msg-actions-row button:focus-visible { background: color-mix(in srgb, var(--text) 6%, transparent); outline: none; }
 .msg-actions-row button.danger { color: var(--coral); }
 
 /* Alıntıya dokununca hedef mesaj kısa süre vurgulanır */
@@ -175,6 +218,7 @@
 .reply-bar button:hover { background: var(--surface-2); color: var(--text); }
 
 @media (prefers-reduced-motion: reduce) {
-  .msg-actions, .msg-flash .message-bubble, .msg-flash .message-photo, .msg-flash .file-bubble { animation: none; }
+  .msg-actions, .msg-flash .message-bubble, .msg-flash .message-photo, .msg-flash .file-bubble,
+  .msg-reaction, .msg-actions-emoji button { animation: none; }
   .msg-actions-emoji button { transition: none; }
 }

@@ -73,10 +73,10 @@ const COLLAPSE_KEY = 'kp-admin-collapsed';
 
 function Brand() {
   return (
-    <Link to="/admin" className="adm-brand" style={{ textDecoration: 'none' }} aria-label="kampüs· yönetim">
+    <Link to="/admin" className="adm-brand" style={{ textDecoration: 'none' }} aria-label="kampüs+ yönetim">
       <BrandMark className="mark" size={32} />
       <span className="txt">
-        kampüs<span className="dot">·</span> <small>yönetim</small>
+        kampüs<span className="dot">+</span> <small>yönetim</small>
       </span>
     </Link>
   );

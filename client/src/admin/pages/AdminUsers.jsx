@@ -194,6 +194,23 @@ function UserDrawer({ id, onClose, onChanged }) {
             </div>
           )}
 
+          {/* Uygunsuz isim düzeltme: öğrenci ismini kendisi değiştiremez */}
+          <div className="adm-card" style={{ padding: 14 }}>
+            <h4 className="adm-card-title"><span>İsmi düzelt</span></h4>
+            <p className="adm-card-sub">Küfür, cinsel içerik ya da sahte isim içeren hesaplar için. Yeni isim aynı filtreden geçer.</p>
+            <form
+              style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}
+              onSubmit={(e) => {
+                e.preventDefault();
+                const name = new FormData(e.currentTarget).get('fullName');
+                patch({ fullName: name }, 'İsim güncellendi.');
+              }}
+            >
+              <input className="adm-input" name="fullName" defaultValue={u.fullName} maxLength={80} aria-label="Yeni ad soyad" style={{ flex: 1, minWidth: 180 }} />
+              <button type="submit" className="adm-btn" disabled={busy}>Kaydet</button>
+            </form>
+          </div>
+
           <div className="adm-card" style={{ padding: 14 }}>
             <h4 className="adm-card-title"><span><Gift size={16} /> Hediye Premium</span></h4>
             <p className="adm-card-sub">Ödül, çekiliş ya da kampüs elçisi için. Gelire sayılmaz; öğrenciye bildirim gider.</p>

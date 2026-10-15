@@ -58,7 +58,7 @@ export default function ResetPasswordPage() {
 
       <div className="auth-content">
         <div className="auth-wordmark">
-          {t("kampüs")}<span className="dot">·</span>
+          {t("kampüs")}<span className="dot">+</span>
         </div>
         <p className="auth-tagline">{t("yeni şifreni belirle")}</p>
 

@@ -1094,7 +1094,7 @@ export default function PhoneMockup({ className = '' }) {
             <div
               className="relative h-[600px] w-full overflow-hidden rounded-[2.3rem] bg-ink"
               role="group"
-              aria-label={t('kampüs· uygulama önizlemesi')}
+              aria-label={t('kampüs+ uygulama önizlemesi')}
               onPointerDown={stopTour}
             >
               <div className="absolute left-1/2 top-2.5 z-30 h-[26px] w-[92px] -translate-x-1/2 rounded-full bg-black" />

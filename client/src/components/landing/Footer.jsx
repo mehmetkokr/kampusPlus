@@ -42,7 +42,7 @@ export default function Footer() {
         <div className="grid gap-10 sm:grid-cols-[1.3fr_repeat(3,1fr)]">
           <div>
             <Link to="/" className="font-display text-xl font-bold text-paper">
-              {t("kampüs")}<span className="text-amber">·</span>
+              {t("kampüs")}<span className="text-amber">+</span>
             </Link>
             <p className="mt-3 max-w-xs text-[0.8125rem] leading-relaxed text-paper-muted">
               {t("Yalnızca doğrulanmış üniversite öğrencileri için kapalı bir kampüs topluluğu.")}
@@ -91,7 +91,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-14 flex flex-col items-center justify-between gap-3 border-t border-line-soft pt-6 text-[0.75rem] text-paper-faint sm:flex-row">
-          <p>© {new Date().getFullYear()} {t("kampüs·. Tüm hakları saklıdır.")}</p>
+          <p>© {new Date().getFullYear()} {t("kampüs+. Tüm hakları saklıdır.")}</p>
           <p>{t("Üniversite öğrencileri için, öğrenciler tarafından tasarlandı.")}</p>
         </div>
       </div>

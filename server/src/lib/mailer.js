@@ -74,7 +74,7 @@ async function sendViaBrevo({ from, replyTo, to, subject, html, text }) {
  */
 async function sendMail({ to, subject, html, text }) {
   const mode = mailMode();
-  const from = process.env.MAIL_FROM || 'kampüs· <bildirim@kampusplus.com.tr>';
+  const from = process.env.MAIL_FROM || 'kampüs+ <bildirim@kampusplus.com.tr>';
   // Kullanıcı "Yanıtla"ya basarsa yanıt bu adrese gider (ör. destek@...);
   // tanımlı değilse gönderen adresine
   const replyTo = (process.env.MAIL_REPLY_TO || '').trim() || undefined;

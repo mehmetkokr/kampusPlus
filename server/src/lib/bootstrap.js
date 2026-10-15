@@ -34,7 +34,7 @@ async function ensureAdmin() {
   await prisma.user.create({
     data: {
       email,
-      fullName: 'kampüs· Yönetim',
+      fullName: 'kampüs+ Yönetim',
       passwordHash: await bcrypt.hash(password, 10),
       universityId: university.id,
       isAdmin: true,

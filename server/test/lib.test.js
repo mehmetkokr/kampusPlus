@@ -119,6 +119,25 @@ test('kelime filtresi: küfürler gizlenir, masum kelimeler kalır', async () =>
   assert.equal(await maskBannedWords('S1KT1R git'), 'S***** git');
   assert.equal(await maskBannedWords('Piçler'), 'P*****');
   assert.equal(await maskBannedWords('yarın götürür müsün, sikke koleksiyonu'), 'yarın götürür müsün, sikke koleksiyonu');
+  // Fiil çekimleri, Türkçe karaktersiz ve bölünmüş yazım
+  assert.equal(await maskBannedWords('Seni sikmege hakkım var'), 'Seni s****** hakkım var');
+  assert.equal(await maskBannedWords('serefsiz yavsak'), 's******* y*****');
+  assert.equal(await maskBannedWords('s.i.k.t.i.r lan'), 's.*.*.*.*.* lan');
+  assert.equal(await maskBannedWords('o r o s p u'), 'o * * * * *');
+  // Masum kelimeler yıldızlanmaz (karaktersiz yazılmış olsalar bile)
+  for (const ok of ['canim sikiliyor', 'sıkıldım', 'sıkmak', 'şikayet', 'sikayet', 'sikinti var', 'got it', 'amin', 'amca', 'Göktürk', 'a b c']) {
+    assert.equal(await maskBannedWords(ok), ok, ok);
+  }
+});
+
+test('isim denetimi: küfür, cinsel içerik, rakam ve bağlantı reddedilir', async () => {
+  const { checkDisplayName } = require('../src/lib/textSafety');
+  for (const bad of ['Seks Yıldızı', 'Orospu Çocuğu', 'Ali 123', 'www.site.com', 'S.i.k.t.i.r Can']) {
+    assert.ok((await checkDisplayName(bad)).error, bad);
+  }
+  for (const good of ['Ayşe Yılmaz', 'Göktürk Şen', 'Sıla Sıkıcı', 'Mehmet Okur']) {
+    assert.equal((await checkDisplayName(good)).value, good, good);
+  }
 });
 
 test('sosyal bağlantı: yalnızca geçerli kullanıcı adı kabul edilir', () => {

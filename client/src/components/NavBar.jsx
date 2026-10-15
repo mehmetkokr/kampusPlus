@@ -68,7 +68,7 @@ function SideNav({ chatUnread }) {
       <Link to="/discover" className="side-nav-brand">
         <BrandMark className="side-nav-logo" size={36} />
         <span className="side-nav-wordmark">
-          {t("kampüs")}<span className="dot">·</span>
+          {t("kampüs")}<span className="dot">+</span>
         </span>
         <span className="side-nav-plus">{t("plus")}</span>
       </Link>

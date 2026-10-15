@@ -52,7 +52,7 @@ export default function BirthDateInput({ id, value, onChange, minAge = 18, maxAg
       return { iso: '', error: t('Geçerli bir tarih gir.') };
     }
     const age = ageOn(date);
-    if (age < minAge) return { iso: '', error: t('kampüs· {n} yaş ve üzeri içindir.', { n: minAge }) };
+    if (age < minAge) return { iso: '', error: t('kampüs+ {n} yaş ve üzeri içindir.', { n: minAge }) };
     if (age > maxAge) return { iso: '', error: t('Geçerli bir doğum yılı gir.') };
     return { iso: `${yn}-${pad(mn)}-${pad(dn)}`, error: '', age };
   }, [d, m, y, minAge, maxAge, t]);

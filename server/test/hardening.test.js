@@ -106,7 +106,7 @@ test('bozuk görsel null döner', () => {
   assert.equal(stripMetadata(Buffer.from([0xff, 0xd8, 0xff, 0xe1, 0xff, 0xff]), 'jpg'), null);
 });
 
-const HTML = `<!doctype html><html><head><title>kampüs· | Doğrulanmış Üniversite Topluluğu</title>
+const HTML = `<!doctype html><html><head><title>kampüs+ | Doğrulanmış Üniversite Topluluğu</title>
 <meta
   name="description"
   content="eski"
@@ -121,7 +121,7 @@ const HTML = `<!doctype html><html><head><title>kampüs· | Doğrulanmış Üniv
 test('SEO: herkese açık sayfa kendi başlığı ve canonical adresiyle, gerçek alan adıyla', () => {
   const page = renderPage(HTML, '/register/', 'https://ornek.up.railway.app');
   assert.equal(page.status, 200);
-  assert.match(page.html, /<title>Kayıt Ol · kampüs·<\/title>/);
+  assert.match(page.html, /<title>Kayıt Ol · kampüs\+<\/title>/);
   assert.match(page.html, /<link rel="canonical" href="https:\/\/ornek\.up\.railway\.app\/register" \/>/);
   assert.match(page.html, /og:image" content="https:\/\/ornek\.up\.railway\.app\/og-image\.png"/);
   assert.match(page.html, /<meta name="description" content="Üniversite e-postanla/);

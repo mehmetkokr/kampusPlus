@@ -71,7 +71,7 @@ export default function PaywallModal({ onClose, onUpgraded, contextText, hideSco
         <div className="paywall-icon">
           <Crown size={26} weight="fill" />
         </div>
-        <h3 id="paywall-title">{t('kampüs· Premium')}</h3>
+        <h3 id="paywall-title">{t('kampüs+ Premium')}</h3>
         <p className="paywall-modal-sub">
           {t(contextText || 'Bu içerik sadece Premium üyelere açık.')}
           {/* Kampüs sınırı yalnızca keşif/arama bağlamında anlamlı (geri alma ya da beğenenlerde değil) */}

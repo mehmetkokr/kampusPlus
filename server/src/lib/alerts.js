@@ -40,10 +40,10 @@ async function alertAdmins(key, { subject, text, path, throttleMs = 60 * 60 * 10
     const { sendToUser } = require('./push');
     const { emails, adminIds } = await recipients();
     const url = panelUrl(path);
-    const html = `<p>${escapeHtml(text).replace(/\n/g, '<br>')}</p><p><a href="${escapeHtml(url)}">Yönetim panelinde aç</a></p><p style="color:#888;font-size:12px">kampüs· otomatik yönetici uyarısı</p>`;
+    const html = `<p>${escapeHtml(text).replace(/\n/g, '<br>')}</p><p><a href="${escapeHtml(url)}">Yönetim panelinde aç</a></p><p style="color:#888;font-size:12px">kampüs+ otomatik yönetici uyarısı</p>`;
     await Promise.all([
-      ...emails.map((to) => sendMail({ to, subject: `[kampüs·] ${subject}`, text: `${text}\n\n${url}`, html }).catch((err) => log('e-posta gönderilemedi:', err.message))),
-      ...adminIds.map((id) => sendToUser(id, { title: 'kampüs· yönetim', body: subject, url: path, tag: `alert-${key}` }).catch(() => 0)),
+      ...emails.map((to) => sendMail({ to, subject: `[kampüs+] ${subject}`, text: `${text}\n\n${url}`, html }).catch((err) => log('e-posta gönderilemedi:', err.message))),
+      ...adminIds.map((id) => sendToUser(id, { title: 'kampüs+ yönetim', body: subject, url: path, tag: `alert-${key}` }).catch(() => 0)),
     ]);
     return true;
   } catch (err) {

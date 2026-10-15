@@ -121,7 +121,7 @@ function ReverifyModal({ onClose }) {
         </div>
         <div style={{ padding: '12px 4px', display: 'flex', flexDirection: 'column', gap: 12 }}>
           <p className="muted" style={{ margin: 0, lineHeight: 1.5 }}>
-            {t('kampüs· yalnızca öğrencilere açık. Kayıtlı okul e-postana 6 haneli bir kod göndereceğiz. Mezun olduysan ya da okul adresin artık çalışmıyorsa kod ulaşmaz; hesabın silinmez ama listelerde görünmez.')}
+            {t('kampüs+ yalnızca öğrencilere açık. Kayıtlı okul e-postana 6 haneli bir kod göndereceğiz. Mezun olduysan ya da okul adresin artık çalışmıyorsa kod ulaşmaz; hesabın silinmez ama listelerde görünmez.')}
           </p>
           {error && <p className="error-text" style={{ margin: 0 }}>{error}</p>}
           {!sentTo ? (

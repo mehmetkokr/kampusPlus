@@ -109,7 +109,7 @@ export default function PremiumCenter({ onOpenPaywall }) {
     <div className={`settings-premium-card ${status.isPremium ? 'is-active' : ''}`}>
       <div className="settings-premium-card-top">
         <Crown size={20} weight="fill" color={status.isPremium ? 'var(--amber)' : 'var(--text-muted)'} />
-        <h4>{status.isPremium ? t('Premium Üyesin') : t('kampüs· Premium')}</h4>
+        <h4>{status.isPremium ? t('Premium Üyesin') : t('kampüs+ Premium')}</h4>
         {status.isPremium && <span className="premium-badge">{current ? t(current.label) : t('AKTİF')}</span>}
       </div>
 

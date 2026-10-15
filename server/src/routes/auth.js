@@ -22,6 +22,7 @@ const { parseBirthDate } = require('../lib/age');
 const { ALLOWED_INTENTS } = require('../lib/intents');
 const { isSchoolEmail } = require('../lib/schoolEmail');
 const { CONSENT_VERSION } = require('../lib/premium');
+const { checkDisplayName } = require('../lib/textSafety');
 
 // ---------------------------------------------------------
 // Kayıt e-posta doğrulama kodu
@@ -134,6 +135,11 @@ router.post('/register/send-code', sendCodeLimiter, async (req, res) => {
     if (!isSchoolEmail(email, university)) {
       return res.status(400).json({ error: schoolEmailError(university), field: 'email' });
     }
+    // İsim kod gönderilmeden önce de denetlenir: uygunsuz isimle kod adımına geçilmesin
+    if (req.body.fullName !== undefined) {
+      const nameCheck = await checkDisplayName(toTitleCaseTR(req.body.fullName));
+      if (nameCheck.error) return res.status(400).json({ error: nameCheck.error, field: 'fullName' });
+    }
     const sentResponse = () =>
       res.json({
         sent: true,
@@ -157,9 +163,9 @@ router.post('/register/send-code', sendCodeLimiter, async (req, res) => {
       const clientUrl = siteUrl();
       sendMailInBackground({
         to: accountOwner.email,
-        subject: 'kampüs·: Bu adresle zaten bir hesabın var',
-        text: `Merhaba ${accountOwner.fullName},\n\nBu e-posta adresiyle yeniden kayıt olunmak istendi, ama zaten bir kampüs· hesabın var.\n\nGiriş yap: ${clientUrl}/login\nŞifreni unuttuysan: ${clientUrl}/forgot-password\n\nBu isteği sen yapmadıysan bu e-postayı yok sayabilirsin; hesabında hiçbir değişiklik yapılmadı.`,
-        html: `<p>Merhaba ${escapeHtml(accountOwner.fullName)},</p><p>Bu e-posta adresiyle yeniden kayıt olunmak istendi, ama zaten bir kampüs· hesabın var.</p><p><a href="${escapeHtml(`${clientUrl}/login`)}">Giriş yap</a> · <a href="${escapeHtml(`${clientUrl}/forgot-password`)}">Şifremi unuttum</a></p><p>Bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin; hesabında hiçbir değişiklik yapılmadı.</p>`,
+        subject: 'kampüs+: Bu adresle zaten bir hesabın var',
+        text: `Merhaba ${accountOwner.fullName},\n\nBu e-posta adresiyle yeniden kayıt olunmak istendi, ama zaten bir kampüs+ hesabın var.\n\nGiriş yap: ${clientUrl}/login\nŞifreni unuttuysan: ${clientUrl}/forgot-password\n\nBu isteği sen yapmadıysan bu e-postayı yok sayabilirsin; hesabında hiçbir değişiklik yapılmadı.`,
+        html: `<p>Merhaba ${escapeHtml(accountOwner.fullName)},</p><p>Bu e-posta adresiyle yeniden kayıt olunmak istendi, ama zaten bir kampüs+ hesabın var.</p><p><a href="${escapeHtml(`${clientUrl}/login`)}">Giriş yap</a> · <a href="${escapeHtml(`${clientUrl}/forgot-password`)}">Şifremi unuttum</a></p><p>Bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin; hesabında hiçbir değişiklik yapılmadı.</p>`,
       });
       await waitUntil(started);
       return sentResponse();
@@ -183,9 +189,9 @@ router.post('/register/send-code', sendCodeLimiter, async (req, res) => {
 
     sendMailInBackground({
       to: email,
-      subject: `kampüs· doğrulama kodun: ${code}`,
-      text: `Merhaba,\n\nkampüs· kaydını tamamlamak için doğrulama kodun: ${code}\n\nKod 10 dakika geçerlidir. Bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin.`,
-      html: `<p>Merhaba,</p><p>kampüs· kaydını tamamlamak için doğrulama kodun:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px">${code}</p><p>Kod 10 dakika geçerlidir. Bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin.</p>`,
+      subject: `kampüs+ doğrulama kodun: ${code}`,
+      text: `Merhaba,\n\nkampüs+ kaydını tamamlamak için doğrulama kodun: ${code}\n\nKod 10 dakika geçerlidir. Bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin.`,
+      html: `<p>Merhaba,</p><p>kampüs+ kaydını tamamlamak için doğrulama kodun:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px">${code}</p><p>Kod 10 dakika geçerlidir. Bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin.</p>`,
     }).catch((err) => console.error('Doğrulama kodu e-postası gönderilemedi:', err));
 
     track('code_sent', { anonId: req.headers['x-anon-id'] });
@@ -212,6 +218,13 @@ router.post('/register', registerLimiter, upload.private.single('studentDoc'), v
     if (fullName.length > 80 || password.length > 200 || (department && (typeof department !== 'string' || department.length > 100))) {
       await discardUpload(req);
       return res.status(400).json({ error: 'Girilen bilgilerden biri çok uzun.' });
+    }
+    // İsim herkese görünür ve sonradan değiştirilemez: küfür, cinsel içerik,
+    // rakam ve bağlantı içeren isimler kabul edilmez
+    const nameCheck = await checkDisplayName(fullName);
+    if (nameCheck.error) {
+      await discardUpload(req);
+      return res.status(400).json({ error: nameCheck.error, field: 'fullName' });
     }
     if (password.length < PASSWORD_MIN) {
       await discardUpload(req);
@@ -435,7 +448,7 @@ router.post('/forgot-password', forgotPasswordLimiter, async (req, res) => {
 
       sendMailInBackground({
         to: user.email,
-        subject: 'kampüs·: Şifre sıfırlama',
+        subject: 'kampüs+: Şifre sıfırlama',
         text: `Merhaba ${user.fullName},\n\nŞifreni sıfırlamak için bu bağlantıyı kullan (30 dakika geçerlidir): ${resetLink}\n\nBu isteği sen yapmadıysan bu e-postayı yok sayabilirsin.`,
         html: `<p>Merhaba ${escapeHtml(user.fullName)},</p><p>Şifreni sıfırlamak için aşağıdaki bağlantıya tıkla. Bu bağlantı 30 dakika geçerlidir.</p><p><a href="${escapeHtml(resetLink)}">Şifremi sıfırla</a></p><p>Bağlantı açılmazsa bu adresi tarayıcına yapıştır:<br>${escapeHtml(resetLink)}</p><p>Bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin.</p>`,
       });
@@ -534,13 +547,13 @@ router.post('/reverify/send-code', requireAuth, sendCodeLimiter, async (req, res
     });
     await sendMail({
       to: email,
-      subject: `kampüs· öğrencilik doğrulama kodun: ${code}`,
+      subject: `kampüs+ öğrencilik doğrulama kodun: ${code}`,
       text: `Merhaba,
 
-kampüs· hesabının öğrenciliğini yenilemek için kodun: ${code}
+kampüs+ hesabının öğrenciliğini yenilemek için kodun: ${code}
 
 Kod 10 dakika geçerlidir. Bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin.`,
-      html: `<p>Merhaba,</p><p>kampüs· hesabının öğrenciliğini yenilemek için kodun:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px">${code}</p><p>Kod 10 dakika geçerlidir.</p>`,
+      html: `<p>Merhaba,</p><p>kampüs+ hesabının öğrenciliğini yenilemek için kodun:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px">${code}</p><p>Kod 10 dakika geçerlidir.</p>`,
     });
     // E-posta adresinin bir kısmı gösterilir: kodun nereye gittiği anlaşılsın
     const [local, domain] = email.split('@');
@@ -612,13 +625,13 @@ router.post('/email/send-code', requireAuth, sendCodeLimiter, async (req, res) =
     });
     await sendMail({
       to: newEmail,
-      subject: `kampüs· e-posta değişikliği kodun: ${code}`,
+      subject: `kampüs+ e-posta değişikliği kodun: ${code}`,
       text: `Merhaba,
 
-kampüs· hesabının e-posta adresini bu adresle değiştirmek için kodun: ${code}
+kampüs+ hesabının e-posta adresini bu adresle değiştirmek için kodun: ${code}
 
 Kod 10 dakika geçerlidir. Bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin.`,
-      html: `<p>Merhaba,</p><p>kampüs· hesabının e-posta adresini bu adresle değiştirmek için kodun:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px">${code}</p><p>Kod 10 dakika geçerlidir.</p>`,
+      html: `<p>Merhaba,</p><p>kampüs+ hesabının e-posta adresini bu adresle değiştirmek için kodun:</p><p style="font-size:28px;font-weight:700;letter-spacing:6px">${code}</p><p>Kod 10 dakika geçerlidir.</p>`,
     });
     res.json({ sent: true, expiresInSec: CODE_TTL_MS / 1000, devConsole: !isRealSmtpConfigured() });
   } catch (err) {
@@ -648,11 +661,11 @@ router.post('/email', requireAuth, async (req, res) => {
     // Eski adrese bilgi: hesap ele geçirildiyse sahibi fark etsin
     sendMail({
       to: before.email,
-      subject: 'kampüs· e-posta adresin değiştirildi',
+      subject: 'kampüs+ e-posta adresin değiştirildi',
       text: `Merhaba ${before.fullName},
 
-kampüs· hesabının e-posta adresi ${newEmail} olarak değiştirildi. Bunu sen yapmadıysan hemen bize yaz.`,
-      html: `<p>Merhaba ${escapeHtml(before.fullName)},</p><p>kampüs· hesabının e-posta adresi <b>${escapeHtml(newEmail)}</b> olarak değiştirildi. Bunu sen yapmadıysan hemen bize yaz.</p>`,
+kampüs+ hesabının e-posta adresi ${newEmail} olarak değiştirildi. Bunu sen yapmadıysan hemen bize yaz.`,
+      html: `<p>Merhaba ${escapeHtml(before.fullName)},</p><p>kampüs+ hesabının e-posta adresi <b>${escapeHtml(newEmail)}</b> olarak değiştirildi. Bunu sen yapmadıysan hemen bize yaz.</p>`,
     }).catch(() => {});
     res.json({ message: 'E-posta adresin değiştirildi. Bundan sonra bu adresle giriş yapacaksın.', email: newEmail });
   } catch (err) {

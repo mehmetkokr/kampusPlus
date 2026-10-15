@@ -35,7 +35,7 @@ const og = page(
     <div style="position:absolute;inset:0;background:radial-gradient(60% 70% at 92% 0%,rgba(46,155,255,.32),transparent 70%),radial-gradient(45% 60% at 70% 10%,rgba(79,70,229,.25),transparent 70%)"></div>
     <div style="position:relative;display:flex;align-items:center;gap:32px">
       <img src="${dataUrl}" width="104" height="104" style="display:block;filter:drop-shadow(0 18px 30px rgba(46,155,255,.35))">
-      <span style="font-size:58px;font-weight:700;letter-spacing:-.035em">kampüs<span style="color:#2E9BFF">·</span></span>
+      <span style="font-size:58px;font-weight:700;letter-spacing:-.035em">kampüs<span style="color:#2E9BFF">+</span></span>
     </div>
     <div style="position:relative;margin-top:70px;font-size:76px;font-weight:800;line-height:1.08;letter-spacing:-.04em">Kampüs hayatın,<br>tek bir uygulamada.</div>
     <div style="position:relative;margin-top:56px;font-size:25px;color:rgba(245,241,234,.62)">Yalnızca doğrulanmış üniversite öğrencileri · Ücretsiz</div>

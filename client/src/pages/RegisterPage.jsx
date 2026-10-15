@@ -120,6 +120,7 @@ export default function RegisterPage() {
       const res = await api.post('/auth/register/send-code', {
         email: normalizeEmail(form.email),
         universityId: form.universityId,
+        fullName: toTitleCaseTR(form.fullName),
       });
       setDevConsole(!!res.data.devConsole);
       setResendIn(res.data.resendInSec || 60);
@@ -246,7 +247,7 @@ export default function RegisterPage() {
 
       <div className="auth-content">
         <div className="auth-wordmark">
-          {tx("kampüs")}<span className="dot">·</span>
+          {tx("kampüs")}<span className="dot">+</span>
         </div>
         <p className="auth-tagline">{tx("sadece kendi üniversitenden insanlarla tanış")}</p>
 

@@ -1,4 +1,4 @@
-# kampüs· (KampüsPlus)
+# kampüs+ (KampüsPlus)
 
 Üniversite öğrencileri için kapalı kampüs ağı: eşleşme, sohbet, sosyal akış ve kulüpler.
 Kayıt yalnızca seçilen üniversitenin okul e-postasıyla yapılır; öğrenciler kendi

@@ -79,7 +79,7 @@ async function buildUserExport(userId) {
   const other = (m) => (m.userA.id === userId ? m.userB : m.userA);
   return {
     generatedAt: new Date().toISOString(),
-    note: 'Bu dosya kampüs· hesabınla ilgili tuttuğumuz verileri içerir (KVKK m.11). Dosya adresleri yalnızca giriş yapmışken açılır.',
+    note: 'Bu dosya kampüs+ hesabınla ilgili tuttuğumuz verileri içerir (KVKK m.11). Dosya adresleri yalnızca giriş yapmışken açılır.',
     account: user,
     photos,
     posts,

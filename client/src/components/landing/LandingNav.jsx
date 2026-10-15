@@ -63,7 +63,7 @@ export default function LandingNav() {
           }`}
         >
           <Link to="/" className="inline-flex min-h-11 items-center text-xl font-bold tracking-[-0.03em] text-paper">
-            {t("kampüs")}<span className="text-amber">·</span>
+            {t("kampüs")}<span className="text-amber">+</span>
           </Link>
 
           <nav className="hidden items-center gap-1 md:flex">

@@ -235,7 +235,7 @@ function LikesDemo() {
           </motion.span>{' '}
           {tx("kişi seni beğendi")}
         </span>
-        <span className="flex items-center gap-1 rounded-full bg-[var(--amber-soft)] px-2.5 py-1 text-[0.6875rem] font-bold text-[#ffffff]">
+        <span className="flex items-center gap-1 rounded-full bg-gradient-to-br from-[#2e9bff] to-[#4f46e5] px-2.5 py-1 text-[0.6875rem] font-bold text-white">
           <Crown size={11} /> {tx("Premium")}
         </span>
       </div>

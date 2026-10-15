@@ -39,7 +39,7 @@ export default function ForgotPasswordPage() {
 
       <div className="auth-content">
         <div className="auth-wordmark">
-          {t("kampüs")}<span className="dot">·</span>
+          {t("kampüs")}<span className="dot">+</span>
         </div>
         <p className="auth-tagline">{t("şifreni sıfırlayalım")}</p>
 

@@ -11,6 +11,8 @@ const { getOnlineUserIds } = require('../socket');
 const { removeUploadedFile, deleteUserWithFiles } = require('../lib/uploads');
 
 const { numericIdParams, optionalId } = require('../lib/idParams');
+const { checkDisplayName } = require('../lib/textSafety');
+const { toTitleCaseTR } = require('../lib/text');
 const router = express.Router();
 numericIdParams(router);
 router.use(requireAdmin);
@@ -377,7 +379,7 @@ router.get('/users/:id', async (req, res) => {
 router.patch('/users/:id', async (req, res) => {
   try {
     const id = Number(req.params.id);
-    const { verificationStatus, isAdmin, isBanned, rejectionReason, premiumDays, revokePremium } = req.body;
+    const { verificationStatus, isAdmin, isBanned, rejectionReason, premiumDays, revokePremium, fullName } = req.body;
 
     if (id === req.userId && (isAdmin === false || isBanned === true)) {
       return res.status(400).json({ error: 'Kendi admin yetkinizi kaldıramaz ya da kendinizi banlayamazsınız.' });
@@ -397,6 +399,14 @@ router.patch('/users/:id', async (req, res) => {
     }
     if (isAdmin !== undefined) data.isAdmin = !!isAdmin;
     if (isBanned !== undefined) data.isBanned = !!isBanned;
+    // Uygunsuz isim düzeltme (kullanıcı ismini kendisi değiştiremez)
+    if (fullName !== undefined) {
+      const name = typeof fullName === 'string' ? toTitleCaseTR(fullName) : '';
+      if (!name || name.length > 80) return res.status(400).json({ error: 'İsim 1–80 karakter olmalı.' });
+      const checked = await checkDisplayName(name);
+      if (checked.error) return res.status(400).json({ error: checked.error });
+      data.fullName = name;
+    }
 
     const previous = await prisma.user.findUnique({
       where: { id },
@@ -454,7 +464,7 @@ router.patch('/users/:id', async (req, res) => {
         targetType: 'campaign',
         message: JSON.stringify({
           title: 'Sana Premium hediye ettik',
-          body: `${giftDays} günlük kampüs· Premium hesabına tanımlandı. Keyfini çıkar!`,
+          body: `${giftDays} günlük kampüs+ Premium hesabına tanımlandı. Keyfini çıkar!`,
           link: '/settings',
         }),
       });
@@ -482,13 +492,13 @@ router.patch('/users/:id', async (req, res) => {
     if (verificationStatus === 'verified' && previous?.verificationStatus !== 'verified') {
       sendMail({
         to: updated.email,
-        subject: 'kampüs·: Öğrenci belgen onaylandı',
-        text: `Merhaba ${updated.fullName},\n\nÖğrenci belgen incelendi ve onaylandı. Artık hesabın tamamen doğrulanmış durumda, kampüs·'ü sınırsız kullanabilirsin.`,
+        subject: 'kampüs+: Öğrenci belgen onaylandı',
+        text: `Merhaba ${updated.fullName},\n\nÖğrenci belgen incelendi ve onaylandı. Artık hesabın tamamen doğrulanmış durumda, kampüs+'ü sınırsız kullanabilirsin.`,
       }).catch((err) => console.error('Onay e-postası gönderilemedi:', err));
     } else if (verificationStatus === 'rejected' && previous?.verificationStatus !== 'rejected') {
       sendMail({
         to: updated.email,
-        subject: 'kampüs·: Öğrenci belgenle ilgili bir sorun var',
+        subject: 'kampüs+: Öğrenci belgenle ilgili bir sorun var',
         text: `Merhaba ${updated.fullName},\n\nYüklediğin öğrenci belgesi incelendi ve şu sebeple onaylanamadı: "${updated.rejectionReason}".\n\nProfilinden yeni bir belge yükleyerek tekrar deneyebilirsin.`,
       }).catch((err) => console.error('Red e-postası gönderilemedi:', err));
     }

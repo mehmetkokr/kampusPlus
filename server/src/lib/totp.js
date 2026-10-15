@@ -65,7 +65,7 @@ function verifyTotp(secret, code, { now = Date.now(), lastStep = -1 } = {}) {
   return null;
 }
 
-function otpauthUrl(secret, account, issuer = 'kampüs· yönetim') {
+function otpauthUrl(secret, account, issuer = 'kampüs+ yönetim') {
   const label = encodeURIComponent(`${issuer}:${account}`);
   return `otpauth://totp/${label}?secret=${secret}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=${STEP}`;
 }

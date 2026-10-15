@@ -5,7 +5,7 @@
      üzerinden ışık geçer.
    - Açılış (.is-intro): sitenin bir oturumdaki ilk açılışı. Arka planda mavi
      ışıklar dolaşır, simge yaylanarak gelir, "k" çizilip dolar, nokta belirir,
-     altında "kampüs·" harf harf yazılır. Sayfa hazır olunca (.is-leaving)
+     altında "kampüs+" harf harf yazılır. Sayfa hazır olunca (.is-leaving)
      logo büyüyüp solarak sayfaya geçer. Oturumda bir kez oynar: sonraki
      açılışlarda theme-init.js <html data-intro="seen"> koyar, sade hâl görünür.
    Yalnızca transform/opacity ve SVG çizgi ofseti kullanılır. Hareket azaltma
@@ -178,7 +178,7 @@ html:not([data-intro='seen']) .logo-loader.is-intro .ll-ring { animation-delay: 
 html:not([data-intro='seen']) .logo-loader.is-intro .ll-sheen { animation-delay: 1.5s; }
 html:not([data-intro='seen']) .logo-loader.is-intro .ll-label { display: none; }
 
-/* "kampüs·" harf harf */
+/* "kampüs+" harf harf */
 html:not([data-intro='seen']) .logo-loader.is-intro .ll-word {
   display: flex;
   margin: 0;

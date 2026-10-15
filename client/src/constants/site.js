@@ -17,7 +17,7 @@ function initialSiteUrl() {
 }
 
 export const SITE = {
-  name: 'kampüs·',
+  name: 'kampüs+',
   url: initialSiteUrl(),
   contactEmail: import.meta.env.VITE_CONTACT_EMAIL || 'destek@kampusplus.com.tr',
   // Geliştiricinin GitHub hesabı (tanıtım sayfası alt bilgisi ve iletişim)

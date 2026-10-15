@@ -11,9 +11,9 @@ const { sendMail, checkMailer } = require('../src/lib/mailer');
   const ok = await checkMailer();
   const result = await sendMail({
     to,
-    subject: 'kampüs· test e-postası',
-    text: 'SMTP ayarların çalışıyor. Bu e-posta kampüs· sunucusundan gönderildi.',
-    html: '<p>SMTP ayarların çalışıyor. Bu e-posta <b>kampüs·</b> sunucusundan gönderildi.</p>',
+    subject: 'kampüs+ test e-postası',
+    text: 'SMTP ayarların çalışıyor. Bu e-posta kampüs+ sunucusundan gönderildi.',
+    html: '<p>SMTP ayarların çalışıyor. Bu e-posta <b>kampüs+</b> sunucusundan gönderildi.</p>',
   });
   console.log(ok && result.delivered ? 'Gönderildi: ' + to : 'Gerçek e-posta gönderilmedi (SMTP ayarlarını kontrol et).');
 })();

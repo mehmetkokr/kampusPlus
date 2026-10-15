@@ -94,7 +94,7 @@ export default function PushSettings() {
           type="button"
           className="settings-link-row"
           onClick={async () => {
-            if (await promptInstall()) toast.success(t('kampüs· ana ekranına eklendi.'));
+            if (await promptInstall()) toast.success(t('kampüs+ ana ekranına eklendi.'));
           }}
         >
           <div className="settings-link-row-icon">

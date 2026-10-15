@@ -7,7 +7,7 @@ import { SITE } from '../../constants/site';
 
 const FAQS = [
   {
-    q: 'Kimler kampüs·\'e katılabilir?',
+    q: 'Kimler kampüs+\'e katılabilir?',
     a: 'Yalnızca aktif üniversite öğrencileri. Kayıt olurken okul e-postana gelen 6 haneli kodla hesabını doğrularsın.',
   },
   {

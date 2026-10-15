@@ -49,7 +49,7 @@ async function main() {
     return;
   }
 
-  const fullName = (await ask('Görünen ad (ör. kampüs· Destek): ')) || 'kampüs· Yönetim';
+  const fullName = (await ask('Görünen ad (ör. kampüs+ Destek): ')) || 'kampüs+ Yönetim';
   const password = await askHidden(`Şifre (en az ${PASSWORD_MIN} karakter): `);
   if (password.length < PASSWORD_MIN) throw new Error(`Şifre en az ${PASSWORD_MIN} karakter olmalı.`);
   const again = await askHidden('Şifre (tekrar): ');

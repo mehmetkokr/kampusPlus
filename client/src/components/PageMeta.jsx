@@ -7,16 +7,16 @@ import { SITE } from '../constants/site';
 // herkese açık sayfaları (tanıtım, kayıt, yasal sayfalar) gösterir. Oturum
 // gerektiren uygulama sayfaları ve 404 "noindex" olarak işaretlenir.
 const DEFAULT_DESC =
-  'kampüs·, yalnızca üniversite e-postanla doğruladığın, kendi okulundaki öğrencilerle seni buluşturan kapalı bir kampüs topluluğudur.';
+  'kampüs+, yalnızca üniversite e-postanla doğruladığın, kendi okulundaki öğrencilerle seni buluşturan kapalı bir kampüs topluluğudur.';
 
 const PUBLIC = {
-  '/': { title: 'kampüs· | Doğrulanmış Üniversite Topluluğu', desc: DEFAULT_DESC, full: true },
+  '/': { title: 'kampüs+ | Doğrulanmış Üniversite Topluluğu', desc: DEFAULT_DESC, full: true },
   '/register': { title: 'Kayıt Ol', desc: 'Üniversite e-postanla ücretsiz kayıt ol, kampüsündeki öğrencilerle tanış.' },
-  '/login': { title: 'Giriş Yap', desc: 'kampüs· hesabına giriş yap.' },
-  '/forgot-password': { title: 'Şifremi Unuttum', desc: 'kampüs· şifreni sıfırla.', noindex: true },
-  '/gizlilik': { title: 'Gizlilik Politikası', desc: 'kampüs· kişisel verilerini nasıl işler? KVKK aydınlatma metni.' },
-  '/kullanim-sartlari': { title: 'Kullanım Şartları', desc: 'kampüs· kullanım şartları.' },
-  '/topluluk-kurallari': { title: 'Topluluk Kuralları', desc: 'kampüs· topluluğunu güvenli tutan kurallar.' },
+  '/login': { title: 'Giriş Yap', desc: 'kampüs+ hesabına giriş yap.' },
+  '/forgot-password': { title: 'Şifremi Unuttum', desc: 'kampüs+ şifreni sıfırla.', noindex: true },
+  '/gizlilik': { title: 'Gizlilik Politikası', desc: 'kampüs+ kişisel verilerini nasıl işler? KVKK aydınlatma metni.' },
+  '/kullanim-sartlari': { title: 'Kullanım Şartları', desc: 'kampüs+ kullanım şartları.' },
+  '/topluluk-kurallari': { title: 'Topluluk Kuralları', desc: 'kampüs+ topluluğunu güvenli tutan kurallar.' },
 };
 
 const PRIVATE = [

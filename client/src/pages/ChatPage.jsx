@@ -613,11 +613,22 @@ export default function ChatPage() {
                 {active && (
                   <div className="msg-actions" role="toolbar" aria-label={tx('Mesaj seçenekleri')}>
                     <div className="msg-actions-emoji">
-                      {REACTIONS.map((emoji) => (
-                        <button key={emoji} type="button" onClick={() => react(m, emoji)} aria-label={tx('{emoji} ile tepki ver', { emoji })}>
-                          {emoji}
-                        </button>
-                      ))}
+                      {REACTIONS.map((emoji, i) => {
+                        const picked = groups.some((g) => g.emoji === emoji && g.mine);
+                        return (
+                          <button
+                            key={emoji}
+                            type="button"
+                            className={picked ? 'is-picked' : ''}
+                            style={{ '--i': i }}
+                            onClick={() => react(m, emoji)}
+                            aria-pressed={picked}
+                            aria-label={tx('{emoji} ile tepki ver', { emoji })}
+                          >
+                            {emoji}
+                          </button>
+                        );
+                      })}
                     </div>
                     <div className="msg-actions-row">
                       <button type="button" onClick={() => startReply(m)}>

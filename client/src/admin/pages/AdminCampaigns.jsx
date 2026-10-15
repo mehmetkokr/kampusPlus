@@ -439,7 +439,7 @@ export default function AdminCampaigns() {
               <div className="adm-push">
                 <span className="app">k</span>
                 <div style={{ minWidth: 0 }}>
-                  <div className="top"><span>kampüs·</span><span>şimdi</span></div>
+                  <div className="top"><span>kampüs+</span><span>şimdi</span></div>
                   <b>{title || 'Kampanya başlığı'}</b>
                   <p>{body || 'Mesajın burada görünecek.'}</p>
                 </div>

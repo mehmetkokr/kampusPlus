@@ -58,7 +58,7 @@ const TEXT = {
     event_reminder: () => ['Etkinlik yaklaşıyor', 'Katılacağın etkinlik birazdan başlıyor.'],
     badge_approved: () => ['Belgen onaylandı', 'Artık isminin yanında onay rozeti var.'],
     badge_rejected: () => ['Belgen onaylanmadı', 'Profilinden yeni belge yükleyebilirsin.'],
-    birthday: () => ['İyi ki doğdun!', 'kampüs· ailesi olarak seni kutluyoruz.'],
+    birthday: () => ['İyi ki doğdun!', 'kampüs+ ailesi olarak seni kutluyoruz.'],
     someone: 'Biri',
   },
   en: {
@@ -73,7 +73,7 @@ const TEXT = {
     event_reminder: () => ['Event starting soon', 'An event you are attending starts soon.'],
     badge_approved: () => ['Document approved', 'You now have a verified badge.'],
     badge_rejected: () => ['Document not approved', 'You can upload a new document from your profile.'],
-    birthday: () => ['Happy birthday!', 'Everyone at kampüs· is celebrating you.'],
+    birthday: () => ['Happy birthday!', 'Everyone at kampüs+ is celebrating you.'],
     someone: 'Someone',
   },
 };
@@ -116,7 +116,7 @@ function buildPayload(notification, lang = 'tr') {
     } catch {
       info = { title: notification.message };
     }
-    title = info.title || 'kampüs·';
+    title = info.title || 'kampüs+';
     body = info.body || '';
     return { title, body, url: info.link || '/notifications', tag: `announcement-${notification.id}` };
   }

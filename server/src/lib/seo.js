@@ -9,20 +9,20 @@
 // sitemap.xml ve robots.txt de aynı adresle burada üretilir.
 // Sayfa listesi client/src/App.jsx ve client/src/components/PageMeta.jsx ile aynı tutulmalı.
 
-const SITE_NAME = 'kampüs·';
-const HOME_TITLE = 'kampüs· | Doğrulanmış Üniversite Topluluğu';
+const SITE_NAME = 'kampüs+';
+const HOME_TITLE = 'kampüs+ | Doğrulanmış Üniversite Topluluğu';
 const DEFAULT_DESC =
-  'kampüs·, yalnızca üniversite e-postanla doğruladığın, kendi okulundaki öğrencilerle seni buluşturan kapalı bir kampüs topluluğudur.';
+  'kampüs+, yalnızca üniversite e-postanla doğruladığın, kendi okulundaki öğrencilerle seni buluşturan kapalı bir kampüs topluluğudur.';
 
 const PUBLIC_PAGES = {
   '/': { title: HOME_TITLE, desc: DEFAULT_DESC, priority: '1.0', changefreq: 'weekly' },
   '/register': { title: 'Kayıt Ol', desc: 'Üniversite e-postanla ücretsiz kayıt ol, kampüsündeki öğrencilerle tanış.', priority: '0.8', changefreq: 'monthly' },
-  '/login': { title: 'Giriş Yap', desc: 'kampüs· hesabına giriş yap.', priority: '0.5', changefreq: 'monthly' },
-  '/forgot-password': { title: 'Şifremi Unuttum', desc: 'kampüs· şifreni sıfırla.', priority: '0.2', changefreq: 'yearly', noindex: true },
-  '/gizlilik': { title: 'Gizlilik Politikası', desc: 'kampüs· kişisel verilerini nasıl işler? KVKK aydınlatma metni.', priority: '0.3', changefreq: 'yearly' },
-  '/kullanim-sartlari': { title: 'Kullanım Şartları', desc: 'kampüs· kullanım şartları.', priority: '0.3', changefreq: 'yearly' },
-  '/topluluk-kurallari': { title: 'Topluluk Kuralları', desc: 'kampüs· topluluğunu güvenli tutan kurallar.', priority: '0.3', changefreq: 'yearly' },
-  '/mesafeli-satis-sozlesmesi': { title: 'Mesafeli Satış Sözleşmesi', desc: 'kampüs· Premium planları, ücretler, otomatik yenileme ve cayma hakkı bilgilendirmesi.', priority: '0.3', changefreq: 'yearly' },
+  '/login': { title: 'Giriş Yap', desc: 'kampüs+ hesabına giriş yap.', priority: '0.5', changefreq: 'monthly' },
+  '/forgot-password': { title: 'Şifremi Unuttum', desc: 'kampüs+ şifreni sıfırla.', priority: '0.2', changefreq: 'yearly', noindex: true },
+  '/gizlilik': { title: 'Gizlilik Politikası', desc: 'kampüs+ kişisel verilerini nasıl işler? KVKK aydınlatma metni.', priority: '0.3', changefreq: 'yearly' },
+  '/kullanim-sartlari': { title: 'Kullanım Şartları', desc: 'kampüs+ kullanım şartları.', priority: '0.3', changefreq: 'yearly' },
+  '/topluluk-kurallari': { title: 'Topluluk Kuralları', desc: 'kampüs+ topluluğunu güvenli tutan kurallar.', priority: '0.3', changefreq: 'yearly' },
+  '/mesafeli-satis-sozlesmesi': { title: 'Mesafeli Satış Sözleşmesi', desc: 'kampüs+ Premium planları, ücretler, otomatik yenileme ve cayma hakkı bilgilendirmesi.', priority: '0.3', changefreq: 'yearly' },
 };
 
 // Oturum gerektiren uygulama sayfaları (React Router yolları)
@@ -154,7 +154,7 @@ function sitemapXml(siteUrl, lastmod) {
 function robotsTxt(siteUrl) {
   const disallow = ['/admin', '/discover', '/feed', '/clubs', '/matches', '/chat', '/profile', '/settings', '/notifications', '/users', '/welcome', '/reset-password', '/api/', '/uploads/'];
   return [
-    '# kampüs· — arama motoru kuralları',
+    '# kampüs+ — arama motoru kuralları',
     '# Herkese açık sayfalar taranır; oturum gerektiren uygulama ve yönetim',
     '# ekranları, API ve kullanıcı dosyaları taranmaz.',
     'User-agent: *',

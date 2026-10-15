@@ -1,6 +1,6 @@
 import React, { useId } from 'react';
 
-// kampüs· uygulama simgesi: mavi-çivit geçişli zemin, beyaz "k" ve açık mavi "+".
+// kampüs+ uygulama simgesi: mavi-çivit geçişli zemin, beyaz "k" ve açık mavi "+".
 // Aynı çizim public/favicon.svg, uygulama simgeleri (scripts/gen-brand.cjs) ve
 // açılış animasyonunda (LogoLoader, index.html) kullanılır; değişirse hepsi birlikte.
 export const BRAND_GRADIENT = ['#2E9BFF', '#4F46E5'];

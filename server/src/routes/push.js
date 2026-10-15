@@ -66,7 +66,7 @@ router.post('/test', requireAuth, async (req, res) => {
     const user = await prisma.user.findUnique({ where: { id: req.userId }, select: { language: true } });
     const en = user?.language === 'en';
     const sent = await sendToUser(req.userId, {
-      title: 'kampüs·',
+      title: 'kampüs+',
       body: en ? 'Notifications are working. See you on campus!' : 'Bildirimler çalışıyor. Kampüste görüşürüz!',
       url: '/settings',
       tag: 'push-test',

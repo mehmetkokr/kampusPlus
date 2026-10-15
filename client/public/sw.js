@@ -1,4 +1,4 @@
-// kampüs· service worker
+// kampüs+ service worker
 // - Sayfalar her zaman önce ağdan gelir (yeni sürüm hemen görünür); internet
 //   yoksa çevrimdışı ekranı gösterilir.
 // - /assets/ altındaki derlenmiş dosyaların adları içerikle değiştiği için
@@ -70,7 +70,7 @@ self.addEventListener('push', (event) => {
   } catch {
     data = { body: event.data ? event.data.text() : '' };
   }
-  const title = data.title || 'kampüs·';
+  const title = data.title || 'kampüs+';
   event.waitUntil(
     self.registration.showNotification(title, {
       body: data.body || '',
