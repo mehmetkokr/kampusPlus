@@ -307,12 +307,12 @@ test('beğeni sınırı: ücretsiz günde 5, haftalık plan 50, aylık sınırs�
   assert.equal(sixth.data.code, 'LIKE_LIMIT');
   assert.ok(new Date(sixth.data.resetsAt) > new Date());
 
-  await prisma.user.update({ where: { id: me.id }, data: { isPremium: true, premiumPlan: 'weekly', premiumUntil: new Date(Date.now() + 7 * 86400000) } });
-  const weekly = await api('POST', `/api/matches/like/${others[5].id}`, { token });
-  assert.equal(weekly.status, 200);
-  assert.equal(weekly.data.likes.limit, 50);
+  await prisma.user.update({ where: { id: me.id }, data: { isPremium: true, premiumPlan: 'plus', premiumUntil: new Date(Date.now() + 30 * 86400000) } });
+  const plus = await api('POST', `/api/matches/like/${others[5].id}`, { token });
+  assert.equal(plus.status, 200);
+  assert.equal(plus.data.likes.limit, 30);
 
-  await prisma.user.update({ where: { id: me.id }, data: { premiumPlan: 'monthly' } });
+  await prisma.user.update({ where: { id: me.id }, data: { premiumPlan: 'premium' } });
   const monthly = await api('POST', `/api/matches/like/${others[6].id}`, { token });
   assert.equal(monthly.data.likes.left, null);
 });
@@ -367,7 +367,7 @@ test('süper beğeni: ücretsize kapalı, Premium günlük hakla, karşı tarafa
   assert.equal(free.status, 403);
   assert.equal(free.data.code, 'PREMIUM_REQUIRED');
 
-  await prisma.user.update({ where: { id: a.id }, data: { isPremium: true, premiumPlan: 'weekly', premiumUntil: new Date(Date.now() + 7 * 86400000) } });
+  await prisma.user.update({ where: { id: a.id }, data: { isPremium: true, premiumPlan: 'plus', premiumUntil: new Date(Date.now() + 30 * 86400000) } });
   const ok = await api('POST', `/api/matches/like/${b.id}`, { token: ta, body: { super: true } });
   assert.equal(ok.status, 200, JSON.stringify(ok.data));
   assert.equal(ok.data.superLikes.left, 0);
@@ -419,4 +419,78 @@ test('Kart Modu filtreleri yalnızca Premium için uygulanır', async () => {
   assert.ok(byClass.includes(y1.id) && !byClass.includes(y4.id));
   const byAge = deckIds((await api('GET', '/api/profile/discover?minAge=24&maxAge=30', { token })).data);
   assert.ok(byAge.includes(y4.id) && !byAge.includes(y1.id));
+});
+
+test('Kart Modu cinsiyet eşleştirmesi: kadına erkek, erkeğe kadın; belirtmeyen herkesle', async () => {
+  const base = { department: 'Kimya', classYear: 2, birthDate: new Date('2003-01-01'), age: 23, schoolEmailVerifiedAt: new Date(), universityId: await isolatedUni('cinsiyet') };
+  const f = await createUser('cins-kadin@test.edu.tr', { ...base, gender: 'female' });
+  const m = await createUser('cins-erkek@test.edu.tr', { ...base, gender: 'male' });
+  const f2 = await createUser('cins-kadin2@test.edu.tr', { ...base, gender: 'female' });
+  const m2 = await createUser('cins-erkek2@test.edu.tr', { ...base, gender: 'male' });
+  const u = await createUser('cins-belirsiz@test.edu.tr', { ...base, gender: 'unspecified' });
+  const old = await createUser('cins-eski@test.edu.tr', base); // henüz seçmemiş eski hesap
+
+  const ofF = deckIds((await api('GET', '/api/profile/discover', { token: await tokenFor(f.email) })).data);
+  assert.ok(ofF.includes(m.id) && ofF.includes(m2.id) && ofF.includes(u.id) && ofF.includes(old.id));
+  assert.ok(!ofF.includes(f2.id), 'kadına kadın gösterilmez');
+  const ofM = deckIds((await api('GET', '/api/profile/discover', { token: await tokenFor(m.email) })).data);
+  assert.ok(ofM.includes(f.id) && ofM.includes(u.id) && !ofM.includes(m2.id), 'erkeğe erkek gösterilmez');
+  const ofU = deckIds((await api('GET', '/api/profile/discover', { token: await tokenFor(u.email) })).data);
+  assert.ok([f.id, m.id, f2.id, m2.id].every((id) => ofU.includes(id)), 'belirtmeyen herkesi görür');
+
+  const tOld = await tokenFor(old.email);
+  assert.equal((await api('PUT', '/api/profile/me/basics', { token: tOld, body: {} })).data.field, 'gender', 'eski hesap cinsiyet seçmeden geçemez');
+  assert.equal((await api('PUT', '/api/profile/me/gender', { token: tOld, body: { gender: 'x' } })).status, 400);
+  assert.equal((await api('PUT', '/api/profile/me/gender', { token: tOld, body: { gender: 'male' } })).status, 200);
+});
+
+test('Kart Modu kampüsü: ücretli üye başka üniversiteye geçer, akış kendi kampüsünde kalır', async () => {
+  const extra = { department: 'Mimarlık', classYear: 3, birthDate: new Date('2003-01-01'), age: 23, schoolEmailVerifiedAt: new Date() };
+  const homeUni = await isolatedUni('kampus-ev');
+  const otherUni = await isolatedUni('kampus-diger');
+  const me = await createUser('kampus-ben@test.edu.tr', { ...extra, universityId: homeUni });
+  const neighbor = await createUser('kampus-komsu@test.edu.tr', { ...extra, universityId: homeUni });
+  const there = await createUser('kampus-orada@test.edu.tr', { ...extra, universityId: otherUni });
+  const hidden = await createUser('kampus-gizli@test.edu.tr', { ...extra, universityId: otherUni, profileVisibility: 'university' });
+  await prisma.post.create({ data: { authorId: there.id, caption: 'Diğer kampüsten gönderi' } });
+  const token = await tokenFor(me.email);
+
+  const free = await api('PUT', '/api/premium/campus', { token, body: { universityId: otherUni } });
+  assert.equal(free.status, 403, 'ücretsiz hesap kampüs değiştiremez');
+
+  await prisma.user.update({ where: { id: me.id }, data: { isPremium: true, premiumPlan: 'plus', premiumUntil: new Date(Date.now() + 30 * 86400000) } });
+  const moved = await api('PUT', '/api/premium/campus', { token, body: { universityId: otherUni } });
+  assert.equal(moved.status, 200, JSON.stringify(moved.data));
+  assert.equal(moved.data.swipeUniversity.id, otherUni);
+
+  const deck = deckIds((await api('GET', '/api/profile/discover', { token })).data);
+  assert.ok(deck.includes(there.id), 'seçilen kampüsün öğrencileri görünür');
+  assert.ok(!deck.includes(neighbor.id), 'kendi kampüsü desteden çıkar');
+  assert.ok(!deck.includes(hidden.id), 'profilini yalnızca kendi kampüsüne açan görünmez');
+
+  const feed = await api('GET', '/api/posts/feed', { token });
+  const posts = Array.isArray(feed.data) ? feed.data : feed.data.posts || [];
+  assert.ok(!posts.some((p) => p.author?.id === there.id || p.authorId === there.id), 'akış kendi kampüsünde kalır');
+
+  const back = await api('PUT', '/api/premium/campus', { token, body: { universityId: null } });
+  assert.equal(back.data.swipeUniversity, null);
+  assert.ok(deckIds((await api('GET', '/api/profile/discover', { token })).data).includes(neighbor.id));
+
+  // Üyelik bitince seçilen kampüs geçersiz olur
+  await prisma.user.update({ where: { id: me.id }, data: { swipeUniversityId: otherUni, premiumUntil: new Date(Date.now() - 1000) } });
+  const lapsed = deckIds((await api('GET', '/api/profile/discover', { token })).data);
+  assert.ok(lapsed.includes(neighbor.id) && !lapsed.includes(there.id));
+});
+
+test('Plus ile Premium farkı: geri alma, seni beğenenler, gizli mod ve filtreler Premium’da', async () => {
+  const { a, b, ta } = await studentPair('plus-fark');
+  await prisma.user.update({ where: { id: a.id }, data: { isPremium: true, premiumPlan: 'plus', premiumUntil: new Date(Date.now() + 30 * 86400000) } });
+  await prisma.like.create({ data: { fromUserId: b.id, toUserId: a.id } });
+  const likes = await api('GET', '/api/matches/likes-received', { token: ta });
+  assert.equal(likes.data.isPremium, false);
+  assert.equal(likes.data.users.length, 0, 'Plus seni beğenenleri göremez');
+  assert.equal((await api('PUT', '/api/premium/incognito', { token: ta, body: { enabled: true } })).status, 403);
+  assert.equal((await api('POST', `/api/matches/undo/${b.id}`, { token: ta })).status, 403);
+  const status = await api('GET', '/api/premium/status', { token: ta });
+  assert.deepEqual(status.data.features, ['campus']);
 });

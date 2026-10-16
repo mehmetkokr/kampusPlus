@@ -17,6 +17,7 @@ const {
   BOOST_MINUTES,
   isPremiumActive,
   activePlan,
+  hasFeature,
   likeQuota,
   superLikeQuota,
   isBoosting,
@@ -36,6 +37,8 @@ const STATUS_SELECT = {
   boostCredits: true,
   boostUntil: true,
   incognito: true,
+  swipeUniversityId: true,
+  swipeUniversity: { select: { id: true, name: true } },
 };
 
 const publicPlans = () => PLAN_KEYS.map((key) => ({ key, ...PLANS[key] }));
@@ -50,7 +53,10 @@ async function statusOf(user) {
     premiumAutoRenew: user.premiumAutoRenew,
     likes: quota,
     superLikes,
-    incognito: Boolean(user.incognito) && isPremiumActive(user),
+    incognito: Boolean(user.incognito) && hasFeature(user, 'incognito'),
+    features: activePlan(user) ? PLANS[activePlan(user)].features : [],
+    // Kart Modu kampüsü: yalnızca plan bu özelliği içeriyorsa geçerli
+    swipeUniversity: hasFeature(user, 'campus') ? user.swipeUniversity || null : null,
     boostCredits: user.boostCredits,
     boostUntil: isBoosting(user) ? user.boostUntil : null,
     boostMinutes: BOOST_MINUTES,
@@ -61,7 +67,7 @@ async function statusOf(user) {
 }
 
 // GET /api/premium/plans — herkese açık: tanıtım sayfasındaki fiyat kartları
-// için planlar, ücretsiz hak ve satın almanın açık olup olmadığı (kişisel veri yok)
+// için planlar ve satın almanın açık olup olmadığı (kişisel veri yok)
 router.get('/plans', (req, res) => {
   res.set('Cache-Control', 'public, max-age=300');
   res.json({
@@ -89,7 +95,7 @@ router.post('/activate', requireAuth, async (req, res) => {
     if (!mockPaymentsEnabled()) {
       return res.status(503).json({ error: 'Ödeme sistemi henüz aktif değil. Premium çok yakında!', code: 'CHECKOUT_UNAVAILABLE' });
     }
-    const { plan = 'monthly', consent } = req.body || {};
+    const { plan = 'premium', consent } = req.body || {};
     const planInfo = PLANS[plan];
     if (!planInfo) return res.status(400).json({ error: 'Geçersiz plan.' });
     if (consent !== true) {
@@ -114,6 +120,8 @@ router.post('/activate', requireAuth, async (req, res) => {
           premiumAutoRenew: true,
           premiumPlan: plan,
           boostCredits: { increment: planInfo.boosts },
+          // Plus'a geçişte Premium'a özel gizli mod kapanır
+          ...(planInfo.features.includes('incognito') ? {} : { incognito: false }),
         },
         select: STATUS_SELECT,
       }),
@@ -165,7 +173,7 @@ router.put('/incognito', requireAuth, async (req, res) => {
   try {
     const enabled = req.body?.enabled === true;
     const user = await prisma.user.findUnique({ where: { id: req.userId }, select: STATUS_SELECT });
-    if (enabled && !isPremiumActive(user)) {
+    if (enabled && !hasFeature(user, 'incognito')) {
       return res.status(403).json({ error: 'Gizli mod Premium üyelere özel.', code: 'PREMIUM_REQUIRED' });
     }
     const updated = await prisma.user.update({ where: { id: req.userId }, data: { incognito: enabled }, select: STATUS_SELECT });
@@ -173,6 +181,32 @@ router.put('/incognito', requireAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Gizli mod değiştirilemedi.' });
+  }
+});
+
+// PUT /api/premium/campus { universityId } — Kart Modu'nu başka bir üniversiteye
+// taşır (Plus ve Premium). universityId boş ya da kendi üniversitesiyse kendi
+// kampüsüne döner. Akış ve kulüpler etkilenmez, hep kendi kampüsünden gelir.
+router.put('/campus', requireAuth, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: req.userId }, select: { ...STATUS_SELECT, universityId: true } });
+    if (!hasFeature(user, 'campus')) {
+      return res.status(403).json({ error: 'Başka bir üniversitede Kart Modu Plus ve Premium üyelere özel.', code: 'PREMIUM_REQUIRED' });
+    }
+    const raw = req.body?.universityId;
+    let target = null;
+    if (raw !== null && raw !== undefined && raw !== '') {
+      const id = Number(raw);
+      if (!Number.isInteger(id) || id < 1) return res.status(400).json({ error: 'Geçersiz üniversite.' });
+      const uni = await prisma.university.findUnique({ where: { id }, select: { id: true } });
+      if (!uni) return res.status(404).json({ error: 'Üniversite bulunamadı.' });
+      target = id === user.universityId ? null : id;
+    }
+    const updated = await prisma.user.update({ where: { id: req.userId }, data: { swipeUniversityId: target }, select: STATUS_SELECT });
+    res.json(await statusOf(updated));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Kampüs değiştirilemedi.' });
   }
 });
 

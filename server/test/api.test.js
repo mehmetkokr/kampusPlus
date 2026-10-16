@@ -166,15 +166,15 @@ test('premium: satın alma, iptal sonrası süre sonuna kadar devam', async () =
   assert.equal(status.data.isPremium, false);
   assert.equal(status.data.checkoutAvailable, true);
 
-  const noConsent = await api('POST', '/api/premium/activate', { token, body: { plan: 'monthly' } });
+  const noConsent = await api('POST', '/api/premium/activate', { token, body: { plan: 'premium' } });
   assert.equal(noConsent.status, 400, 'sözleşme onayı olmadan satın alınamaz');
   assert.equal(noConsent.data.code, 'CONSENT_REQUIRED');
 
-  const bought = await api('POST', '/api/premium/activate', { token, body: { plan: 'monthly', consent: true } });
+  const bought = await api('POST', '/api/premium/activate', { token, body: { plan: 'premium', consent: true } });
   assert.equal(bought.status, 200);
-  assert.equal(bought.data.plan, 'monthly');
-  assert.equal(bought.data.boostCredits, 3);
-  assert.equal(bought.data.likes.limit, null, 'aylık planda beğeni sınırsız');
+  assert.equal(bought.data.plan, 'premium');
+  assert.equal(bought.data.boostCredits, 4);
+  assert.equal(bought.data.likes.limit, null, 'Premium planda beğeni sınırsız');
   assert.equal(bought.data.premiumAutoRenew, true);
 
   const cancelled = await api('POST', '/api/premium/cancel', { token });
@@ -185,7 +185,7 @@ test('premium: satın alma, iptal sonrası süre sonuna kadar devam', async () =
   assert.equal(me.data.premiumAutoRenew, false);
   assert.ok(new Date(me.data.premiumUntil) > new Date());
 
-  const renewed = await api('POST', '/api/premium/activate', { token, body: { plan: 'monthly', consent: true } });
+  const renewed = await api('POST', '/api/premium/activate', { token, body: { plan: 'premium', consent: true } });
   assert.equal(renewed.data.premiumAutoRenew, true);
 });
 
@@ -297,7 +297,7 @@ test('analitik: yalnızca izinli olaylar yazılır, yollar sadeleşir, huni hesa
   // Kayıt sonrası temel bilgileri tamamlama olayı
   await createUser('yeni-ogrenci@test.edu.tr');
   const token = await tokenFor('yeni-ogrenci@test.edu.tr');
-  const basics = await api('PUT', '/api/profile/me/basics', { token, body: { birthDate: '2003-05-10', department: 'Fizik', classYear: 2 } });
+  const basics = await api('PUT', '/api/profile/me/basics', { token, body: { birthDate: '2003-05-10', department: 'Fizik', classYear: 2, gender: 'female' } });
   assert.equal(basics.status, 200, JSON.stringify(basics.data));
   const me = await prisma.user.findUnique({ where: { email: 'yeni-ogrenci@test.edu.tr' } });
   assert.equal(await prisma.analyticsEvent.count({ where: { name: 'onboarding_done', userId: me.id } }), 1);
@@ -576,8 +576,8 @@ test('premium planları herkese açık, kişisel veri içermez', async () => {
   const res = await api('GET', '/api/premium/plans');
   assert.equal(res.status, 200);
   assert.equal(typeof res.data.checkoutAvailable, 'boolean');
-  assert.deepEqual(res.data.plans.map((p) => p.key), ['weekly', 'monthly', 'yearly']);
-  for (const p of res.data.plans) assert.deepEqual(Object.keys(p).sort(), ['amount', 'boosts', 'dailyLikes', 'dailySuperLikes', 'days', 'key', 'label']);
+  assert.deepEqual(res.data.plans.map((p) => p.key), ['plus', 'premium']);
+  for (const p of res.data.plans) assert.deepEqual(Object.keys(p).sort(), ['amount', 'boosts', 'dailyLikes', 'dailySuperLikes', 'days', 'features', 'key', 'label']);
   assert.equal(res.data.freeDailyLikes, 5);
   assert.equal(res.data.boostMinutes, 30);
 });

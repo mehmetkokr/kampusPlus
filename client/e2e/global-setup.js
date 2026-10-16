@@ -19,6 +19,7 @@ export default async function globalSetup() {
     birthDate: new Date('2003-04-12'),
     age: 23,
     intent: 'friendship',
+    gender: 'unspecified',
     bio: 'Deneme hesabı',
     schoolEmailVerifiedAt: new Date(),
     termsAcceptedAt: new Date(),

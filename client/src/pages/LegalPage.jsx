@@ -8,7 +8,7 @@ import { formatTL } from '../lib/premium';
 // Yasal sayfalar: Gizlilik Politikası (KVKK aydınlatma metni), Kullanım
 // Şartları ve Topluluk Kuralları. Metinler taslaktır; yayına almadan önce bir
 // hukukçuya kontrol ettirilmeli (veri sorumlusu unvanı, adres vb. eklenmeli).
-const UPDATED = '15 Ekim 2026';
+const UPDATED = '16 Ekim 2026';
 
 const DOCS = {
   gizlilik: {
@@ -100,12 +100,14 @@ const DOCS = {
         'Kuralları ihlal eden içerikleri kaldırabilir, hesapları geçici ya da kalıcı olarak kapatabiliriz. Ciddi durumlarda yetkili makamlarla iş birliği yaparız.',
       ]],
       ['Beğeni hakkı, Premium ve Boost', [
-        'Ücretsiz hesapla günde 5 kişiyi beğenebilirsin; hak her gün Türkiye saatiyle 00:00’da yenilenir ve kullanılmayan hak ertesi güne devretmez.',
-        'Premium haftalık, aylık ve yıllık planlarla sunulur. Haftalık planda günlük beğeni hakkı 50, aylık ve yıllık planda sınırsızdır. Planların güncel ücreti ve hakları satın alma ekranında ve Ayarlar > Premium bölümünde gösterilir.',
-        'Premium planlarda günlük Süper Beğeni hakkı vardır (haftalık 1, aylık 3, yıllık 5). Süper Beğendiğin kişiye bildirim gider ve onun Kart Modu destesinde öne çıkarsın; Süper Beğeni normal beğeni hakkından düşmez.',
-        'Gizli mod açıkken Kart Modu ve Keşfet’te yalnızca senin beğendiğin kişilere görünürsün; Premium sona erince gizli mod kendiliğinden etkisiz olur.',
-        'Her plan satın alındığında hesabına Boost hakkı eklenir (haftalık 1, aylık 3, yıllık 36). Bir Boost, profilini 30 dakika boyunca kampüsündeki öğrencilerin Kart Modu ve Keşfet listelerinde öne çıkarır. Kullanılan Boost geri alınamaz; kullanılmayan Boost hakkın üyeliğin bitse de hesabında kalır.',
-        'Premium üyelik seçtiğin dönem sonunda aynı planla otomatik yenilenir. Otomatik yenilemeyi Ayarlar’dan istediğin an kapatabilirsin; üyeliğin dönem sonuna kadar devam eder.',
+        'Üyeliği olmayan hesapla günde 5 kişiyi beğenebilirsin; hak her gün Türkiye saatiyle 00:00’da yenilenir ve kullanılmayan hak ertesi güne devretmez.',
+        'İki aylık üyelik sunulur: Plus ve Premium. Plus’ta günlük beğeni hakkı 30, Premium’da sınırsızdır. Planların güncel ücreti ve hakları satın alma ekranında ve Ayarlar > Premium bölümünde gösterilir.',
+        'Plus ve Premium üyeler Kart Modu’nu başka bir üniversiteye taşıyabilir; o zaman Kart Modu’nda seçilen üniversitenin, profilini herkese açan öğrencileri görünür. Akış, hikâyeler ve kulüpler her zaman kendi üniversitenden gelir.',
+        'Kart Modu’nda kadınlara erkekler, erkeklere kadınlar gösterilir. Cinsiyetini belirtmek istemeyenler herkesle karışık eşleşir. Cinsiyet bilgin profilinde görünmez; Ayarlar’dan değiştirebilirsin.',
+        'Üyeliklerde günlük Süper Beğeni hakkı vardır (Plus 1, Premium 5). Süper Beğendiğin kişiye bildirim gider ve onun Kart Modu destesinde öne çıkarsın; Süper Beğeni normal beğeni hakkından düşmez.',
+        'Seni beğenenleri görme, Gizli mod, gelişmiş filtreler ve son kararı geri alma Premium’a özeldir. Gizli mod açıkken Kart Modu ve Keşfet’te yalnızca senin beğendiğin kişilere görünürsün; Premium sona erince gizli mod kendiliğinden etkisiz olur.',
+        'Her ay üyelik başladığında ya da yenilendiğinde hesabına Boost hakkı eklenir (Plus 1, Premium 4). Bir Boost, profilini 30 dakika boyunca kampüsündeki öğrencilerin Kart Modu ve Keşfet listelerinde öne çıkarır. Kullanılan Boost geri alınamaz; kullanılmayan Boost hakkın üyeliğin bitse de hesabında kalır.',
+        'Üyelik her ay aynı planla otomatik yenilenir. Otomatik yenilemeyi Ayarlar’dan istediğin an kapatabilirsin; üyeliğin dönem sonuna kadar devam eder.',
         'Satın alma koşulları, cayma hakkı ve uyuşmazlık yolları Mesafeli Satış Sözleşmesi’nde yer alır.',
       ]],
       ['Sorumluluğun sınırı', [
@@ -118,7 +120,7 @@ const DOCS = {
   },
   'mesafeli-satis-sozlesmesi': {
     title: 'Mesafeli Satış Sözleşmesi ve Ön Bilgilendirme',
-    lead: '6502 sayılı Tüketicinin Korunması Hakkında Kanun ve Mesafeli Sözleşmeler Yönetmeliği kapsamında, Premium üyelik satın almadan önce bilmen gerekenler.',
+    lead: '6502 sayılı Tüketicinin Korunması Hakkında Kanun ve Mesafeli Sözleşmeler Yönetmeliği kapsamında, Plus ya da Premium üyelik satın almadan önce bilmen gerekenler.',
     plans: true,
     sections: [
       ['1. Taraflar', [
@@ -126,8 +128,8 @@ const DOCS = {
         'Alıcı: Premium üyelik satın alan, kayıtlı ve 18 yaşını doldurmuş kullanıcı. Alıcının bilgileri hesabındaki bilgilerdir.',
       ]],
       ['2. Sözleşmenin konusu', [
-        'Elektronik ortamda anında ifa edilen dijital hizmet: seçilen dönem (haftalık, aylık ya da yıllık) boyunca Premium üyelik ve plana bağlı beğeni ile Boost hakları.',
-        'Premium ile tüm üniversitelerdeki öğrencileri keşfedebilir ve arayabilir, seni beğenenleri görebilir, Gizli modu ve Kart Modu’nun gelişmiş filtrelerini kullanabilir, son kararını geri alabilir ve planına göre daha fazla beğeni, Süper Beğeni ve Boost hakkı kullanabilirsin.',
+        'Elektronik ortamda anında ifa edilen dijital hizmet: 30 günlük Plus ya da Premium üyelik ve plana bağlı beğeni, Süper Beğeni ile Boost hakları.',
+        'Plus ile tüm üniversitelerde arama yapabilir ve Kart Modu’nu başka bir üniversiteye taşıyabilirsin. Premium ile bunlara ek olarak seni beğenenleri görebilir, Gizli modu ve Kart Modu’nun gelişmiş filtrelerini kullanabilir ve son kararını geri alabilirsin.',
       ]],
       ['3. Ücret ve ödeme', [
         'Planların ücreti yukarıdaki tabloda ve satın alma ekranında, vergiler dahil olarak gösterilir. Ödeme banka ya da kredi kartıyla, lisanslı bir ödeme kuruluşu aracılığıyla alınır; kart bilgilerin bizde saklanmaz.',
@@ -191,7 +193,7 @@ function PlanTable() {
       .catch(() => {});
   }, []);
   if (!info) return null;
-  const period = { weekly: '7 gün', monthly: '30 gün', yearly: '365 gün' };
+  const period = { plus: '30 gün', premium: '30 gün' };
   return (
     <section>
       <h2>Planlar ve ücretler</h2>
@@ -208,14 +210,6 @@ function PlanTable() {
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <th scope="row">Ücretsiz</th>
-              <td>Süresiz</td>
-              <td>₺0</td>
-              <td>{info.freeDailyLikes}</td>
-              <td>—</td>
-              <td>—</td>
-            </tr>
             {info.plans.map((p) => (
               <tr key={p.key}>
                 <th scope="row">{p.label}</th>

@@ -5,7 +5,7 @@ const { requireAuth } = require('../middleware/auth');
 const { createNotification } = require('../lib/notifications');
 const { isBlockedEitherWay, getBlockedUserIds } = require('../lib/block');
 const { previewOf } = require('../lib/chat');
-const { isPremiumActive, likeQuota, superLikeQuota } = require('../lib/premium');
+const { hasFeature, likeQuota, superLikeQuota } = require('../lib/premium');
 const { reachCheck } = require('../lib/privacy');
 const fs = require('fs');
 const path = require('path');
@@ -138,8 +138,8 @@ const UNDO_WINDOW_MS = 10 * 60 * 1000;
 router.post('/undo/:userId', requireAuth, async (req, res) => {
   try {
     const toUserId = Number(req.params.userId);
-    const me = await prisma.user.findUnique({ where: { id: req.userId }, select: { isPremium: true, premiumUntil: true } });
-    if (!isPremiumActive(me)) {
+    const me = await prisma.user.findUnique({ where: { id: req.userId }, select: { isPremium: true, premiumUntil: true, premiumPlan: true } });
+    if (!hasFeature(me, 'undo')) {
       return res.status(403).json({ error: "Son kararı geri almak Premium'a özel.", code: 'PREMIUM_REQUIRED' });
     }
     const since = new Date(Date.now() - UNDO_WINDOW_MS);
@@ -172,7 +172,7 @@ router.get('/likes-received', requireAuth, async (req, res) => {
     const myId = req.userId;
     const me = await prisma.user.findUnique({
       where: { id: myId },
-      select: { isPremium: true, premiumUntil: true },
+      select: { isPremium: true, premiumUntil: true, premiumPlan: true },
     });
 
     const [likesToMe, myLikes, blockedByMe, blockingMe] = await Promise.all([
@@ -193,7 +193,8 @@ router.get('/likes-received', requireAuth, async (req, res) => {
     ]);
     const pending = likesToMe.filter((l) => !hidden.has(l.fromUserId));
 
-    if (!isPremiumActive(me)) {
+    // Seni beğenenleri görmek Premium'a özel (Plus'ta yalnızca sayı görünür)
+    if (!hasFeature(me, 'seeLikes')) {
       return res.json({ isPremium: false, count: pending.length, users: [] });
     }
 

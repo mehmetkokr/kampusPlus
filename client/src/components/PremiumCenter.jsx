@@ -6,9 +6,11 @@ import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { useI18n } from '../i18n';
 import { PLAN_ORDER, PERIOD_LABEL, formatTL, formatTime } from '../lib/premium';
+import CampusSwitchSheet from './CampusSwitchSheet';
 
-// Ayarlar > Premium alanı: üyelik durumu, bugünkü beğeni hakkı, boost hakları
-// ve boost başlatma, tüm planların karşılaştırması, otomatik yenileme.
+// Ayarlar > Üyelik alanı: üyelik durumu (Plus ya da Premium), bugünkü beğeni
+// hakkı, boost hakları ve boost başlatma, Kart Modu kampüsü, iki planın
+// karşılaştırması, otomatik yenileme.
 export default function PremiumCenter({ onOpenPaywall }) {
   const { t, lang } = useI18n();
   const { setUser } = useAuth();
@@ -17,6 +19,7 @@ export default function PremiumCenter({ onOpenPaywall }) {
   const [status, setStatus] = useState(null);
   const [busy, setBusy] = useState(false);
   const [, setTick] = useState(0);
+  const [showCampus, setShowCampus] = useState(false);
 
   const load = useCallback(() => {
     api
@@ -60,7 +63,7 @@ export default function PremiumCenter({ onOpenPaywall }) {
   }
 
   async function toggleIncognito(enabled) {
-    if (!status.isPremium) return onOpenPaywall();
+    if (!status.features?.includes('incognito')) return onOpenPaywall();
     setBusy(true);
     setStatus((s) => ({ ...s, incognito: enabled }));
     try {
@@ -76,7 +79,7 @@ export default function PremiumCenter({ onOpenPaywall }) {
   }
 
   async function cancelRenew() {
-    if (!(await confirm({ title: t('Otomatik yenileme kapatılsın mı?'), message: t('Premium üyeliğin mevcut süre dolana kadar devam eder, sonra yenilenmez.'), confirmLabel: t('Yenilemeyi kapat') }))) return;
+    if (!(await confirm({ title: t('Otomatik yenileme kapatılsın mı?'), message: t('Üyeliğin mevcut süre dolana kadar devam eder, sonra yenilenmez.'), confirmLabel: t('Yenilemeyi kapat') }))) return;
     setBusy(true);
     try {
       const res = await api.post('/premium/cancel');
@@ -109,8 +112,8 @@ export default function PremiumCenter({ onOpenPaywall }) {
     <div className={`settings-premium-card ${status.isPremium ? 'is-active' : ''}`}>
       <div className="settings-premium-card-top">
         <Crown size={20} weight="fill" color={status.isPremium ? 'var(--amber)' : 'var(--text-muted)'} />
-        <h4>{status.isPremium ? t('Premium Üyesin') : t('kampüs+ Premium')}</h4>
-        {status.isPremium && <span className="premium-badge">{current ? t(current.label) : t('AKTİF')}</span>}
+        <h4>{status.isPremium ? t('{plan} üyesin', { plan: t(current?.label || 'Premium') }) : t('kampüs+ üyelikleri')}</h4>
+        {status.isPremium && <span className="premium-badge">{t('AKTİF')}</span>}
       </div>
 
       {/* Durum: bugünkü beğeni, boost, üyelik süresi */}
@@ -127,7 +130,7 @@ export default function PremiumCenter({ onOpenPaywall }) {
             <Star size={15} /> {t('Süper Beğeni')}
           </dt>
           <dd>{status.superLikes.limit === 0 ? '—' : t('{left} / {limit} kaldı', { left: status.superLikes.left, limit: status.superLikes.limit })}</dd>
-          <dd className="premium-stat-note">{status.superLikes.limit === 0 ? t('Premium planlarda günlük') : t('Gece 00:00’da yenilenir')}</dd>
+          <dd className="premium-stat-note">{status.superLikes.limit === 0 ? t('Plus ve Premium’da günlük') : t('Gece 00:00’da yenilenir')}</dd>
         </div>
         <div>
           <dt>
@@ -155,7 +158,7 @@ export default function PremiumCenter({ onOpenPaywall }) {
           </div>
           <div className="settings-row-desc">
             {t('Açıkken Kart Modu ve Keşfet’te yalnızca senin beğendiğin kişilere görünürsün.')}
-            {!status.isPremium && ` ${t('Premium’a özel.')}`}
+            {!status.features?.includes('incognito') && ` ${t('Premium’a özel.')}`}
           </div>
         </div>
         <label className="switch">
@@ -170,6 +173,21 @@ export default function PremiumCenter({ onOpenPaywall }) {
         </label>
       </div>
 
+      {/* Kart Modu kampüsü (Plus ve Premium) */}
+      {status.features?.includes('campus') && (
+        <div className="settings-row">
+          <div>
+            <div className="settings-row-label">{t('Kart Modu kampüsü')}</div>
+            <div className="settings-row-desc">
+              {status.swipeUniversity ? status.swipeUniversity.name : t('Kendi kampüsün')} · {t('Akış ve kulüpler hep kendi kampüsünde kalır.')}
+            </div>
+          </div>
+          <button type="button" className="btn-secondary settings-row-btn" onClick={() => setShowCampus(true)}>
+            {t('Değiştir')}
+          </button>
+        </div>
+      )}
+
       <div className="premium-actions">
         {(status.boostCredits > 0 || boosting) && (
           <button type="button" className="btn-premium-cta" onClick={startBoost} disabled={busy || boosting}>
@@ -177,7 +195,7 @@ export default function PremiumCenter({ onOpenPaywall }) {
           </button>
         )}
         <button type="button" className={status.isPremium ? 'btn-secondary' : 'btn-premium-cta'} onClick={onOpenPaywall}>
-          <Crown size={16} /> {status.isPremium ? t('Planı yenile ya da değiştir') : t("Premium'a Geç")}
+          <Crown size={16} /> {status.isPremium ? t('Planı yenile ya da değiştir') : t('Plus ya da Premium’a geç')}
         </button>
       </div>
 
@@ -195,13 +213,6 @@ export default function PremiumCenter({ onOpenPaywall }) {
             </tr>
           </thead>
           <tbody>
-            <tr className={!status.isPremium ? 'is-current' : ''}>
-              <th scope="row">{t('Ücretsiz')}</th>
-              <td>₺0</td>
-              <td>{status.freeDailyLikes}</td>
-              <td>—</td>
-              <td>—</td>
-            </tr>
             {plans.map((p) => (
               <tr key={p.key} className={status.plan === p.key ? 'is-current' : ''}>
                 <th scope="row">{t(p.label)}</th>
@@ -218,8 +229,10 @@ export default function PremiumCenter({ onOpenPaywall }) {
         </table>
       </div>
       <p className="premium-footnote">
-        {t('Tüm Premium planlarda: tüm üniversitelerden keşif ve arama, seni beğenenleri görme, Gizli mod, gelişmiş filtreler ve Kart Modu’nda geri alma. Boost hakların üyeliğin bitse de kaybolmaz.')}
+        {t('Plus: başka bir üniversitede Kart Modu ve tüm üniversitelerde arama. Premium: bunlara ek olarak seni beğenenleri görme, Gizli mod, gelişmiş filtreler ve Kart Modu’nda geri alma. Boost hakların üyeliğin bitse de kaybolmaz.')}
       </p>
+
+      {showCampus && <CampusSwitchSheet onClose={() => setShowCampus(false)} onChanged={load} />}
 
       {status.isPremium && status.premiumUntil && status.premiumAutoRenew && (
         <button type="button" className="premium-cancel" onClick={cancelRenew} disabled={busy}>

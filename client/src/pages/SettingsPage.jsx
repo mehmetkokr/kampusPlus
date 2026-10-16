@@ -14,6 +14,7 @@ import AccountSecurity from '../components/AccountSecurity';
 import { useConfirm } from '../context/ConfirmContext';
 import { useI18n } from '../i18n';
 import Select from '../components/Select';
+import { GENDER_HINT, GENDER_OPTIONS } from '../constants/gender';
 
 const VISIBILITY_OPTIONS = [
   { value: 'everyone', label: 'Herkese Açık' },
@@ -73,6 +74,19 @@ export default function SettingsPage() {
       setUser((prev) => ({ ...prev, ...res.data.user }));
     } catch (err) {
       toast.error('Tercih kaydedilemedi.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function updateGender(gender) {
+    setSaving(true);
+    try {
+      await api.put('/profile/me/gender', { gender });
+      setUser((prev) => ({ ...prev, gender }));
+      toast.success(t('Kaydedildi.'));
+    } catch (err) {
+      toast.error(err.response?.data?.error || t('Kaydedilemedi.'));
     } finally {
       setSaving(false);
     }
@@ -198,8 +212,7 @@ export default function SettingsPage() {
         <PaywallModal
           onClose={() => setShowPaywall(false)}
           onUpgraded={() => setPremiumKey((k) => k + 1)}
-          contextText={t('Daha fazla beğeni, Boost ve tüm Türkiye için bir plan seç.')}
-          hideScope
+          contextText={t('Plus ya da Premium: sana uygun üyeliği seç.')}
         />
       )}
 
@@ -353,6 +366,22 @@ export default function SettingsPage() {
             />
             <span className="switch-track" />
           </label>
+        </div>
+
+        {/* Cinsiyet: Kart Modu eşleştirmesi (profilde görünmez) */}
+        <div className="settings-row settings-row-stack">
+          <div>
+            <div className="settings-row-label" id="settings-gender-label">{t('Cinsiyet')}</div>
+            <div className="settings-row-desc">{t(GENDER_HINT)}</div>
+          </div>
+          <Select
+            id="settings-gender"
+            aria-label={t('Cinsiyet')}
+            value={user?.gender || ''}
+            onChange={(v) => updateGender(v)}
+            placeholder={t('Seçiniz...')}
+            options={GENDER_OPTIONS.map((o) => ({ value: o.value, label: t(o.label) }))}
+          />
         </div>
 
         <button

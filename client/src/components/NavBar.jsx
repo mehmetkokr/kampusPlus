@@ -70,7 +70,6 @@ function SideNav({ chatUnread }) {
         <span className="side-nav-wordmark">
           {t("kampüs")}<span className="dot">+</span>
         </span>
-        <span className="side-nav-plus">{t("plus")}</span>
       </Link>
 
       <div className="side-nav-label">{t("Menü")}</div>
@@ -122,8 +121,8 @@ function SideNav({ chatUnread }) {
             <CrownIcon size={16} />
           </span>
           <span>
-            <strong>{t("Premium'a geç")}</strong>
-            <small>{t("Tüm kampüslerle tanış")}</small>
+            <strong>{t('Plus ya da Premium')}</strong>
+            <small>{t('Başka kampüslerde de tanış')}</small>
           </span>
         </Link>
       )}

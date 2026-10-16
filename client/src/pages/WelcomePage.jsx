@@ -13,6 +13,7 @@ import BirthDateInput from '../components/BirthDateInput';
 import LogoLoader from '../components/LogoLoader';
 import { HOBBY_OPTIONS, INTEREST_OPTIONS, parseTags } from '../constants/tags';
 import { INTENT_OPTIONS, parseIntents } from '../constants/intents';
+import { GENDER_HINT, GENDER_OPTIONS } from '../constants/gender';
 import { toTitleCaseTR } from '../utils/text';
 import Select from '../components/Select';
 
@@ -33,6 +34,7 @@ export default function WelcomePage() {
   const [withAbout, setWithAbout] = useState(null);
   const [about, setAbout] = useState({ birthDate: '', department: '', classYear: '' });
   const [intents, setIntents] = useState(['friendship']);
+  const [gender, setGender] = useState('');
   const [aboutError, setAboutError] = useState(null);
   const [interests, setInterests] = useState(user?.interests || '');
   const [hobbies, setHobbies] = useState(user?.hobbies || '');
@@ -73,6 +75,7 @@ export default function WelcomePage() {
     if (!user.birthDate && !about.birthDate) return setAboutError({ field: 'birthDate', text: t('Doğum tarihini gir.') });
     if (!user.department && about.department.trim().length < 2) return setAboutError({ field: 'department', text: t('Bölümünü yaz.') });
     if (!user.classYear && !about.classYear) return setAboutError({ field: 'classYear', text: t('Sınıfını seç.') });
+    if (!user.gender && !gender) return setAboutError({ field: 'gender', text: t('Bir seçenek seç.') });
     if (intents.length === 0) return setAboutError({ field: 'intent', text: t('En az bir seçenek seç.') });
     setAboutError(null);
     setSaving(true);
@@ -81,8 +84,11 @@ export default function WelcomePage() {
         ...about,
         department: toTitleCaseTR(about.department),
         intent: intents.join(','),
+        ...(user.gender ? {} : { gender }),
       });
       setUser((prev) => ({ ...prev, ...res.data.user }));
+      // Yalnızca cinsiyeti eksik olan eski hesap: soru bitince uygulamaya döner
+      if (user.department && user.classYear && user.birthDate) return finish();
       setStep(stepIndex('photo'));
     } catch (err) {
       const data = err.response?.data || {};
@@ -141,7 +147,11 @@ export default function WelcomePage() {
         <section className="welcome-step">
           <p className="welcome-eyebrow">{t('Hoş geldin, {name}', { name: firstName })}</p>
           <h1>{t('Seni biraz tanıyalım')}</h1>
-          <p className="welcome-lead">{t('E-postan doğrulandı. Bu bilgiler profilinde görünür ve sana uygun öğrencileri bulmamıza yardım eder.')}</p>
+          <p className="welcome-lead">
+            {user.department && user.classYear && user.birthDate
+              ? t('Kart Modu artık eşleşmeleri cinsiyete göre sunuyor. Devam etmeden önce bir seçim yapman yeterli.')
+              : t('E-postan doğrulandı. Bu bilgiler profilinde görünür ve sana uygun öğrencileri bulmamıza yardım eder.')}
+          </p>
           <form className="card welcome-card welcome-about" onSubmit={saveAbout} noValidate>
             {!user.birthDate && (
               <>
@@ -195,6 +205,31 @@ export default function WelcomePage() {
                   <p className="field-hint field-hint-warn" role="alert">{aboutError.text}</p>
                 ) : (
                   <p className="field-hint">{t('Bölüm ve sınıf sonradan değiştirilemez; lütfen doğru seç.')}</p>
+                )}
+              </>
+            )}
+
+            {!user.gender && (
+              <>
+                <label id="welcome-gender-label">{t('Cinsiyet')}</label>
+                <div className="intent-select-grid" role="radiogroup" aria-labelledby="welcome-gender-label">
+                  {GENDER_OPTIONS.map((opt) => (
+                    <button
+                      type="button"
+                      key={opt.value}
+                      role="radio"
+                      aria-checked={gender === opt.value}
+                      className={`intent-toggle ${gender === opt.value ? 'active' : ''}`}
+                      onClick={() => setGender(opt.value)}
+                    >
+                      {t(opt.label)}
+                    </button>
+                  ))}
+                </div>
+                {aboutError?.field === 'gender' ? (
+                  <p className="field-hint field-hint-warn" role="alert">{aboutError.text}</p>
+                ) : (
+                  <p className="field-hint">{t(GENDER_HINT)}</p>
                 )}
               </>
             )}

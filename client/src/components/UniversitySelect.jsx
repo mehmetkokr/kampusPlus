@@ -26,7 +26,8 @@ function Highlight({ text, query }) {
 }
 
 // Aranabilir üniversite seçici (combobox). Klavye: ↑/↓ gez, Enter seç, Esc kapat.
-export default function UniversitySelect({ universities, value, onChange, id, required }) {
+// showDomainHint: kayıtta seçilen okulun e-posta uzantısını hatırlatır.
+export default function UniversitySelect({ universities, value, onChange, id, required, showDomainHint = true }) {
   const { t } = useI18n();
   const autoId = useId();
   const inputId = id || `uni-${autoId}`;
@@ -128,7 +129,7 @@ export default function UniversitySelect({ universities, value, onChange, id, re
       {/* Tarayıcının "zorunlu alan" doğrulaması için gizli alan */}
       {required && <input tabIndex={-1} aria-hidden="true" className="uni-select-required" value={value || ''} onChange={() => {}} required />}
 
-      {selected && !open && selected.emailDomain && (
+      {showDomainHint && selected && !open && selected.emailDomain && (
         <p className="field-hint uni-select-domain">
           {t("Doğrulama kodu yalnızca")} <strong>@{selected.emailDomain}</strong> {t("uzantılı okul e-postana gönderilir.")}
         </p>

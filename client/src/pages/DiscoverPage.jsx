@@ -204,7 +204,7 @@ export default function DiscoverPage() {
           icon={Compass}
           eyebrow={user?.university?.name || t("Kampüsünü keşfet")}
           title={t("Keşfet")}
-          badge={user?.isPremium && <span className="premium-badge"><Crown size={11} /> {t("PREMIUM")}</span>}
+          badge={user?.isPremium && <span className="premium-badge"><Crown size={11} /> {user.premiumPlan === 'plus' ? t('PLUS') : t('PREMIUM')}</span>}
           actions={
             <>
               <NotificationBell />
@@ -474,6 +474,7 @@ export default function DiscoverPage() {
       {showPaywall && (
         <PaywallModal
           contextText={paywallReason}
+          requiredFeature="campus"
           onClose={() => setShowPaywall(false)}
           onUpgraded={() => load({ department: filterDepartment, classYear: filterClassYear })}
         />

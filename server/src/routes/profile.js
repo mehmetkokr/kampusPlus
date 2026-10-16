@@ -11,7 +11,8 @@ const { disconnectUser } = require('../socket');
 const { requireAuth } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 const { verifyUpload } = require('../lib/fileValidation');
-const { isPremiumActive, activePlan, isBoosting, incognitoVisibleTo, CONSENT_VERSION } = require('../lib/premium');
+const { isPremiumActive, activePlan, hasFeature, isBoosting, incognitoVisibleTo, CONSENT_VERSION } = require('../lib/premium');
+const { GENDERS, deckGenderWhere } = require('../lib/gender');
 const { runDocumentOcr } = require('../lib/ocr');
 const fsp = require('fs/promises');
 const { removeUploadedFile, deleteUserWithFiles } = require('../lib/uploads');
@@ -101,6 +102,9 @@ router.get('/me', requireAuth, async (req, res) => {
         createdAt: true,
         schoolEmailVerifiedAt: true,
         weeklySummaryEnabled: true,
+        gender: true,
+        swipeUniversityId: true,
+        swipeUniversity: { select: { id: true, name: true } },
       },
     });
     // isPremium alanını, süresi dolmuş olsa bile ham haliyle değil,
@@ -115,6 +119,8 @@ router.get('/me', requireAuth, async (req, res) => {
         ...user,
         isPremium: isPremiumActive(user),
         premiumPlan: activePlan(user),
+        // Kart Modu kampüsü yalnızca ücretli üyelikte geçerli
+        swipeUniversity: hasFeature(user, 'campus') ? user.swipeUniversity : null,
         boostUntil: isBoosting(user) ? user.boostUntil : null,
         consentRequired,
         fileToken,
@@ -171,6 +177,7 @@ const PROFILE_SELECT = {
   hobbies: true,
   instagramUrl: true,
   twitterUrl: true,
+  gender: true,
   intent: true,
   photos: { orderBy: { position: 'asc' }, select: { id: true, url: true, position: true } },
   verificationStatus: true,
@@ -265,9 +272,15 @@ router.put('/me/basics', requireAuth, async (req, res) => {
   try {
     const current = await prisma.user.findUnique({
       where: { id: req.userId },
-      select: { birthDate: true, department: true, classYear: true },
+      select: { birthDate: true, department: true, classYear: true, gender: true },
     });
     const data = {};
+
+    // Cinsiyet: yeni hesaplarda zorunlu, eski hesaplar ilk girişte bir kez seçer
+    if (req.body.gender !== undefined || !current.gender) {
+      if (!GENDERS.includes(req.body.gender)) return res.status(400).json({ error: 'Bir seçenek seç.', field: 'gender' });
+      data.gender = req.body.gender;
+    }
 
     if (!current.birthDate) {
       const birth = parseBirthDate(req.body.birthDate);
@@ -302,6 +315,18 @@ router.put('/me/basics', requireAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Bilgiler kaydedilemedi.' });
+  }
+});
+
+// Cinsiyet (Ayarlar > Kart Modu): Kart Modu eşleştirmesini belirler
+router.put('/me/gender', requireAuth, async (req, res) => {
+  try {
+    if (!GENDERS.includes(req.body?.gender)) return res.status(400).json({ error: 'Bir seçenek seç.', field: 'gender' });
+    await prisma.user.update({ where: { id: req.userId }, data: { gender: req.body.gender } });
+    res.json({ gender: req.body.gender });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Kaydedilemedi.' });
   }
 });
 
@@ -576,17 +601,21 @@ router.get('/discover', requireAuth, async (req, res) => {
 
     const now = new Date();
     // Gelişmiş filtreler (Premium): yaş aralığı, sınıf, ne arıyor
-    const premium = isPremiumActive(me);
-    const filters = premium ? deckFilters(req.query, now) : { where: [], intent: null };
+    const filters = hasFeature(me, 'filters') ? deckFilters(req.query, now) : { where: [], intent: null };
+    // Ücretli üye başka bir kampüs seçtiyse Kart Modu oradaki öğrencileri
+    // gösterir; görünürlük kuralı izleyicinin kendi kampüsüne göre işler
+    // (yalnızca profilini herkese açanlar başka kampüsten görülür)
+    const campusId = hasFeature(me, 'campus') && me.swipeUniversityId ? me.swipeUniversityId : me.universityId;
     const visibleWhere = discoverableUserWhere(me.universityId);
+    const genderWhere = deckGenderWhere(me.gender);
     const deckWhere = {
       ...visibleWhere,
-      universityId: me.universityId,
+      universityId: campusId,
       id: { notIn: excludeIds },
       verificationStatus: { in: ['auto_verified', 'verified'] },
       swipeEnabled: true, // Kart Modu'nu kapatanlar destede görünmez
       // discoverableUserWhere'in kendi AND koşulları (yıllık doğrulama) korunur
-      AND: [...(visibleWhere.AND || []), incognitoVisibleTo(me.id, now), ...filters.where],
+      AND: [...(visibleWhere.AND || []), incognitoVisibleTo(me.id, now), ...filters.where, ...(genderWhere ? [genderWhere] : [])],
     };
     const deckSelect = {
       id: true,

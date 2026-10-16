@@ -35,6 +35,7 @@ test('yeni öğrenci okul e-postasıyla kaydolur ve başlangıç adımını tama
   await page.getByLabel('Bölüm').fill('Fizik');
   await page.getByRole('combobox', { name: 'Sınıf' }).click();
   await page.getByRole('option', { name: '2. Sınıf' }).click();
+  await page.getByRole('radio', { name: 'Kadın' }).click();
   await page.getByRole('button', { name: /Devam et/ }).click();
 
   // Bilgiler kaydedildi: sonraki adıma geçildi ve analitik olayı yazıldı

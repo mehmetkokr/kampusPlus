@@ -20,8 +20,9 @@ model University {
   emailDomain String? // örn. "itu.edu.tr" - otomatik doğrulama için
   createdAt   DateTime @default(now())
 
-  users User[]
-  clubs Club[]
+  users   User[] @relation("UserUniversity")
+  swipers User[] @relation("SwipeCampus")
+  clubs   Club[]
 }
 
 // ----------------------------
@@ -58,7 +59,7 @@ model User {
   fullName     String
   // Bir üniversite silinirse öğrencileri silinmesin - önce öğrenciler
   // başka bir üniversiteye taşınmalı/silinmeli (Restrict = varsayılan davranış).
-  university   University @relation(fields: [universityId], references: [id])
+  university   University @relation("UserUniversity", fields: [universityId], references: [id])
   universityId Int
   department   String? // bölüm
   classYear    Int? // sınıf (1, 2, 3, 4...)
@@ -121,21 +122,27 @@ model User {
   // kişileri görebilir; premium kullanıcılar tüm üniversitelerdeki kişilere
   // erişebilir. premiumUntil dolunca isPremium otomatik false sayılır
   // (bkz. lib/premium.js -> isPremiumActive), cron gerekmeden kontrol anında yapılır.
-  isPremium        Boolean   @default(false)
-  premiumUntil     DateTime?
-  premiumSince     DateTime?
+  isPremium         Boolean     @default(false)
+  premiumUntil      DateTime?
+  premiumSince      DateTime?
   // Otomatik yenilemeyi kapatmak erişimi hemen kesmez: premiumUntil dolana
   // kadar premium sürer, sonra yenilenmez.
-  premiumAutoRenew Boolean   @default(true)
+  premiumAutoRenew  Boolean     @default(true)
   // Satın alınan plan (weekly | monthly | yearly); günlük beğeni sınırını belirler.
   // Eski üyeliklerde boştur ve aylık gibi (sınırsız) sayılır.
-  premiumPlan      String?
+  premiumPlan       String?
   // Boost: profili kısa süre (bkz. lib/premium.js BOOST_MINUTES) Kart Modu ve
   // Keşfet'te öne çıkarır. Haklar plan satın alınınca eklenir, süre bitse de kalır.
-  boostCredits     Int       @default(0)
-  boostUntil       DateTime?
+  boostCredits      Int         @default(0)
+  boostUntil        DateTime?
   // Gizli mod (Premium): yalnızca beğendiği kişilerin Kart Modu ve Keşfet'inde görünür
-  incognito        Boolean   @default(false)
+  incognito         Boolean     @default(false)
+  // Ücretli üyelerin Kart Modu kampüsü (başka bir üniversite); null = kendi kampüsü.
+  // Akış ve kulüpler her zaman kendi kampüsünden gelir.
+  swipeUniversityId Int?
+  swipeUniversity   University? @relation("SwipeCampus", fields: [swipeUniversityId], references: [id], onDelete: SetNull)
+  // Cinsiyet: female | male | unspecified (Kart Modu eşleştirmesi için, profilde görünmez)
+  gender            String?
 
   // KVKK: kullanım şartları/aydınlatma onayı, yurt dışına aktarım açık rızası
   // (sunucular yurt dışında) ve isteğe bağlı ticari ileti izni (6563 s. Kanun)

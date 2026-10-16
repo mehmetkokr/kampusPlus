@@ -7,18 +7,32 @@ const FREE_DAILY_LIKES = 5;
 // Boost: profil bu süre boyunca Kart Modu ve Keşfet'te öne çıkar
 const BOOST_MINUTES = 30;
 
+// İki ücretli üyelik: Plus (temel) ve Premium (kapsamlı), ikisi de aylık.
 // dailyLikes: null = sınırsız. boosts: satın alınca eklenen boost hakkı.
 // dailySuperLikes: günlük Süper Beğeni hakkı (ücretsiz hesapta yok).
+// features: plana açık özellikler
+//   campus    Kart Modu'nda başka üniversiteye geçme, tüm kampüslerde arama
+//   undo      Kart Modu'nda son kararı geri alma
+//   seeLikes  seni beğenenleri görme
+//   filters   gelişmiş filtreler (yaş, sınıf, ne arıyor)
+//   incognito gizli mod
 const PLANS = {
-  weekly: { days: 7, amount: 39.9, label: 'Haftalık', dailyLikes: 50, boosts: 1, dailySuperLikes: 1 },
-  monthly: { days: 30, amount: 99.9, label: 'Aylık', dailyLikes: null, boosts: 3, dailySuperLikes: 3 },
-  yearly: { days: 365, amount: 799.9, label: 'Yıllık', dailyLikes: null, boosts: 36, dailySuperLikes: 5 },
+  plus: { days: 30, amount: 59.9, label: 'Plus', dailyLikes: 30, boosts: 1, dailySuperLikes: 1, features: ['campus'] },
+  premium: {
+    days: 30,
+    amount: 129.9,
+    label: 'Premium',
+    dailyLikes: null,
+    boosts: 4,
+    dailySuperLikes: 5,
+    features: ['campus', 'undo', 'seeLikes', 'filters', 'incognito'],
+  },
 };
 const PLAN_KEYS = Object.keys(PLANS);
 
 // Kayıt / onay metinleri değişince artırılır; eski sürümü onaylamış
 // kullanıcıdan uygulamaya girişte yeniden onay istenir.
-const CONSENT_VERSION = '2026-10-15';
+const CONSENT_VERSION = '2026-10-16';
 
 // Premium durumu her yerde aynı mantıkla kontrol edilsin diye tek bir yerde
 // tanımlanır. isPremium true olsa bile premiumUntil geçmişte kalmışsa
@@ -29,11 +43,17 @@ function isPremiumActive(user) {
   return new Date(user.premiumUntil).getTime() > Date.now();
 }
 
-// Etkin plan anahtarı; Premium değilse null. Plan kaydı olmayan eski
-// üyelikler aylık sayılır (sınırsız beğeni).
+// Etkin plan anahtarı (plus | premium); ücretli üye değilse null. Plan kaydı
+// olmayan ya da eski planlardaki (haftalık/aylık/yıllık) üyelikler Premium sayılır.
 function activePlan(user) {
   if (!isPremiumActive(user)) return null;
-  return PLANS[user.premiumPlan] ? user.premiumPlan : 'monthly';
+  return PLANS[user.premiumPlan] ? user.premiumPlan : 'premium';
+}
+
+// Planın bu özelliği var mı (bkz. PLANS.features)
+function hasFeature(user, feature) {
+  const plan = activePlan(user);
+  return Boolean(plan && PLANS[plan].features.includes(feature));
 }
 
 // Günlük beğeni sınırı; null = sınırsız
@@ -106,6 +126,7 @@ module.exports = {
   CONSENT_VERSION,
   isPremiumActive,
   activePlan,
+  hasFeature,
   dailyLikeLimit,
   istanbulDayStart,
   nextIstanbulDayStart,

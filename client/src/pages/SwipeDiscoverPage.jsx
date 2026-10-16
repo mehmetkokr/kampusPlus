@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { VerifiedBadge } from '@/components/ui/icon-badge';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Flag, ArrowLeft, Layers, Heart, X, RotateCcw, Star, SlidersHorizontal } from '../components/icons';
+import { Flag, ArrowLeft, Layers, Heart, X, RotateCcw, Star, SlidersHorizontal, MapPin } from '../components/icons';
 import PaywallModal from '../components/PaywallModal';
 import PageHeader from '../components/PageHeader';
 import PhotoCarousel from '../components/PhotoCarousel';
@@ -18,6 +18,8 @@ import { useI18n } from '../i18n';
 import { FileText, Telescope } from '../components/icons';
 import { formatTime } from '../lib/premium';
 import SwipeFilters, { activeFilterCount, filterParams, readSavedFilters } from '../components/SwipeFilters';
+import CampusSwitchSheet from '../components/CampusSwitchSheet';
+import { hasFeature } from '../lib/premium';
 
 const SWIPE_THRESHOLD = 110;
 
@@ -30,11 +32,14 @@ export default function SwipeDiscoverPage() {
   // Son karar (Premium'da geri alınabilir): { userId, type: 'like' | 'pass' }
   const [lastDecision, setLastDecision] = useState(null);
   const [showPaywall, setShowPaywall] = useState(false);
-  // Premium penceresi neden açıldı: 'undo' | 'likes' | 'super' | 'filters'
+  // Üyelik penceresi neden açıldı: 'undo' | 'likes' | 'super' | 'filters' | 'campus'
   const [paywallReason, setPaywallReason] = useState('undo');
   // Gelişmiş filtreler (Premium): yaş aralığı, sınıf, ne arıyor
   const [filters, setFilters] = useState(readSavedFilters);
   const [showFilters, setShowFilters] = useState(false);
+  // Kart Modu kampüsü (Plus ve Premium)
+  const [showCampus, setShowCampus] = useState(false);
+  const canFilter = hasFeature(user, 'filters');
   // Bugünkü beğeni hakkı: { limit, used, left, resetsAt } (limit null = sınırsız)
   const [likeQuota, setLikeQuota] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -102,7 +107,7 @@ export default function SwipeDiscoverPage() {
   async function loadCandidates() {
     setLoading(true);
     try {
-      const res = await api.get('/profile/discover', { params: user?.isPremium ? filterParams(filters) : {} });
+      const res = await api.get('/profile/discover', { params: canFilter ? filterParams(filters) : {} });
       setCandidates(res.data);
       setIndex(0);
     } catch (err) {
@@ -205,7 +210,7 @@ export default function SwipeDiscoverPage() {
 
   async function handleUndo() {
     if (!lastDecision || index === 0) return;
-    if (!user?.isPremium) {
+    if (!hasFeature(user, 'undo')) {
       openPaywall('undo');
       return;
     }
@@ -350,17 +355,36 @@ export default function SwipeDiscoverPage() {
         title={t('Kart Modu')}
         onBack={() => navigate('/discover')}
         actions={
-          <button
-            type="button"
-            className="swipe-filter-btn"
-            onClick={() => (user?.isPremium ? setShowFilters(true) : openPaywall('filters'))}
-            aria-label={t('Filtreler')}
-          >
-            <SlidersHorizontal size={20} />
-            {user?.isPremium && activeFilterCount(filters) > 0 && <span className="swipe-filter-count">{activeFilterCount(filters)}</span>}
-          </button>
+          <>
+            <button
+              type="button"
+              className="swipe-filter-btn"
+              onClick={() => (hasFeature(user, 'campus') ? setShowCampus(true) : openPaywall('campus'))}
+              aria-label={t('Kart Modu kampüsü')}
+            >
+              <MapPin size={20} />
+            </button>
+            <button
+              type="button"
+              className="swipe-filter-btn"
+              onClick={() => (canFilter ? setShowFilters(true) : openPaywall('filters'))}
+              aria-label={t('Filtreler')}
+            >
+              <SlidersHorizontal size={20} />
+              {canFilter && activeFilterCount(filters) > 0 && <span className="swipe-filter-count">{activeFilterCount(filters)}</span>}
+            </button>
+          </>
         }
       />
+
+      {/* Başka kampüsteyken üstte hangi üniversitede olduğun görünür */}
+      {hasFeature(user, 'campus') && user?.swipeUniversity && (
+        <button type="button" className="swipe-campus-chip" onClick={() => setShowCampus(true)}>
+          <MapPin size={14} aria-hidden="true" />
+          <span>{t('Kart Modu: {uni}', { uni: user.swipeUniversity.name })}</span>
+          <span className="swipe-campus-change">{t('Değiştir')}</span>
+        </button>
+      )}
 
       <SegmentedControl
         ariaLabel={t('Kart Modu sekmeleri')}
@@ -525,7 +549,7 @@ export default function SwipeDiscoverPage() {
                 onClick={handleUndo}
                 disabled={!lastDecision}
                 aria-label={t('Son kararı geri al')}
-                title={user?.isPremium ? t('Son kararı geri al') : t("Son kararı geri al (Premium)")}
+                title={hasFeature(user, 'undo') ? t('Son kararı geri al') : t('Son kararı geri al (Premium)')}
               >
                 <RotateCcw size={22} strokeWidth={2.4} />
               </button>
@@ -570,14 +594,17 @@ export default function SwipeDiscoverPage() {
           }
           contextText={
             {
-              likes: t('Bugünkü {n} beğeni hakkını kullandın. Premium ile daha fazla, aylık ve yıllık planda sınırsız beğen.', { n: likeQuota?.limit ?? 5 }),
+              likes: t('Bugünkü {n} beğeni hakkını kullandın. Plus ile günde 30, Premium ile sınırsız beğen.', { n: likeQuota?.limit ?? 5 }),
+              campus: t('Plus ve Premium ile Kart Modu’nu başka bir üniversiteye taşı, oradaki öğrencilerle tanış.'),
               super: t('Süper Beğeni ile karşı taraf onu beğendiğini hemen öğrenir ve destesinde ilk sen çıkarsın.'),
               filters: t('Gelişmiş filtrelerle Kart Modu’nda yaşa, sınıfa ve ne aradığına göre süz.'),
             }[paywallReason] || t('Yanlışlıkla geçtiğin ya da beğendiğin kişiyi geri getir.')
           }
-          hideScope
+          requiredFeature={{ undo: 'undo', filters: 'filters', campus: 'campus' }[paywallReason]}
         />
       )}
+
+      {showCampus && <CampusSwitchSheet onClose={() => setShowCampus(false)} onChanged={loadCandidates} />}
 
       {showFilters && (
         <SwipeFilters

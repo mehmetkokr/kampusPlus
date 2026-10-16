@@ -1,18 +1,44 @@
-// Premium planlarının arayüzde ortak gösterimi (fiyat, dönem, haklar).
-// Değerler sunucudan gelir (/api/premium/plans ve /status); burada yalnızca
-// biçimlendirme var. Kurallar: server/src/lib/premium.js
+// Üyelik planlarının (Plus ve Premium) arayüzde ortak gösterimi.
+// Fiyat ve haklar sunucudan gelir (/api/premium/plans ve /status); burada
+// biçimlendirme ve hangi planın hangi özelliği içerdiği var.
+// Kurallar: server/src/lib/premium.js (PLANS.features ile aynı olmalı)
 
-export const PLAN_ORDER = ['weekly', 'monthly', 'yearly'];
+export const PLAN_ORDER = ['plus', 'premium'];
 
-export const PERIOD_LABEL = { weekly: '/ hafta', monthly: '/ ay', yearly: '/ yıl' };
+export const PERIOD_LABEL = { plus: '/ ay', premium: '/ ay' };
 
-// Planlardaki öne çıkan rozetler
-export const PLAN_BADGE = { monthly: 'EN POPÜLER', yearly: 'EN AVANTAJLI' };
+// Öne çıkan plan rozeti
+export const PLAN_BADGE = { premium: 'EN KAPSAMLI' };
+
+// Plana açık özellikler (sunucudaki PLANS.features)
+export const PLAN_FEATURES = {
+  plus: ['campus'],
+  premium: ['campus', 'undo', 'seeLikes', 'filters', 'incognito'],
+};
+
+// Planların kartlarda yazan özellik listesi (kısa, yalnızca gerçekten çalışanlar)
+export const PLAN_HIGHLIGHTS = {
+  plus: ['Başka bir üniversitede Kart Modu', 'Aramada tüm üniversiteler'],
+  premium: [
+    'Plus’taki her şey',
+    'Seni kimlerin beğendiğini gör',
+    'Gizli mod',
+    'Gelişmiş filtreler (yaş, sınıf, ne arıyor)',
+    'Kart Modu’nda son kararını geri al',
+  ],
+};
+
+// Kullanıcının etkin planı bu özelliği içeriyor mu
+export function hasFeature(user, feature) {
+  if (!user?.isPremium) return false;
+  const plan = PLAN_FEATURES[user.premiumPlan] ? user.premiumPlan : 'premium';
+  return PLAN_FEATURES[plan].includes(feature);
+}
 
 export const formatTL = (n) =>
   typeof n === 'number' ? `₺${n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—';
 
-// Planın kısa hak listesi: "Günde 50 beğeni", "3 Boost"
+// Planın kısa hak listesi: "Günde 30 beğeni", "1 Boost"
 export function planPerks(plan, t) {
   if (!plan) return [];
   return [
@@ -20,16 +46,6 @@ export function planPerks(plan, t) {
     t('Günde {n} Süper Beğeni', { n: plan.dailySuperLikes }),
     plan.boosts === 1 ? t('1 Boost') : t('{n} Boost', { n: plan.boosts }),
   ];
-}
-
-// Haftalık plana göre tasarruf yüzdesi (aylık/yıllık planı haftalık fiyatla kıyaslar)
-export function savingVsWeekly(plans, key) {
-  const weekly = plans?.find((p) => p.key === 'weekly');
-  const plan = plans?.find((p) => p.key === key);
-  if (!weekly || !plan || key === 'weekly') return null;
-  const weeklyCost = (weekly.amount / weekly.days) * plan.days;
-  const pct = Math.round((1 - plan.amount / weeklyCost) * 100);
-  return pct > 0 ? pct : null;
 }
 
 // "14:30" gibi saat ya da "yarın 00:00"
