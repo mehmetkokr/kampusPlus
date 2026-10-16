@@ -2,11 +2,11 @@
 //
 // Ekran, uygulama gerçekten bir sayfa gösterene kadar durur: #root dolmuş ve
 // içinde tam ekran yükleme ekranı kalmamış olmalı (lazy sayfa ve oturum
-// kontrolü bitmiş). Oturumdaki ilk açılışta logo animasyonu sonuna kadar
-// izlensin diye en az INTRO_MS, sonraki açılışlarda logo bir an net görünsün
-// diye en az REPEAT_MS beklenir (sayfa açılışından itibaren).
+// kontrolü bitmiş). Sitenin her açılışında logo animasyonu sonuna kadar
+// izlensin diye en az INTRO_MS beklenir (sayfa açılışından itibaren); otomatik
+// test tarayıcılarında (theme-init.js) logo yalnızca REPEAT_MS görünür.
 // Ardından logo büyüyüp solarak sayfaya geçer (bkz. styles/logo-loader.css).
-const INTRO_MS = 2700;
+const INTRO_MS = 3000;
 const REPEAT_MS = 800;
 const MAX_WAIT_MS = 10000; // bir şey takılsa bile açılış ekranı sonsuza dek kalmasın
 const LEAVE_MS = 550;
@@ -18,11 +18,6 @@ export function hideSplashWhenReady() {
 
   const html = document.documentElement;
   const firstVisit = html.getAttribute('data-intro') !== 'seen';
-  try {
-    sessionStorage.setItem('kp-intro', '1');
-  } catch {
-    // gizli sekme vb.: her açılışta tam animasyon oynar, sorun değil
-  }
   const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   const minUntil = reduce ? 0 : firstVisit ? INTRO_MS : REPEAT_MS;
 
@@ -37,7 +32,7 @@ export function hideSplashWhenReady() {
       splash.classList.add('is-leaving');
       setTimeout(() => {
         splash.remove();
-        // Sonraki sayfa geçişlerinde ve aynı sekmedeki açılışlarda sade hâl
+        // Uygulama içindeki sonraki yükleme ekranlarında sade hâl
         html.setAttribute('data-intro', 'seen');
       }, LEAVE_MS);
     }, wait);

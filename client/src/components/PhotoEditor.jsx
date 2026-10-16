@@ -167,8 +167,8 @@ export default function PhotoEditor({ file, options = {}, onDone, onCancel }) {
     setSaving(true);
     try {
       const bmp = await loadBitmap(file);
-      const iw = bmp.width;
-      const ih = bmp.height;
+      const iw = bmp.naturalWidth || bmp.width;
+      const ih = bmp.naturalHeight || bmp.height;
       const { fw, fh, s0 } = geom;
       const s = s0 * v.zoom;
       // Çerçevenin kapsadığı gerçek piksel sayısı; büyütülerek çözünürlük uydurulmaz

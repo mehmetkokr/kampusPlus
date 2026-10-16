@@ -2,12 +2,12 @@
    Logo yükleme ekranı (kırmızı kurdele "K+", zeminsiz)
    - Sade (varsayılan): sayfa geçişleri, giriş/kayıt, sonraki açılışlar.
      Logo yumuşakça belirir; yükleme sürerse hafifçe nefes alır.
-   - Açılış (.is-intro): sitenin bir oturumdaki ilk açılışı. Kurdele gibi
+   - Açılış (.is-intro): sitenin her açılışı (en az ~3 sn, bkz. lib/splash.js). Kurdele gibi
      açılır: önce gövde aşağıdan yukarı uzar, üst kol ve alt bacak gövdeden
      katlanarak çıkar, "+" dönerek yerine oturur, altında "kampüs+" harf harf
      yazılır. Sayfa hazır olunca (.is-leaving) logo büyüyüp solarak sayfaya
-     geçer. Oturumda bir kez oynar: sonraki açılışlarda theme-init.js
-     <html data-intro="seen"> koyar, sade hâl görünür.
+     geçer. Otomatik test tarayıcılarında theme-init.js <html data-intro="seen">
+     koyar, sade hâl görünür.
    Renkler temaya göre (koyu modda siyah zeminde parlayan daha açık kırmızı).
    Yalnızca transform/opacity kullanılır. Hareket azaltma açıksa logo sabit,
    tam hâliyle görünür.
@@ -121,7 +121,7 @@
 .ll-word,
 .ll-lights { display: none; }
 
-/* ---------- Açılış (oturumdaki ilk açılış) ---------- */
+/* ---------- Açılış (sitenin her açılışı) ---------- */
 html:not([data-intro='seen']) .logo-loader.is-intro .ll-lights {
   display: block;
   position: absolute;

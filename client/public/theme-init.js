@@ -7,8 +7,8 @@ try {
   document.documentElement.setAttribute('data-theme', light ? 'light' : 'dark');
 } catch (e) {}
 
-// Uzun logo açılışı oturumda bir kez oynar (bkz. src/lib/splash.js): bu
-// sekmede daha önce oynadıysa ilk ekranda logo yalnızca belirir.
+// Logo açılış animasyonu sitenin her açılışında oynar (bkz. src/lib/splash.js).
+// Otomatik test tarayıcılarında atlanır; logo yalnızca belirir.
 try {
-  if (sessionStorage.getItem('kp-intro')) document.documentElement.setAttribute('data-intro', 'seen');
+  if (navigator.webdriver) document.documentElement.setAttribute('data-intro', 'seen');
 } catch (e) {}
