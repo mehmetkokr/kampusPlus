@@ -1,39 +1,41 @@
 import React, { useId } from 'react';
 
-// kampüs+ uygulama simgesi: mavi-çivit geçişli zemin, beyaz "k" ve açık mavi "+".
+// kampüs+ logosu: zeminsiz, kurdele gibi katlanmış kırmızı "K" ve "+".
+// Gövde koyu, üst kol daha koyu, alt bacak parlak kırmızı; bacağın gövdeden
+// çıktığı yerdeki gölge katlanma hissi verir. Renkler temaya göre değişir
+// (--brand-red*, index.css): koyu modda siyah zeminde parlasın diye açık ton.
 // Aynı çizim public/favicon.svg, uygulama simgeleri (scripts/gen-brand.cjs) ve
 // açılış animasyonunda (LogoLoader, index.html) kullanılır; değişirse hepsi birlikte.
-export const BRAND_GRADIENT = ['#2E9BFF', '#4F46E5'];
-export const BRAND_PLUS = '#9BD7FF';
-export const K_PATH = 'M17 16h7.5v20.2L35.6 25h9.2L32.7 36.6 46 52h-9.4l-9.4-11.4-2.7 2.6V52H17z';
-export const PLUS_PATH = 'M50 8.8v12.4M43.8 15h12.4';
+export const BRAND_VIEWBOX = '11.5 4.5 52.5 52.5';
+export const K_STEM = 'M13 9h11v46H13z';
+export const K_ARM = 'M21 41 37 9h11L25 50z';
+export const K_LEG = 'M21 26h11l18 29H39z';
+export const K_FOLD = 'M24 26h8l5 8-13 6z';
+export const PLUS_PATH = 'M55 8.5v11M49.5 14h11';
 
 export default function BrandMark({ size = 36, className = '', title }) {
   const id = useId().replace(/:/g, '');
   return (
     <svg
-      className={className}
+      className={`brand-mark ${className}`}
       width={size}
       height={size}
-      viewBox="0 0 64 64"
+      viewBox={BRAND_VIEWBOX}
       role={title ? 'img' : undefined}
       aria-label={title}
       aria-hidden={title ? undefined : true}
     >
       <defs>
-        <linearGradient id={`${id}g`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stopColor={BRAND_GRADIENT[0]} />
-          <stop offset="1" stopColor={BRAND_GRADIENT[1]} />
-        </linearGradient>
-        <linearGradient id={`${id}h`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#fff" stopOpacity="0.22" />
-          <stop offset="0.5" stopColor="#fff" stopOpacity="0" />
+        <linearGradient id={`${id}f`} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="#000" stopOpacity="0.32" />
+          <stop offset="1" stopColor="#000" stopOpacity="0" />
         </linearGradient>
       </defs>
-      <rect width="64" height="64" rx="15" fill={`url(#${id}g)`} />
-      <rect width="64" height="64" rx="15" fill={`url(#${id}h)`} />
-      <path d={K_PATH} fill="#fff" />
-      <path d={PLUS_PATH} stroke={BRAND_PLUS} strokeWidth="4.4" strokeLinecap="round" fill="none" />
+      <path d={K_STEM} fill="var(--brand-red-stem)" />
+      <path d={K_ARM} fill="var(--brand-red-arm)" />
+      <path d={K_LEG} fill="var(--brand-red)" />
+      <path d={K_FOLD} fill={`url(#${id}f)`} />
+      <path d={PLUS_PATH} stroke="var(--brand-red)" strokeWidth="4" strokeLinecap="square" fill="none" />
     </svg>
   );
 }

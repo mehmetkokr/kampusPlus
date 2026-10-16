@@ -554,12 +554,14 @@ router.get('/discover', requireAuth, async (req, res) => {
       return res.status(403).json({ error: "Kart Modu kapalı. Ayarlar'dan açabilirsin.", swipeDisabled: true });
     }
 
-    const [alreadyLiked, recentlyPassed, blockedByMe, blockingMe] = await Promise.all([
+    const [alreadyLiked, recentlyPassed, blockedByMe, blockingMe, myMatches] = await Promise.all([
       prisma.like.findMany({ where: { fromUserId: req.userId }, select: { toUserId: true } }),
       // "Geç" denen kişi 30 gün desteye geri gelmez
       prisma.pass.findMany({ where: { fromUserId: req.userId, createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } }, select: { toUserId: true } }),
       prisma.block.findMany({ where: { blockerId: req.userId }, select: { blockedId: true } }),
       prisma.block.findMany({ where: { blockedId: req.userId }, select: { blockerId: true } }),
+      // Zaten eşleşilen kişiler destede yeniden çıkmaz
+      prisma.match.findMany({ where: { OR: [{ userAId: req.userId }, { userBId: req.userId }] }, select: { userAId: true, userBId: true } }),
     ]);
     const excludeIds = [
       req.userId,
@@ -567,6 +569,7 @@ router.get('/discover', requireAuth, async (req, res) => {
       ...recentlyPassed.map((p) => p.toUserId),
       ...blockedByMe.map((b) => b.blockedId),
       ...blockingMe.map((b) => b.blockerId),
+      ...myMatches.map((m) => (m.userAId === req.userId ? m.userBId : m.userAId)),
     ];
 
     const myIntents = (me.intent || 'friendship').split(',').map((s) => s.trim()).filter(Boolean);

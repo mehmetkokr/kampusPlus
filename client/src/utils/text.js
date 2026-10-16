@@ -21,9 +21,3 @@ export function normalizeEmail(value) {
   return typeof value === 'string' ? value.trim().toLowerCase() : value;
 }
 
-// Kayıt formundaki tarih seçicisi için: bugünden `years` yıl önceki gün (YYYY-MM-DD)
-export function yearsAgoISO(years) {
-  const d = new Date();
-  d.setFullYear(d.getFullYear() - years);
-  return d.toISOString().slice(0, 10);
-}

@@ -31,8 +31,8 @@ const GL = { antialias: true, alpha: true, powerPreference: 'low-power' };
 const PROVINCES = data.provinces.map((p) => ({ ...p, x: p.x - CX, y: p.y - CY, phase: (p.x - MIN_X) / WIDTH }));
 
 const COLORS = {
-  light: { land: '#ffffff', edge: '#0071e3', dot: '#0071e3', halo: '#0071e3', hover: '#d70015' },
-  dark: { land: '#1f2330', edge: '#0a84ff', dot: '#409cff', halo: '#0a84ff', hover: '#ff453a' },
+  light: { land: '#ffffff', edge: '#e11b27', dot: '#e11b27', halo: '#e11b27', hover: '#1d1d1f' },
+  dark: { land: '#1c1c1e', edge: '#f0222f', dot: '#ff4d57', halo: '#f0222f', hover: '#ffffff' },
 };
 
 function Land({ colors }) {

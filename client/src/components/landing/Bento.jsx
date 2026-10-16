@@ -113,7 +113,7 @@ function SwipeDemo() {
           initial={{ scale: 1 }}
           animate={{ scale: [1, 1.18, 1] }}
           transition={{ duration: 0.45 }}
-          className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--amber-soft)] text-[#ffffff]"
+          className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--amber-soft)] text-on-accent"
         >
           <Heart size={17} fill="currentColor" />
         </motion.span>
@@ -220,7 +220,7 @@ function LikesDemo() {
               <motion.span
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
-                className="absolute bottom-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--amber-soft)] text-white"
+                className="absolute bottom-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-[var(--amber-soft)] text-on-accent"
               >
                 <Heart size={10} fill="currentColor" />
               </motion.span>
@@ -235,7 +235,7 @@ function LikesDemo() {
           </motion.span>{' '}
           {tx("kişi seni beğendi")}
         </span>
-        <span className="flex items-center gap-1 rounded-full bg-gradient-to-br from-[#2e9bff] to-[#4f46e5] px-2.5 py-1 text-[0.6875rem] font-bold text-white">
+        <span className="flex items-center gap-1 rounded-full bg-gradient-to-br from-[#f0222f] to-[#a80c16] px-2.5 py-1 text-[0.6875rem] font-bold text-white">
           <Crown size={11} /> {tx("Premium")}
         </span>
       </div>
@@ -274,7 +274,7 @@ function ChatDemo() {
             transition={{ duration: 0.35, ease: EASE }}
             className={`max-w-[80%] rounded-2xl px-3.5 py-2 text-[0.8125rem] leading-snug ${
               m.mine
-                ? 'self-end rounded-br-md bg-[var(--amber-soft)] text-[#ffffff]'
+                ? 'self-end rounded-br-md bg-[var(--amber-soft)] text-on-accent'
                 : 'self-start rounded-bl-md border border-line bg-surface/75 text-paper'
             }`}
           >

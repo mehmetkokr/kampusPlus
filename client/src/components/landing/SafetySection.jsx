@@ -76,7 +76,7 @@ export default function SafetySection() {
               <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-amber/15 blur-3xl" />
               <div className="flex items-center justify-between">
                 <span className="font-display text-sm font-bold text-paper">
-                  {t("kampüs")}<span className="text-amber">+</span>
+                  {t("kampüs")}<span className="text-brand">+</span>
                 </span>
                 <span className="flex items-center gap-1 rounded-full bg-amber-dim px-2.5 py-1 text-[0.625rem] font-bold text-amber-soft">
                   <VerifiedBadge size="sm" label="Doğrulanmış" /> {t("DOĞRULANMIŞ")}

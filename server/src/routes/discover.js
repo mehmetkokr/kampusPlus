@@ -165,7 +165,8 @@ router.get('/home', requireAuth, async (req, res) => {
       (async () => {
         // ---------- Bugün Kampüste ----------
         const [newUsersToday, newPostsToday, newClubsToday] = await Promise.all([
-          prisma.user.count({ where: { universityId: me.universityId, createdAt: { gte: startOfToday } } }),
+          // Yalnızca keşfedilebilir gerçek öğrenciler; kendim, yönetici ve kapalı hesaplar sayılmaz
+          prisma.user.count({ where: { ...discoverableUserWhere(me.universityId), universityId: me.universityId, id: { not: me.id }, createdAt: { gte: startOfToday } } }),
           prisma.post.count({
             where: { author: { universityId: me.universityId }, createdAt: { gte: startOfToday } },
           }),

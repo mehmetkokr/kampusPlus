@@ -12,6 +12,8 @@
   --color-line: #38383a;
   --color-line-soft: rgba(255, 255, 255, 0.08);
 
+  --color-brand: var(--brand-red);
+  --color-on-accent: var(--on-accent);
   --color-amber: var(--amber-soft);
   --color-amber-soft: var(--amber-soft);
   --color-accent-fill: var(--accent-fill);
@@ -31,7 +33,7 @@
 
   /* shadcn/ui belirteçleri (components/ui): uygulamanın açık/koyu paletine bağlı */
   --color-primary: var(--accent-fill);
-  --color-primary-foreground: #ffffff;
+  --color-primary-foreground: var(--on-accent);
   --color-secondary: var(--surface-2);
   --color-secondary-foreground: var(--text);
   --color-destructive: var(--coral);
@@ -65,16 +67,15 @@
   /* WCAG AA: koyu yüzeylerde (en açığı #2c2c2e) en az 4,5:1 */
   --text-faint: #98989d;
 
-  /* Ana renk: kiremit (değişken adı geriye dönük uyumluluk için "amber") */
-  /* Değişken adları eski kalsa da anlamları: amber = vurgu mavisi,
-     teal = onay yeşili, coral = uyarı kırmızısı, sky = çivit */
-  /* Vurgu iki rolde: --amber-soft yazı/kenar mavisi (koyu zeminde okunur),
-     --accent-fill beyaz yazılı dolu zemin mavisi. Tek bir mavi iki kontrast
-     sınırını (≥4,5:1) aynı anda geçemediği için ayrıdır. */
-  --amber: #0068d6;
-  --amber-soft: #409cff;
-  --accent-fill: #0068d6;
-  --amber-dim: rgba(10, 132, 255, 0.16);
+  /* Vurgu nötr (Netflix gibi): renk yalnızca logoda ve özel anlarda (kırmızı,
+     --brand-red). Değişken adları geriye dönük uyumluluk için eski kaldı:
+     amber = vurgu, teal = onay yeşili, coral = uyarı kırmızısı, sky = çivit.
+     --amber-soft: vurgu yazı/kenar rengi, --accent-fill: ana düğme zemini
+     (üstündeki yazı --on-accent). Koyu modda beyaz düğme + siyah yazı. */
+  --amber: #f5f5f7;
+  --amber-soft: #ffffff;
+  --accent-fill: #f5f5f7;
+  --amber-dim: rgba(255, 255, 255, 0.1);
 
   /* Yardımcı: adaçayı yeşili (doğrulama, çevrimiçi, başarı) */
   --teal: #30d158;
@@ -91,6 +92,11 @@
   --violet-dim: rgba(191, 90, 242, 0.15);
 
   --gold: #ffd60a;
+
+  /* Logo kırmızısı (kurdele K). Koyu modda siyah zeminde parlasın diye bir ton açık */
+  --brand-red: #f0222f;
+  --brand-red-arm: #a80c16;
+  --brand-red-stem: #c10f1a;
 
   --radius-sm: 10px;
   --radius: 16px;
@@ -178,7 +184,7 @@ p {
   height: 38px;
   border-radius: 12px;
   background: var(--accent-fill);
-  color: #ffffff;
+  color: var(--on-accent);
   border: none;
   display: flex;
   align-items: center;
@@ -284,7 +290,7 @@ textarea {
   width: 100%;
   padding: 14px 20px;
   background: var(--accent-fill);
-  color: #ffffff;
+  color: var(--on-accent);
   border: none;
   border-radius: 14px;
   font-family: var(--font-body);
@@ -378,7 +384,7 @@ textarea {
 }
 
 .auth-wordmark .dot {
-  color: var(--amber-soft);
+  color: var(--brand-red);
 }
 
 .auth-tagline {
@@ -551,7 +557,7 @@ textarea {
 .intent-toggle.active {
   background: var(--accent-fill);
   border-color: var(--amber);
-  color: #ffffff;
+  color: var(--on-accent);
 }
 
 .swipe-card-details {
@@ -595,7 +601,7 @@ textarea {
   box-shadow: none;
 }
 .btn-pass:hover { background: var(--coral-dim); }
-.btn-like { background: var(--accent-fill); color: #ffffff; }
+.btn-like { background: var(--accent-fill); color: var(--on-accent); }
 
 /* Kart Modu karar düğmeleri: yuvarlak, simgeli; altta kısa yazı */
 .swipe-action {
@@ -633,7 +639,7 @@ textarea {
   height: 76px;
   border: 0;
   background: var(--accent-fill);
-  color: #fff;
+  color: var(--on-accent);
   box-shadow: 0 14px 30px -12px color-mix(in srgb, var(--amber-soft) 70%, transparent);
 }
 @media (hover: hover) {
@@ -840,7 +846,7 @@ textarea {
 .message-mine {
   background: var(--accent-fill);
   border: 0;
-  color: #ffffff;
+  color: var(--on-accent);
   border-bottom-right-radius: 6px;
 }
 
@@ -947,7 +953,7 @@ textarea {
 
 .chat-send-btn.has-text {
   background: var(--accent-fill);
-  color: #ffffff;
+  color: var(--on-accent);
   transform: scale(1.04);
 }
 
@@ -1022,7 +1028,7 @@ textarea {
   height: 32px;
   border-radius: 50%;
   background: var(--accent-fill);
-  color: #ffffff;
+  color: var(--on-accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1096,7 +1102,7 @@ textarea {
 .category-pill.active {
   background: var(--accent-fill);
   border-color: var(--amber);
-  color: #ffffff;
+  color: var(--on-accent);
 }
 
 .club-grid {
@@ -1564,7 +1570,7 @@ textarea {
   height: 19px;
   border-radius: 50%;
   background: var(--accent-fill);
-  color: #ffffff;
+  color: var(--on-accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2008,7 +2014,7 @@ textarea {
   height: 32px;
   border-radius: 50%;
   background: var(--accent-fill);
-  color: #ffffff;
+  color: var(--on-accent);
   border: none;
   display: flex;
   align-items: center;
@@ -2032,7 +2038,7 @@ textarea {
 .voice-bubble.message-mine {
   margin-left: auto;
   background: var(--accent-fill);
-  color: #ffffff;
+  color: var(--on-accent);
   border-bottom-right-radius: 4px;
 }
 
@@ -2110,7 +2116,7 @@ textarea {
 .file-bubble.message-mine {
   margin-left: auto;
   background: var(--accent-fill);
-  color: #ffffff;
+  color: var(--on-accent);
   border-bottom-right-radius: 4px;
 }
 
@@ -2602,6 +2608,9 @@ textarea {
    parlaklık ters çevrilir - böylece her yerde var(--...) kullanan tüm
    bileşenler ek değişiklik gerekmeden açık temada da doğru görünür. */
 [data-theme='light'] {
+  --brand-red: #e11b27;
+  --brand-red-arm: #8f0710;
+  --brand-red-stem: #b00c16;
   /* Tek palet: tanıtım sayfası, giriş/kayıt ve uygulama açık modda aynı tonları kullanır */
   /* Açık mod: Apple gri zemin, beyaz kartlar; yazı renkleri beyaz üstünde
      okunur kontrastta (erişilebilir yeşil ve kırmızı tonları) */
@@ -2617,10 +2626,11 @@ textarea {
   --text-muted: #545458;
   --text-faint: #636366;
 
-  --amber: #0071e3;
-  --amber-soft: #0066cc;
-  --accent-fill: #0071e3;
-  --amber-dim: rgba(0, 113, 227, 0.12);
+  /* Açık modda siyah düğme + beyaz yazı */
+  --amber: #1d1d1f;
+  --amber-soft: #1d1d1f;
+  --accent-fill: #1d1d1f;
+  --amber-dim: rgba(0, 0, 0, 0.06);
   --teal: #1a7330;
   --teal-dim: rgba(52, 199, 89, 0.14);
   --coral: #d70015;
@@ -2653,12 +2663,10 @@ textarea {
    Yeni Keşfet Sayfası (sosyal akış tarzı - swipe modundan ayrı)
    ========================================================== */
 
-/* Bu sayfaya özgü vurgu rengi: kullanıcının istediği mavi ton.
-   Uygulamanın geri kalanı amber/coral paletini kullanmaya devam eder;
-   bu değişkenler yalnızca Keşfet sayfasındaki aksiyon butonları içindir. */
+/* Keşfet sayfasındaki aksiyon butonlarının vurgusu (genel vurguyla aynı, nötr) */
 :root {
   --discover-accent: var(--amber-soft);
-  --discover-accent-hover: #0066cc;
+  --discover-accent-hover: var(--text-muted);
 }
 
 .discover-sticky-header {
@@ -2745,7 +2753,6 @@ textarea {
   gap: 5px;
 }
 
-
 .suggest-card-university {
   font-size: 12.5px;
   color: var(--text-muted);
@@ -2779,18 +2786,6 @@ textarea {
 
 .trend-club-chip:hover { border-color: var(--discover-accent); }
 .trend-club-chip .count { color: var(--text-faint); font-weight: 600; }
-
-/* ---------- Günün Önerisi kartı ---------- */
-
-/* ---------- Filtre modalı ---------- */
-
-/* ---------- Sosyal medya bağlantıları (profil) ---------- */
-.social-links-row {
-  display: flex;
-  gap: 8px;
-}
-
-.social-links-row > div { flex: 1; }
 
 /* ============================================================
    Premium / Paywall
@@ -2992,13 +2987,6 @@ textarea {
 }
 
 .paywall-feature-list li svg { color: var(--teal); flex-shrink: 0; }
-
-.paywall-plan-row {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 16px;
-}
-
 .paywall-plan-card {
   flex: 1;
   border: 1.5px solid var(--border);
@@ -3048,7 +3036,7 @@ textarea {
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.02em;
-  color: #fff;
+  color: var(--on-accent);
   background: var(--accent-fill);
   padding: 3px 7px;
   border-radius: 999px;

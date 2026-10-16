@@ -103,18 +103,71 @@ export const CLUB_ICONS = {
   feather: Feather,
 };
 
-// Kategori renkleri ve her kategori için önerilen simgeler
+// Kategori renkleri (tone → tone2 geçişli simge zemini) ve önerilen simgeler
 export const CLUB_CATEGORY_STYLE = {
-  Teknoloji: { tone: '#007aff', icons: ['cpu', 'code', 'bot', 'gamepad', 'rocket', 'terminal', 'satellite', 'brain'] },
-  Spor: { tone: '#34c759', icons: ['trophy', 'dumbbell', 'volleyball', 'bike', 'mountain', 'footprints', 'waves', 'medal'] },
-  Sanat: { tone: '#ff375f', icons: ['palette', 'camera', 'music', 'guitar', 'film', 'drama', 'pen', 'headphones'] },
-  Akademik: { tone: '#5856d6', icons: ['book', 'flask', 'microscope', 'calculator', 'lightbulb', 'globe', 'languages', 'graduation'] },
-  Sosyal: { tone: '#ff9500', icons: ['coffee', 'mic', 'pizza', 'dice', 'party', 'heart', 'leaf', 'users'] },
-  Diğer: { tone: '#8e8e93', icons: ['sparkles', 'target', 'puzzle', 'telescope', 'moon', 'flame', 'plane', 'feather'] },
+  Teknoloji: { tone: '#2e9bff', tone2: '#4f46e5', icons: ['cpu', 'code', 'bot', 'gamepad', 'rocket', 'terminal', 'satellite', 'brain'] },
+  Spor: { tone: '#34d17a', tone2: '#0e9f6e', icons: ['trophy', 'dumbbell', 'volleyball', 'bike', 'mountain', 'footprints', 'waves', 'medal'] },
+  Sanat: { tone: '#ff5e7e', tone2: '#d61f69', icons: ['palette', 'camera', 'music', 'guitar', 'film', 'drama', 'pen', 'headphones'] },
+  Akademik: { tone: '#8b7cf6', tone2: '#4338ca', icons: ['book', 'flask', 'microscope', 'calculator', 'lightbulb', 'globe', 'languages', 'graduation'] },
+  Sosyal: { tone: '#ffb224', tone2: '#f2600c', icons: ['coffee', 'mic', 'pizza', 'dice', 'party', 'heart', 'leaf', 'users'] },
+  Diğer: { tone: '#7c8aa5', tone2: '#3f4a5f', icons: ['sparkles', 'target', 'puzzle', 'telescope', 'moon', 'flame', 'plane', 'feather'] },
+};
+
+// Ekran okuyucu için simge adları
+export const CLUB_ICON_LABELS = {
+  cpu: 'İşlemci',
+  code: 'Kod',
+  terminal: 'Terminal',
+  bot: 'Robot',
+  gamepad: 'Oyun kolu',
+  rocket: 'Roket',
+  satellite: 'Uydu',
+  brain: 'Beyin',
+  trophy: 'Kupa',
+  dumbbell: 'Dambıl',
+  bike: 'Bisiklet',
+  mountain: 'Dağ',
+  volleyball: 'Voleybol',
+  footprints: 'Ayak izi',
+  waves: 'Dalga',
+  medal: 'Madalya',
+  palette: 'Palet',
+  camera: 'Kamera',
+  music: 'Müzik',
+  guitar: 'Gitar',
+  film: 'Film',
+  pen: 'Kalem',
+  drama: 'Tiyatro',
+  headphones: 'Kulaklık',
+  book: 'Kitap',
+  flask: 'Deney',
+  calculator: 'Hesap makinesi',
+  globe: 'Dünya',
+  lightbulb: 'Ampul',
+  microscope: 'Mikroskop',
+  languages: 'Diller',
+  graduation: 'Mezuniyet',
+  coffee: 'Kahve',
+  mic: 'Mikrofon',
+  pizza: 'Pizza',
+  dice: 'Zar',
+  leaf: 'Yaprak',
+  heart: 'Gönüllülük',
+  party: 'Kutlama',
+  users: 'Topluluk',
+  sparkles: 'Pırıltı',
+  target: 'Hedef',
+  puzzle: 'Yapboz',
+  moon: 'Ay',
+  flame: 'Alev',
+  plane: 'Uçak',
+  telescope: 'Teleskop',
+  feather: 'Tüy',
 };
 
 export const ICON_PREFIX = 'icon:';
 
-export function toneForCategory(category) {
-  return (CLUB_CATEGORY_STYLE[category] || CLUB_CATEGORY_STYLE.Sosyal).tone;
+export function tonesForCategory(category) {
+  const s = CLUB_CATEGORY_STYLE[category] || CLUB_CATEGORY_STYLE.Sosyal;
+  return [s.tone, s.tone2];
 }

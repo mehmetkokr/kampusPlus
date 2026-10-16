@@ -2,6 +2,9 @@
 // Express (HTTP API) + Socket.io (gerçek zamanlı mesajlaşma) birlikte çalışır.
 
 require('dotenv').config();
+// "Bugün" sayımları (yeni üyeler, admin grafikleri) Türkiye saatine göre olsun;
+// sunucu (Railway) UTC'de çalışır, aksi halde gün 03:00'te başlardı
+process.env.TZ = process.env.TZ || 'Europe/Istanbul';
 // Hata takibi en başta kurulur ki açılıştaki hatalar da kayda geçsin
 const { installErrorCapture, expressErrorHandler } = require('./lib/errorLog');
 installErrorCapture();

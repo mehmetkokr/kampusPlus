@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { VerifiedBadge } from '@/components/ui/icon-badge';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Flag, ShieldOff } from '../components/icons';
+import { ArrowLeft, Flag, MessageCircle, ShieldOff, UserCheck, UserPlus } from '../components/icons';
 import api from '../api';
 import { API_BASE_URL } from '../config';
 import { useToast } from '../context/ToastContext';
@@ -9,10 +9,28 @@ import ReportModal from '../components/ReportModal';
 import { SocialBadge } from '../components/SocialGlyphs';
 import { socialHandle, socialUrl } from '../utils/social';
 import { INTENT_LABEL, INTENT_CHIP_CLASS, parseIntents } from '../constants/intents';
-import { UserPlus as UserPlusIcon, UserCheck as UserCheckIcon } from '../components/icons';
 import { useConfirm } from '../context/ConfirmContext';
 import { useI18n } from '../i18n';
+import '../styles/profile.css';
 
+const initialsOf = (name = '') =>
+  name
+    .split(' ')
+    .filter(Boolean)
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join('')
+    .toLocaleUpperCase('tr');
+
+const tagsOf = (text) =>
+  (text || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+// Başka bir öğrencinin profili: Profilim sayfasıyla aynı kart düzeni.
+// Eşleşilmişse birincil eylem "Mesaj gönder", değilse "Takip et".
+// Şikâyet ve engelleme altta, daha sakin düğmelerde.
 export default function UserProfileViewPage() {
   const { t } = useI18n();
   const { userId } = useParams();
@@ -26,168 +44,208 @@ export default function UserProfileViewPage() {
   const [reporting, setReporting] = useState(false);
   const [following, setFollowing] = useState(false);
 
-  async function load() {
+  useEffect(() => {
+    let alive = true;
     setLoading(true);
     setError('');
-    try {
-      const res = await api.get(`/users/${userId}`);
-      setProfile(res.data);
-      setFollowing(res.data.isFollowing);
-    } catch (err) {
-      setError(err.response?.data?.error || 'Profil yüklenemedi.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+    api
+      .get(`/users/${userId}`)
+      .then((res) => {
+        if (!alive) return;
+        setProfile(res.data);
+        setFollowing(res.data.isFollowing);
+      })
+      .catch((err) => alive && setError(err.response?.data?.error || t('Profil yüklenemedi.')))
+      .finally(() => alive && setLoading(false));
+    return () => {
+      alive = false;
+    };
+  }, [userId, t]);
 
   async function toggleFollow() {
     const next = !following;
     setFollowing(next);
+    setProfile((p) => ({ ...p, followerCount: Math.max(0, p.followerCount + (next ? 1 : -1)) }));
     try {
       await api.post(`/users/${userId}/${next ? 'follow' : 'unfollow'}`);
     } catch (err) {
       setFollowing(!next);
-      toast.error(err.response?.data?.error || 'İşlem başarısız oldu.');
+      setProfile((p) => ({ ...p, followerCount: Math.max(0, p.followerCount + (next ? -1 : 1)) }));
+      toast.error(err.response?.data?.error || t('İşlem başarısız oldu.'));
     }
   }
 
   async function handleBlock() {
-    if (!await confirm(`${profile.fullName} kullanıcısını engellemek istediğine emin misin?`)) return;
+    if (!(await confirm(t('{name} kullanıcısını engellemek istediğine emin misin?', { name: profile.fullName })))) return;
     try {
       await api.post(`/users/${userId}/block`);
-      toast.success('Kullanıcı engellendi.');
+      toast.success(t('Kullanıcı engellendi.'));
       navigate(-1);
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Engellenemedi.');
+      toast.error(err.response?.data?.error || t('Engellenemedi.'));
     }
   }
 
-  return (
-    <div className="container">
-      <div className="page-title-row">
-        <button className="chat-back" onClick={() => navigate(-1)} aria-label={t("Geri")}>
-          <ArrowLeft size={18} />
-        </button>
-        <h2 className="page-title">{t("Profil")}</h2>
-      </div>
+  const interests = tagsOf(profile?.interests);
+  const hobbies = tagsOf(profile?.hobbies);
+  const instagram = socialUrl('instagram', profile?.instagramUrl);
+  const x = socialUrl('x', profile?.twitterUrl);
 
-      {loading && <p className="muted center-text">{t("Yükleniyor...")}</p>}
+  return (
+    <div className="container pf-page uv-page">
+      <div className="pf-backdrop" aria-hidden="true">
+        {profile?.photoUrl && <img src={`${API_BASE_URL}${profile.photoUrl}`} alt="" />}
+      </div>
+      <header className="uv-header">
+        <button type="button" className="pf-icon-btn" onClick={() => navigate(-1)} aria-label={t('Geri')}>
+          <ArrowLeft size={22} />
+        </button>
+        <h1>{t('Profil')}</h1>
+      </header>
+
+      {loading && <p className="muted center-text">{t('Yükleniyor...')}</p>}
 
       {!loading && error && (
-        <div className="card center-text">
+        <div className="pf-card center-text">
           <p className="muted">{error}</p>
         </div>
       )}
 
       {!loading && profile && (
         <>
-          <div className="card profile-hero">
-            <img
-              className="profile-avatar"
-              src={profile.photoUrl ? `${API_BASE_URL}${profile.photoUrl}` : undefined}
-              alt={profile.fullName}
-            />
-            <h3 className="profile-name">
+          <section className="pf-card pf-hero">
+            <div className="uv-avatar">
+              {profile.photoUrl ? (
+                <img src={`${API_BASE_URL}${profile.photoUrl}`} alt={profile.fullName} />
+              ) : (
+                <span className="uv-initials" aria-hidden="true">
+                  {initialsOf(profile.fullName)}
+                </span>
+              )}
+            </div>
+            <h2 className="pf-name">
               {profile.fullName}
               {profile.age ? `, ${profile.age}` : ''}
-              {profile.isStudentVerified && <VerifiedBadge size="lg" className="ml-1.5" label={t("Onaylı öğrenci")} />}
-            </h3>
-            <p className="muted profile-sub">{profile.university?.name}</p>
-            <p className="muted profile-sub">
-              {profile.followerCount} {t("takipçi ·")} {profile.followingCount} {t("takip")}
-            </p>
+              {profile.isStudentVerified && <VerifiedBadge size="lg" className="ml-1.5" label={t('Onaylı öğrenci')} />}
+            </h2>
+            <p className="pf-uni">{profile.university?.name}</p>
+            {profile.department && (
+              <p className="uv-dept">
+                {profile.department}
+                {profile.classYear ? ` · ${t(`${profile.classYear}. Sınıf`)}` : ''}
+              </p>
+            )}
 
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 12, flexWrap: 'wrap' }}>
+            <dl className="uv-stats">
+              <div>
+                <dt>{t('takipçi')}</dt>
+                <dd>{profile.followerCount}</dd>
+              </div>
+              <div>
+                <dt>{t('takip')}</dt>
+                <dd>{profile.followingCount}</dd>
+              </div>
+            </dl>
+
+            <div className="uv-actions">
+              {profile.matchId && (
+                <button type="button" className="uv-btn uv-btn-primary" onClick={() => navigate(`/chat/${profile.matchId}`)}>
+                  <MessageCircle size={18} /> {t('Mesaj gönder')}
+                </button>
+              )}
               <button
-                className={`follow-toggle-btn ${following ? 'following' : ''}`}
+                type="button"
+                className={`uv-btn ${profile.matchId ? 'uv-btn-secondary' : 'uv-btn-primary'} ${following ? 'is-following' : ''}`}
                 onClick={toggleFollow}
-                style={{ padding: '8px 16px' }}
+                aria-pressed={following}
               >
-                {following ? <UserCheckIcon width={14} height={14} /> : <UserPlusIcon width={14} height={14} />}
-                {following ? t("Takip Ediliyor") : t("Takip Et")}
-              </button>
-              <button className="btn-secondary" style={{ padding: '8px 14px', borderRadius: 999, display: 'flex', alignItems: 'center', gap: 6 }} onClick={() => setReporting(true)}>
-                <Flag size={14} /> {t("Şikayet Et")}
-              </button>
-              <button className="btn-secondary" style={{ padding: '8px 14px', borderRadius: 999, display: 'flex', alignItems: 'center', gap: 6, color: 'var(--coral)' }} onClick={handleBlock}>
-                <ShieldOff size={14} /> {t("Engelle")}
+                {following ? <UserCheck size={18} /> : <UserPlus size={18} />}
+                {following ? t('Takip Ediliyor') : t('Takip Et')}
               </button>
             </div>
-          </div>
+          </section>
 
           {profile.photos?.length > 1 && (
-            <div className="profile-photo-strip" aria-label={t("Fotoğraflar")}>
+            <div className="profile-photo-strip" aria-label={t('Fotoğraflar')}>
               {profile.photos.map((ph, i) => (
-                <img key={ph.id} src={`${API_BASE_URL}${ph.url}`} alt={`${profile.fullName}, fotoğraf ${i + 1}`} loading="lazy" />
+                <img key={ph.id} src={`${API_BASE_URL}${ph.url}`} alt={t('{name}, fotoğraf {n}', { name: profile.fullName, n: i + 1 })} loading="lazy" />
               ))}
             </div>
           )}
 
-          {(profile.intent || profile.department || profile.bio) && (
-            <div className="card">
+          {(profile.intent || profile.bio) && (
+            <section className="pf-card">
               {profile.intent && (
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+                <div className="uv-chips">
                   {parseIntents(profile.intent).map((v) => (
                     <span key={v} className={`intent-chip ${INTENT_CHIP_CLASS[v] || ''}`}>
-                      {INTENT_LABEL[v] || v}
+                      {t(INTENT_LABEL[v] || v)}
                     </span>
                   ))}
                 </div>
               )}
-              {profile.department && (
-                <p className="muted" style={{ marginBottom: 6 }}>
-                  {profile.department}
-                  {profile.classYear ? ` · ${t(`${profile.classYear}. Sınıf`)}` : ''}
-                </p>
-              )}
-              {profile.bio && <p>{profile.bio}</p>}
-            </div>
+              {profile.bio && <p className="uv-bio">{profile.bio}</p>}
+            </section>
           )}
 
-          {(socialUrl('instagram', profile.instagramUrl) || socialUrl('x', profile.twitterUrl)) && (
-            <div className="card profile-social-links">
-              {socialUrl('instagram', profile.instagramUrl) && (
-                <a href={socialUrl('instagram', profile.instagramUrl)} target="_blank" rel="noopener noreferrer nofollow" className="profile-social-link">
+          {(interests.length > 0 || hobbies.length > 0) && (
+            <section className="pf-card">
+              {interests.length > 0 && (
+                <>
+                  <h3 className="uv-label">{t('İlgi Alanları')}</h3>
+                  <div className="uv-chips">
+                    {interests.map((v) => (
+                      <span key={v} className="uv-tag">
+                        {t(v)}
+                      </span>
+                    ))}
+                  </div>
+                </>
+              )}
+              {hobbies.length > 0 && (
+                <>
+                  <h3 className="uv-label">{t('Hobiler')}</h3>
+                  <div className="uv-chips">
+                    {hobbies.map((v) => (
+                      <span key={v} className="uv-tag">
+                        {t(v)}
+                      </span>
+                    ))}
+                  </div>
+                </>
+              )}
+            </section>
+          )}
+
+          {(instagram || x) && (
+            <section className="pf-card profile-social-links">
+              {instagram && (
+                <a href={instagram} target="_blank" rel="noopener noreferrer nofollow" className="profile-social-link">
                   <SocialBadge network="instagram" size={30} />
                   <span>@{socialHandle('instagram', profile.instagramUrl)}</span>
                 </a>
               )}
-              {socialUrl('x', profile.twitterUrl) && (
-                <a href={socialUrl('x', profile.twitterUrl)} target="_blank" rel="noopener noreferrer nofollow" className="profile-social-link">
+              {x && (
+                <a href={x} target="_blank" rel="noopener noreferrer nofollow" className="profile-social-link">
                   <SocialBadge network="x" size={30} />
                   <span>@{socialHandle('x', profile.twitterUrl)}</span>
                 </a>
               )}
-            </div>
+            </section>
           )}
 
-          {(profile.interests || profile.hobbies) && (
-            <div className="card">
-              {profile.interests && (
-                <>
-                  <label>{t("İlgi Alanları")}</label>
-                  <p style={{ marginBottom: 12 }}>{profile.interests}</p>
-                </>
-              )}
-              {profile.hobbies && (
-                <>
-                  <label>{t("Hobiler")}</label>
-                  <p>{profile.hobbies}</p>
-                </>
-              )}
-            </div>
-          )}
+          <div className="uv-safety">
+            <button type="button" onClick={() => setReporting(true)}>
+              <Flag size={16} /> {t('Şikayet Et')}
+            </button>
+            <button type="button" className="is-danger" onClick={handleBlock}>
+              <ShieldOff size={16} /> {t('Engelle')}
+            </button>
+          </div>
         </>
       )}
 
-      {reporting && profile && (
-        <ReportModal targetType="user" targetId={profile.id} onClose={() => setReporting(false)} />
-      )}
+      {reporting && profile && <ReportModal targetType="user" targetId={profile.id} onClose={() => setReporting(false)} />}
     </div>
   );
 }

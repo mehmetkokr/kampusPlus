@@ -130,7 +130,7 @@ html:not([data-theme='light']) .adm {
   flex-shrink: 0;
   display: block;
 }
-.adm-brand .dot { color: var(--adm-brand-text); }
+.adm-brand .dot { color: var(--brand-red); }
 .adm-brand small {
   font-size: 0.72rem;
   font-weight: 500;
@@ -349,7 +349,6 @@ html:not([data-theme='light']) .adm-dropdown button.item:hover { background: rgb
   margin: 0 auto;
   padding: 24px 24px 64px;
 }
-.adm-mobilebar { display: none; }
 .adm-page-head {
   display: flex;
   flex-wrap: wrap;

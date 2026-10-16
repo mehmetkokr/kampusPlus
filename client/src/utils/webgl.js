@@ -71,21 +71,3 @@ export function mapPrefersLightweight() {
   return false;
 }
 
-// Ağır 3D parçası ne zaman yüklensin: WebGL varsa, veri tasarrufu kapalıysa ve
-// sayfa ilk çizimini bitirdikten sonra (tarayıcı boşa çıkınca)
-export function useDeferredWebGL(delay = 1200) {
-  const [ok, setOk] = useState(false);
-  useEffect(() => {
-    if (!hasWebGL() || prefersLightweight()) return undefined;
-    let idle;
-    const timer = setTimeout(() => {
-      if ('requestIdleCallback' in window) idle = window.requestIdleCallback(() => setOk(true), { timeout: 2000 });
-      else setOk(true);
-    }, delay);
-    return () => {
-      clearTimeout(timer);
-      if (idle) window.cancelIdleCallback?.(idle);
-    };
-  }, [delay]);
-  return ok;
-}

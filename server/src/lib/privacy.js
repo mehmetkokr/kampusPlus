@@ -34,14 +34,6 @@ function discoverableUserWhere(viewerUniversityId) {
   };
 }
 
-// Tek bir kullanıcı nesnesi için aynı kural (profileVisibility, universityId gerekli)
-function isDiscoverableBy(user, viewerUniversityId) {
-  if (!user || user.isFrozen || user.isBanned || user.isAdmin) return false;
-  if (user.profileVisibility === 'nobody') return false;
-  if (user.profileVisibility === 'university') return user.universityId === viewerUniversityId;
-  return true;
-}
-
 // Çevrimiçi / son görülme bilgisini paylaşıyor mu? (alan yoksa varsayılan: evet)
 function sharesActivity(user) {
   return user?.showActivityStatus !== false;
@@ -90,4 +82,4 @@ async function reachCheck(viewer, target) {
   return { ok: false, status: 403, error: 'Diğer üniversitelerdeki öğrencilere ulaşmak Premium\'a özel.', code: 'PREMIUM_REQUIRED' };
 }
 
-module.exports = { discoverableUserWhere, isDiscoverableBy, sharesActivity, reachCheck, hasConnection };
+module.exports = { discoverableUserWhere, sharesActivity, reachCheck, hasConnection };

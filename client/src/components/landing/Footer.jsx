@@ -42,7 +42,7 @@ export default function Footer() {
         <div className="grid gap-10 sm:grid-cols-[1.3fr_repeat(3,1fr)]">
           <div>
             <Link to="/" className="font-display text-xl font-bold text-paper">
-              {t("kampüs")}<span className="text-amber">+</span>
+              {t("kampüs")}<span className="text-brand">+</span>
             </Link>
             <p className="mt-3 max-w-xs text-[0.8125rem] leading-relaxed text-paper-muted">
               {t("Yalnızca doğrulanmış üniversite öğrencileri için kapalı bir kampüs topluluğu.")}

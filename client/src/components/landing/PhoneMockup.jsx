@@ -212,7 +212,7 @@ function Header({ tab, matches, club, onBack }) {
           <ChevronLeft size={14} />
         </button>
       )}
-      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[0.6rem] text-white" style={{ background: club ? club.tone : 'var(--accent-fill)' }}>
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[0.6rem]" style={{ background: club ? club.tone : 'var(--accent-fill)', color: club ? '#fff' : 'var(--on-accent)' }}>
         <h.icon size={15} strokeWidth={2.3} />
       </span>
       <div className="min-w-0 leading-tight">
@@ -298,7 +298,7 @@ function SwipeCard({ person, isTop, depth, command, onDecide, nudge }) {
         </div>
         <span className="absolute right-2.5 top-3.5 rounded-full bg-black/65 px-1.5 text-[8px] font-semibold text-white">1/2</span>
         {person.superLiked && (
-          <span className="absolute left-2.5 top-3.5 flex items-center gap-1 rounded-full bg-gradient-to-br from-[#2e9bff] to-[#4f46e5] px-2 py-0.5 text-[8px] font-bold text-white shadow">
+          <span className="absolute left-2.5 top-3.5 flex items-center gap-1 rounded-full bg-gradient-to-br from-[#f0222f] to-[#a80c16] px-2 py-0.5 text-[8px] font-bold text-white shadow">
             <Star size={8} weight="fill" /> {t('Seni Süper Beğendi')}
           </span>
         )}
@@ -389,7 +389,7 @@ function CardsScreen({ deck, likesCount, command, setCommand, onDecide, onReset,
 
       {view === 'likes' ? (
         <div className="flex h-[352px] flex-col items-center rounded-[1.3rem] border border-line bg-surface px-4 pt-5 text-center">
-          <span className="flex items-center gap-1 rounded-full bg-accent-fill px-2.5 py-1 text-[12px] font-bold text-white">
+          <span className="flex items-center gap-1 rounded-full bg-accent-fill px-2.5 py-1 text-[12px] font-bold text-on-accent">
             <Heart size={11} fill="currentColor" /> {likesCount}
           </span>
           <p className="mt-2 text-[12px] font-bold text-paper">{t('{n} kişi seni beğendi', { n: likesCount })}</p>
@@ -398,7 +398,7 @@ function CardsScreen({ deck, likesCount, command, setCommand, onDecide, onReset,
             {['zeynep', 'deniz', 'elif', 'selin'].map((id) => (
               <div key={id} className="relative aspect-[4/5] overflow-hidden rounded-[0.9rem]" style={{ background: byId(id).tone }}>
                 <img src={demoPhoto(id, 60, 75)} alt="" className="absolute inset-0 h-full w-full scale-110 object-cover blur-md" onError={(e) => e.currentTarget.remove()} />
-                <span className="absolute bottom-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-accent-fill text-white">
+                <span className="absolute bottom-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-accent-fill text-on-accent">
                   <Heart size={9} fill="currentColor" />
                 </span>
               </div>
@@ -435,13 +435,13 @@ function CardsScreen({ deck, likesCount, command, setCommand, onDecide, onReset,
               <span className="text-[7.5px] font-semibold text-paper-muted">{t('Geç')}</span>
             </div>
             <div className="flex flex-col items-center gap-0.5">
-              <button type="button" disabled={!top} onClick={() => setCommand({ dir: 1, n: Date.now() })} aria-label={t('Süper Beğen')} className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#2e9bff] to-[#4f46e5] text-white shadow-md transition-transform active:scale-90 disabled:opacity-40">
+              <button type="button" disabled={!top} onClick={() => setCommand({ dir: 1, n: Date.now() })} aria-label={t('Süper Beğen')} className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#f0222f] to-[#a80c16] text-white shadow-md transition-transform active:scale-90 disabled:opacity-40">
                 <Star size={15} weight="fill" />
               </button>
               <span className="text-[7.5px] font-semibold text-paper-muted">{t('Süper')}</span>
             </div>
             <div className="flex flex-col items-center gap-0.5">
-              <button type="button" disabled={!top} onClick={() => setCommand({ dir: 1, n: Date.now() })} aria-label={t('Beğen')} className="flex h-12 w-12 items-center justify-center rounded-full bg-accent-fill text-white shadow-lg transition-transform active:scale-90 disabled:opacity-40">
+              <button type="button" disabled={!top} onClick={() => setCommand({ dir: 1, n: Date.now() })} aria-label={t('Beğen')} className="flex h-12 w-12 items-center justify-center rounded-full bg-accent-fill text-on-accent shadow-lg transition-transform active:scale-90 disabled:opacity-40">
                 <Heart size={20} fill="currentColor" strokeWidth={0} />
               </button>
               <span className="text-[7.5px] font-semibold text-paper-muted">{t('Beğen')}</span>
@@ -475,13 +475,13 @@ function DiscoverScreen({ deck, likesCount, joined, goCards, railRef, followed, 
         </div>
       </div>
       <div className="grid grid-cols-[1.25fr_1fr] gap-2">
-        <button type="button" onClick={goCards} className="flex flex-col rounded-[1rem] bg-accent-fill p-2.5 text-left text-white">
+        <button type="button" onClick={goCards} className="flex flex-col rounded-[1rem] bg-accent-fill p-2.5 text-left text-on-accent">
           <span className="flex w-fit items-center gap-1 rounded-full bg-white/20 px-1.5 py-0.5 text-[7px] font-bold uppercase tracking-wider">
             <Layers size={8} /> {t('Kart Modu')}
           </span>
           <span className="mt-1 text-[12.5px] font-bold leading-tight">{t('Sağa kaydır, eşleş.')}</span>
           <span className="mt-0.5 text-[8px] text-white/80">{deck.length ? t('Sırada {n} kişi seni bekliyor', { n: deck.length }) : t('Şimdilik herkesi gördün')}</span>
-          <span className="mt-2 flex w-fit items-center gap-1 rounded-full bg-white px-2 py-1 text-[8px] font-bold text-amber-soft">
+          <span className="mt-2 flex w-fit items-center gap-1 rounded-full bg-[var(--on-accent)] px-2 py-1 text-[8px] font-bold text-[var(--accent-fill)]">
             {t('Kaydırmaya başla')} <ArrowRight size={9} />
           </span>
         </button>
@@ -513,7 +513,7 @@ function DiscoverScreen({ deck, likesCount, joined, goCards, railRef, followed, 
               <Avatar person={p} size={38} ring />
               <p className="mt-1.5 w-full truncate text-[9.5px] font-bold text-paper">{p.name}</p>
               <p className="w-full truncate text-[7.5px] text-paper-muted">{t(p.dept)}</p>
-              <button type="button" onClick={() => onFollow(p.id)} className={`mt-1.5 min-h-[24px] w-full rounded-[0.6rem] text-[8.5px] font-bold ${on ? 'bg-surface-2 text-paper' : 'bg-accent-fill text-white'}`}>
+              <button type="button" onClick={() => onFollow(p.id)} className={`mt-1.5 min-h-[24px] w-full rounded-[0.6rem] text-[8.5px] font-bold ${on ? 'bg-surface-2 text-paper' : 'bg-accent-fill text-on-accent'}`}>
                 {on ? t('Takiptesin') : t('Takip Et')}
               </button>
             </div>
@@ -592,7 +592,7 @@ function FeedScreen({ liked, onLike, scrollRef, going, onGo }) {
             <span className="text-[7.5px] text-paper-muted">{t('{n} katılımcı', { n: 24 + (going ? 1 : 0) })}</span>
           </span>
         </span>
-        <button type="button" onClick={onGo} aria-pressed={going} className={`min-h-[26px] rounded-full px-2.5 text-[8.5px] font-bold ${going ? 'bg-teal/15 text-teal' : 'bg-accent-fill text-white'}`}>
+        <button type="button" onClick={onGo} aria-pressed={going} className={`min-h-[26px] rounded-full px-2.5 text-[8.5px] font-bold ${going ? 'bg-teal/15 text-teal' : 'bg-accent-fill text-on-accent'}`}>
           {going ? t('Katılıyorsun') : t('Katıl')}
         </button>
       </div>
@@ -670,7 +670,7 @@ function ClubsScreen({ joined, onToggle, onOpen }) {
                 </span>
               </span>
             </button>
-            <button type="button" onClick={() => onToggle(c.id)} aria-pressed={on} className={`min-h-[28px] rounded-full px-3 text-[9px] font-bold transition-colors ${on ? 'bg-teal/15 text-teal' : 'bg-accent-fill text-white'}`}>
+            <button type="button" onClick={() => onToggle(c.id)} aria-pressed={on} className={`min-h-[28px] rounded-full px-3 text-[9px] font-bold transition-colors ${on ? 'bg-teal/15 text-teal' : 'bg-accent-fill text-on-accent'}`}>
               {on ? t('Üyesin') : t('Katıl')}
             </button>
           </div>
@@ -749,7 +749,7 @@ function ChatScreen({ chats, active, typing, onOpen, onSend }) {
                   {typing === id ? t('yazıyor…') : `${last.mine ? t('Sen: ') : ''}${last.text}`}
                 </span>
               </span>
-              {unread && <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-accent-fill px-1 text-[8px] font-bold text-white">1</span>}
+              {unread && <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-accent-fill px-1 text-[8px] font-bold text-on-accent">1</span>}
             </button>
           );
         })}
@@ -775,7 +775,7 @@ function ChatScreen({ chats, active, typing, onOpen, onSend }) {
               initial={{ opacity: 0, y: 8, scale: 0.97 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               transition={{ duration: 0.22, ease: EASE_OUT }}
-              className={`max-w-[78%] rounded-[0.9rem] px-2.5 py-1.5 text-[10px] leading-snug ${m.mine ? 'self-end bg-accent-fill text-white' : 'self-start bg-surface-3 text-paper'}`}
+              className={`max-w-[78%] rounded-[0.9rem] px-2.5 py-1.5 text-[10px] leading-snug ${m.mine ? 'self-end bg-accent-fill text-on-accent' : 'self-start bg-surface-3 text-paper'}`}
             >
               {m.text}
             </motion.p>
@@ -846,7 +846,7 @@ function ProfileScreen({ likes, joined, scrollRef }) {
           <span className="absolute inset-[7px]">
             <Face person={me} size={60} />
           </span>
-          <span className="absolute bottom-1 right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-[var(--surface)] bg-accent-fill text-white">
+          <span className="absolute bottom-1 right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-[var(--surface)] bg-accent-fill text-on-accent">
             <Camera size={9} />
           </span>
         </div>
@@ -901,7 +901,7 @@ function ProfileScreen({ likes, joined, scrollRef }) {
       {/* Sabit kaydet düğmesi, alt menünün üstünde */}
       {/* Kaydırma alanı alt menünün biraz üstünde bittiği için düğme alana göre aşağı itilir */}
       <div className="sticky z-10 pt-1" style={{ bottom: -36 }}>
-        <span className="flex min-h-[30px] items-center justify-center rounded-[0.8rem] bg-accent-fill text-[8.5px] font-extrabold uppercase tracking-[0.06em] text-white shadow-lg">
+        <span className="flex min-h-[30px] items-center justify-center rounded-[0.8rem] bg-accent-fill text-[8.5px] font-extrabold uppercase tracking-[0.06em] text-on-accent shadow-lg">
           {t('Değişiklikleri kaydet')}
         </span>
       </div>
@@ -1191,7 +1191,7 @@ export default function PhoneMockup({ className = '' }) {
                         }}
                         aria-label={t(item.label)}
                         aria-current={on ? 'page' : undefined}
-                        className={`relative flex min-h-[30px] items-center gap-1 rounded-[0.8rem] px-1.5 text-[8.5px] font-bold transition-[background-color,color] duration-200 ${on ? 'bg-accent-fill text-white' : 'text-paper-muted'}`}
+                        className={`relative flex min-h-[30px] items-center gap-1 rounded-[0.8rem] px-1.5 text-[8.5px] font-bold transition-[background-color,color] duration-200 ${on ? 'bg-accent-fill text-on-accent' : 'text-paper-muted'}`}
                       >
                         <item.icon size={13} strokeWidth={on ? 2.4 : 2} />
                         {on && <span>{t(item.label)}</span>}

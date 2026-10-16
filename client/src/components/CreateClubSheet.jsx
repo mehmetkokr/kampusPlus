@@ -3,7 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { BookOpen, Coffee, Cpu, Palette, Sparkles, Trophy, Users, X } from './icons';
 import api from '../api';
 import ClubIcon from './ClubIcon';
-import { CLUB_CATEGORY_STYLE, CLUB_ICONS, ICON_PREFIX } from '../constants/clubIcons';
+import { CLUB_CATEGORY_STYLE, CLUB_ICON_LABELS, CLUB_ICONS, ICON_PREFIX, tonesForCategory } from '../constants/clubIcons';
 import { useAuth } from '../context/AuthContext';
 import { useI18n } from '../i18n';
 
@@ -16,43 +16,31 @@ const CATEGORIES = [
   {
     value: 'Teknoloji',
     icon: Cpu,
-    tone: '#007aff',
-    tone2: '#007aff',
     ideas: ['Yapay Zeka Topluluğu', 'Kodlama Kulübü', 'Oyun Geliştirme'],
   },
   {
     value: 'Spor',
     icon: Trophy,
-    tone: '#34c759',
-    tone2: '#34c759',
     ideas: ['Koşu Takımı', 'Doğa Yürüyüşü', 'Kampüs Voleybolu'],
   },
   {
     value: 'Sanat',
     icon: Palette,
-    tone: '#ff375f',
-    tone2: '#ff375f',
     ideas: ['Fotoğrafçılık Kulübü', 'Film Gecesi', 'Akustik Müzik'],
   },
   {
     value: 'Akademik',
     icon: BookOpen,
-    tone: '#5856d6',
-    tone2: '#5856d6',
     ideas: ['Final Çalışma Grubu', 'Münazara Kulübü', 'Satranç Kulübü'],
   },
   {
     value: 'Sosyal',
     icon: Coffee,
-    tone: '#ff9500',
-    tone2: '#ff9500',
     ideas: ['Kahve Sohbetleri', 'Kutu Oyunu Geceleri', 'Gönüllülük Topluluğu'],
   },
   {
     value: 'Diğer',
     icon: Sparkles,
-    tone: '#8e8e93',
-    tone2: '#8e8e93',
     ideas: ['Girişimcilik Kulübü', 'Astronomi Topluluğu', 'Dil Değişimi'],
   },
 ];
@@ -62,6 +50,7 @@ export default function CreateClubSheet({ onClose, onCreated }) {
   const { user } = useAuth();
   const [category, setCategory] = useState('Sosyal');
   const cat = CATEGORIES.find((c) => c.value === category);
+  const [tone, tone2] = tonesForCategory(category);
   const iconsFor = (c) => CLUB_CATEGORY_STYLE[c].icons.map((k) => ICON_PREFIX + k);
   const [iconEmoji, setIconEmoji] = useState(iconsFor('Sosyal')[0]);
   const [name, setName] = useState('');
@@ -105,7 +94,7 @@ export default function CreateClubSheet({ onClose, onCreated }) {
     }
   }
 
-  const toneStyle = { '--club-tone': cat.tone, '--club-tone-2': cat.tone2 };
+  const toneStyle = { '--club-tone': tone, '--club-tone-2': tone2 };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -134,7 +123,7 @@ export default function CreateClubSheet({ onClose, onCreated }) {
             <span className="club-preview-pattern" aria-hidden="true">
               {patternIcons.concat(patternIcons).map((Icon, i) => (
                 <span key={i}>
-                  <Icon size={18} strokeWidth={1.8} />
+                  <Icon size={18} weight="fill" />
                 </span>
               ))}
             </span>
@@ -149,7 +138,7 @@ export default function CreateClubSheet({ onClose, onCreated }) {
                 exit={{ scale: 0.4, opacity: 0 }}
                 transition={{ type: 'spring', stiffness: 520, damping: 26 }}
               >
-                <ClubIcon value={iconEmoji} category={category} size={52} />
+                <ClubIcon value={iconEmoji} category={category} size={64} />
               </motion.span>
             </AnimatePresence>
             <div className="club-preview-text">
@@ -171,7 +160,7 @@ export default function CreateClubSheet({ onClose, onCreated }) {
                 key={c.value}
                 type="button"
                 className={`club-category ${category === c.value ? 'active' : ''}`}
-                style={{ '--cat-tone': c.tone }}
+                style={{ '--cat-tone': tonesForCategory(c.value)[0] }}
                 onClick={() => pickCategory(c.value)}
                 aria-pressed={category === c.value}
               >
@@ -185,19 +174,23 @@ export default function CreateClubSheet({ onClose, onCreated }) {
         {/* ---------- Simge ---------- */}
         <fieldset className="club-studio-section">
           <legend>{t("Simgesi")}</legend>
-          <div className="club-emoji-row">
+          <div className="club-emoji-row" role="radiogroup" aria-label={t('Simgesi')}>
             {iconsFor(category).map((em) => {
               const Icon = CLUB_ICONS[em.slice(ICON_PREFIX.length)];
+              const picked = iconEmoji === em;
               return (
                 <button
                   key={em}
                   type="button"
-                  className={`club-emoji ${iconEmoji === em ? 'active' : ''}`}
+                  role="radio"
+                  aria-checked={picked}
+                  className={`club-emoji ${picked ? 'active' : ''}`}
                   onClick={() => setIconEmoji(em)}
-                  aria-label={`Simge: ${em.slice(ICON_PREFIX.length)}`}
-                  aria-pressed={iconEmoji === em}
+                  aria-label={t(CLUB_ICON_LABELS[em.slice(ICON_PREFIX.length)])}
                 >
-                  <Icon size={20} strokeWidth={1.9} />
+                  <span className="club-emoji-tile">
+                    <Icon size={22} weight="fill" />
+                  </span>
                 </button>
               );
             })}

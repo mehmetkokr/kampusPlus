@@ -49,7 +49,7 @@
   animation: sky-drift-1 34s ease-in-out infinite alternate;
 }
 .sky-glow-2 {
-  --glow: #30b0c7;
+  --glow: #8e8e93;
   width: 52vmax;
   height: 46vmax;
   right: -20vmax;
@@ -58,7 +58,7 @@
   animation: sky-drift-2 42s ease-in-out infinite alternate;
 }
 .sky-glow-3 {
-  --glow: #5e5ce6;
+  --glow: #f0222f;
   width: 64vmax;
   height: 44vmax;
   left: -10vmax;
@@ -67,7 +67,7 @@
   animation: sky-drift-3 48s ease-in-out infinite alternate;
 }
 .sky-glow-4 {
-  --glow: #64d2ff;
+  --glow: #ffffff;
   width: 40vmax;
   height: 30vmax;
   right: 6vw;

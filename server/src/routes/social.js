@@ -206,7 +206,7 @@ router.get('/feed/sidebar', requireAuth, async (req, res) => {
 
     const [newTodayCount, activeUsers, suggested] = await Promise.all([
       prisma.user.count({
-        where: { universityId: me.universityId, createdAt: { gte: startOfToday } },
+        where: { ...discoverableUserWhere(me.universityId), universityId: me.universityId, id: { not: req.userId }, createdAt: { gte: startOfToday } },
       }),
       prisma.user.findMany({
         where: {
@@ -918,12 +918,15 @@ router.get('/users/:id', requireAuth, async (req, res) => {
     const reach = await reachCheck(me, target);
     if (!reach.ok) return res.status(reach.status).json({ error: reach.error, code: reach.code });
 
-    const [followerCount, followingCount, isFollowing] = await Promise.all([
+    const [a, b] = req.userId < targetId ? [req.userId, targetId] : [targetId, req.userId];
+    const [followerCount, followingCount, isFollowing, match] = await Promise.all([
       prisma.follow.count({ where: { followingId: targetId } }),
       prisma.follow.count({ where: { followerId: targetId } }),
       prisma.follow.findUnique({
         where: { followerId_followingId: { followerId: req.userId, followingId: targetId } },
       }),
+      // Eşleşme varsa profilde "Mesaj gönder" gösterilir
+      prisma.match.findUnique({ where: { userAId_userBId: { userAId: a, userBId: b } }, select: { id: true } }),
     ]);
 
     // Doğum tarihinin kendisi başkalarına gösterilmez; yalnızca güncel yaş döner.
@@ -931,7 +934,7 @@ router.get('/users/:id', requireAuth, async (req, res) => {
     publicFields.isStudentVerified = studentDocStatus === 'approved';
     // Flört tercihleri yalnızca flört modundaki öğrencilere görünür
     if (targetId !== req.userId) publicFields.intent = visibleIntentFor(publicFields.intent, me.intent);
-    res.json({ ...publicFields, followerCount, followingCount, isFollowing: !!isFollowing });
+    res.json({ ...publicFields, followerCount, followingCount, isFollowing: !!isFollowing, matchId: match?.id ?? null });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Profil alınamadı.' });

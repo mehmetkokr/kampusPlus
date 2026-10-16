@@ -1,10 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="11.5 4.5 52.5 52.5">
+  <style>
+    .s{fill:#b00c16}.a{fill:#8f0710}.l{fill:#e11b27}.p{stroke:#e11b27}
+    @media (prefers-color-scheme: dark){.s{fill:#c10f1a}.a{fill:#a80c16}.l{fill:#f0222f}.p{stroke:#f0222f}}
+  </style>
   <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2E9BFF"/><stop offset="1" stop-color="#4F46E5"/></linearGradient>
-    <linearGradient id="h" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></linearGradient>
+    <linearGradient id="f" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#000" stop-opacity=".32"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient>
   </defs>
-  <rect width="64" height="64" rx="15" fill="url(#g)"/>
-  <rect width="64" height="64" rx="15" fill="url(#h)"/>
-  <path d="M17 16h7.5v20.2L35.6 25h9.2L32.7 36.6 46 52h-9.4l-9.4-11.4-2.7 2.6V52H17z" fill="#fff"/>
-  <path d="M50 8.8v12.4M43.8 15h12.4" stroke="#9BD7FF" stroke-width="4.4" stroke-linecap="round" fill="none"/>
+  <path class="s" d="M13 9h11v46H13z"/>
+  <path class="a" d="M21 41 37 9h11L25 50z"/>
+  <path class="l" d="M21 26h11l18 29H39z"/>
+  <path fill="url(#f)" d="M24 26h8l5 8-13 6z"/>
+  <path class="p" d="M55 8.5v11M49.5 14h11" stroke-width="4" stroke-linecap="square" fill="none"/>
 </svg>

@@ -7,8 +7,8 @@ import React from 'react';
 // anda koyu zeminden maviye birden atlıyordu. Artık üç yumuşak renk bulutu
 // yalnızca transform ile hareket ediyor: tarayıcı bunu ekran kartında, ana iş
 // parçacığından bağımsız çalıştırır; ilk kareden itibaren sayfadadır, sonradan
-// "belirmez". Renkler önceki paletle aynı (açık: soluk mavi-lila, koyu: gece
-// mavisi-çivit). Hareketi azaltmayı seçenlerde bulutlar durur.
+// "belirmez". Renkler logoyla uyumlu (koyu: grafit ve bordo,
+// açık: soluk gül ve gri). Hareketi azaltmayı seçenlerde bulutlar durur.
 export default function HeroGradient() {
   return (
     <div className="landing-hero-gradient" aria-hidden="true" data-html2canvas-ignore>
