@@ -556,3 +556,14 @@ test('Kampüs sekmesi yalnızca gündemdeki gönderileri sıralı gösterir', as
   assert.equal(res.data.posts[0].trendRank, 1);
   assert.ok(![quiet.id, old.id, followersOnly.id].some((id) => ids.includes(id)));
 });
+
+test('fotoğraflı gönderi yeniden paylaşılamaz, izin de açılamaz', async () => {
+  const { a, b, ta, tb } = await studentPair('rp-foto');
+  const photo = await prisma.post.create({ data: { authorId: a.id, imageUrl: '/uploads/x.jpg', caption: 'Fotoğraf', allowRepost: true } });
+  const res = await api('POST', `/api/posts/${photo.id}/repost`, { token: tb });
+  assert.equal(res.status, 403);
+  assert.equal(res.data.code, 'REPOST_NOT_ALLOWED');
+  const patch = await api('PATCH', `/api/posts/${photo.id}`, { token: ta, body: { allowRepost: true } });
+  assert.equal(patch.status, 400);
+  assert.equal(b.id > 0, true);
+});

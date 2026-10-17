@@ -5299,7 +5299,8 @@ button.announcement-main { cursor: pointer; }
 .x-action.repost.active,
 .x-action.repost:hover:not(.locked) { color: #30d158; }
 .x-action.repost:hover:not(.locked) { background: color-mix(in srgb, #30d158 12%, transparent); }
-.x-action.repost.locked { opacity: 0.4; }
+.x-action.repost.is-own { cursor: default; }
+.x-action.repost.is-own:hover { background: none; color: inherit; }
 
 /* Kampüs sekmesinin başlığı */
 .x-trend-head {
@@ -5315,18 +5316,60 @@ button.announcement-main { cursor: pointer; }
   color: var(--brand-red);
 }
 
-/* Paylaşım kutusu: yeniden paylaşım izni */
-.x-repost-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 32px;
-  margin: 0 0 6px;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: normal;
-  text-transform: none;
+/* Paylaşım kutusu: görünürlük ve "⋯" gönderi seçenekleri aynı satırda */
+.x-composer-settings { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.x-composer-settings .x-visibility { margin-bottom: 0; }
+.x-options { position: relative; }
+.x-options-btn {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--text-muted) 55%, transparent);
+  border-radius: 50%;
+  background: transparent;
   color: var(--text-muted);
   cursor: pointer;
+  animation: glass-pop 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+  transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
 }
-.x-repost-toggle input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent-fill); }
+/* 44 px dokunma alanı */
+.x-options-btn::after { content: ''; position: absolute; inset: -7px; }
+.x-options-btn:hover { color: var(--text); background: var(--glass-soft); }
+.x-options-btn[aria-expanded='true'] { color: var(--text); background: var(--glass-soft); border-color: var(--text-faint); }
+.x-options-btn:focus-visible { outline: 2px solid var(--amber-soft); outline-offset: 2px; }
+.x-options-btn.is-on { color: var(--text); border-color: color-mix(in srgb, #30d158 60%, transparent); }
+.x-options-badge {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  padding: 2px;
+  border-radius: 50%;
+  color: #fff;
+  background: #30d158;
+  box-shadow: 0 0 0 2px var(--surface);
+}
+
+.x-options-menu { margin-bottom: 8px; }
+.x-option-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  padding: 8px;
+  border-radius: 12px;
+  cursor: pointer;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 400;
+}
+.x-option-row:hover { background: var(--glass-soft); }
+.x-option-row .x-visibility-text { flex: 1; min-width: 0; }
+.x-option-row .x-visibility-text strong { font-weight: 700; }
+.x-option-row .switch { flex: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .x-options-btn { animation: none; transition: none; }
+}

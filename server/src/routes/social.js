@@ -164,7 +164,7 @@ async function postsAndReposts(ctx, userId, authorIds, limit) {
       where: {
         userId: { in: authorIds },
         user: { isFrozen: false, isBanned: false },
-        post: { AND: [visiblePostsWhere(ctx), { allowRepost: true, visibility: 'campus' }] },
+        post: { AND: [visiblePostsWhere(ctx), { allowRepost: true, visibility: 'campus', imageUrl: null }] },
       },
       orderBy: { createdAt: 'desc' },
       take: limit,
@@ -192,9 +192,9 @@ function serializePost(p, ctx) {
     canComment: canCommentOn(p, ctx),
     likeCount: p.likes.length,
     commentCount: p._count.comments,
-    // Yeniden paylaşım: yalnızca sahibi izin verdiyse ve gönderi kampüse açıksa
+    // Yeniden paylaşım: yalnızca sahibi izin verdiyse, gönderi kampüse açık ve yazılıysa
     allowRepost: Boolean(p.allowRepost),
-    canRepost: p.authorId !== ctx.userId && Boolean(p.allowRepost) && p.visibility === 'campus',
+    canRepost: p.authorId !== ctx.userId && Boolean(p.allowRepost) && p.visibility === 'campus' && !p.imageUrl,
     repostCount: p._count.reposts ?? 0,
     repostedByMe: (p.reposts?.length ?? 0) > 0,
     likedByMe: p.likes.some((l) => l.userId === ctx.userId),
@@ -329,8 +329,9 @@ router.post('/posts', requireAuth, upload.single('photo'), verifyUpload('photo')
       return res.status(400).json({ error: `Gönderi en fazla ${CAPTION_MAX} karakter olabilir.` });
     }
     const visibility = VISIBILITIES.includes(req.body.visibility) ? req.body.visibility : 'campus';
-    // Yeniden paylaşım izni (çok parçalı formda metin gelir); yalnızca kampüse açık gönderide
-    const allowRepost = visibility === 'campus' && ['true', '1', true].includes(req.body.allowRepost);
+    // Yeniden paylaşım izni (çok parçalı formda metin gelir); yalnızca kampüse açık,
+    // yazılı (fotoğrafsız) gönderide
+    const allowRepost = visibility === 'campus' && !req.file && ['true', '1', true].includes(req.body.allowRepost);
 
     const post = await prisma.post.create({
       data: {
@@ -351,7 +352,8 @@ router.post('/posts', requireAuth, upload.single('photo'), verifyUpload('photo')
   }
 });
 
-// POST /api/posts/:id/repost — yeniden paylaş / geri al (yalnızca sahibi izin verdiyse)
+// POST /api/posts/:id/repost — yeniden paylaş / geri al (yalnızca sahibi izin verdiyse,
+// yalnızca yazılı gönderide)
 router.post('/posts/:id/repost', requireAuth, async (req, res) => {
   try {
     const postId = Number(req.params.id);
@@ -364,6 +366,9 @@ router.post('/posts/:id/repost', requireAuth, async (req, res) => {
     if (existing) {
       await prisma.repost.delete({ where: key });
     } else {
+      if (post.imageUrl) {
+        return res.status(403).json({ error: 'Fotoğraflı gönderiler yeniden paylaşılamaz.', code: 'REPOST_NOT_ALLOWED' });
+      }
       if (!post.allowRepost || post.visibility !== 'campus') {
         return res.status(403).json({ error: 'Bu gönderinin sahibi yeniden paylaşıma izin vermiyor.', code: 'REPOST_NOT_ALLOWED' });
       }
@@ -394,6 +399,9 @@ router.patch('/posts/:id', requireAuth, async (req, res) => {
     if (typeof req.body?.allowRepost !== 'boolean') return res.status(400).json({ error: 'Geçersiz istek.' });
     if (req.body.allowRepost && post.visibility !== 'campus') {
       return res.status(400).json({ error: 'Yalnızca kampüse açık gönderiler yeniden paylaşılabilir.' });
+    }
+    if (req.body.allowRepost && post.imageUrl) {
+      return res.status(400).json({ error: 'Fotoğraflı gönderiler yeniden paylaşılamaz.' });
     }
     await prisma.$transaction([
       prisma.post.update({ where: { id: post.id }, data: { allowRepost: req.body.allowRepost } }),

@@ -291,7 +291,7 @@ export default function FeedPage() {
     // Yeni gönderi "Paylaşımlarım"da en üstte görünür; Kampüs sekmesine
     // etkileşim aldıkça (gündeme girince) gelir.
     if (filter === 'mine') setPosts((prev) => [newPost, ...prev]);
-    else toast.success(tx('Paylaşıldı. Beğeni ve yorum aldıkça Kampüs gündemine girer.'));
+    toast.success(filter === 'mine' ? tx('Paylaşıldı.') : tx('Paylaşıldı. Beğeni ve yorum aldıkça Kampüs gündemine girer.'));
   }
 
   const emptyByTab = {
@@ -468,11 +468,15 @@ function Composer({ user, onCreated }) {
     }
   });
   const [visMenuOpen, setVisMenuOpen] = useState(false);
+  // "⋯" gönderi seçenekleri (yeniden paylaşım izni); yalnızca yazılı, kampüse açık gönderide
+  const [optionsOpen, setOptionsOpen] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef(null);
   const textRef = useRef(null);
   const visRef = useRef(null);
+  const optionsRef = useRef(null);
+  const optionsMenuRef = useRef(null);
 
   // Metin alanı içeriğe göre uzasın
   useEffect(() => {
@@ -489,6 +493,14 @@ function Composer({ user, onCreated }) {
     return () => document.removeEventListener('mousedown', close);
   }, [visMenuOpen]);
 
+  useEffect(() => {
+    if (!optionsOpen) return undefined;
+    // Düğme ya da menünün kendisine dokunmak menüyü kapatmaz
+    const close = (e) => ![optionsRef.current, optionsMenuRef.current].some((el) => el?.contains(e.target)) && setOptionsOpen(false);
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [optionsOpen]);
+
   useEffect(() => () => preview && URL.revokeObjectURL(preview), [preview]);
 
   async function pickFile(e) {
@@ -504,6 +516,18 @@ function Composer({ user, onCreated }) {
   const remaining = CAPTION_MAX - text.length;
   const canPost = (text.trim() || file) && remaining >= 0 && !saving;
   const Vis = VISIBILITY[visibility];
+  // Yeniden paylaşım yalnızca yazılı (fotoğrafsız) ve kampüse açık gönderide
+  const repostable = visibility === 'campus' && !file && text.trim().length > 0;
+  const repostOn = repostable && allowRepost;
+
+  function setRepost(next) {
+    setAllowRepost(next);
+    try {
+      localStorage.setItem('kp-allow-repost', next ? '1' : '0');
+    } catch {
+      // tercih hatırlanmazsa sorun değil
+    }
+  }
 
   async function submit(e) {
     e.preventDefault();
@@ -512,7 +536,7 @@ function Composer({ user, onCreated }) {
     const form = new FormData();
     form.append('caption', text);
     form.append('visibility', visibility);
-    form.append('allowRepost', visibility === 'campus' && allowRepost ? 'true' : 'false');
+    form.append('allowRepost', repostOn ? 'true' : 'false');
     if (file) form.append('photo', await compressImage(file));
     try {
       const res = await api.post('/posts', form, { headers: { 'Content-Type': 'multipart/form-data' } });
@@ -521,7 +545,7 @@ function Composer({ user, onCreated }) {
       setFile(null);
       setPreview(null);
       setShowEmoji(false);
-      toast.success('Paylaşıldı.');
+      setOptionsOpen(false);
     } catch (err) {
       toast.error(err.response?.data?.error || 'Gönderi paylaşılamadı.');
     } finally {
@@ -560,8 +584,17 @@ function Composer({ user, onCreated }) {
           </div>
         )}
 
+        <div className="x-composer-settings">
         <div className="x-visibility" ref={visRef}>
-          <button type="button" className="x-visibility-btn" onClick={() => setVisMenuOpen((v) => !v)} aria-expanded={visMenuOpen}>
+          <button
+            type="button"
+            className="x-visibility-btn"
+            onClick={() => {
+              setVisMenuOpen((v) => !v);
+              setOptionsOpen(false);
+            }}
+            aria-expanded={visMenuOpen}
+          >
             <Vis.icon size={14} /> {tx(Vis.label)} <ChevronDown size={14} />
           </button>
           {visMenuOpen && (
@@ -592,24 +625,46 @@ function Composer({ user, onCreated }) {
           )}
         </div>
 
-        {visibility === 'campus' && (
-          <label className="x-repost-toggle">
-            <input
-              type="checkbox"
-              checked={allowRepost}
-              onChange={(e) => {
-                setAllowRepost(e.target.checked);
-                try {
-                  localStorage.setItem('kp-allow-repost', e.target.checked ? '1' : '0');
-                } catch {
-                  // tercih hatırlanmazsa sorun değil
-                }
+        {/* Gönderi seçenekleri: yazı yazılınca belirir (fotoğraflı gönderide yok) */}
+        {repostable && (
+          <div className="x-options" ref={optionsRef}>
+            <button
+              type="button"
+              className={`x-options-btn ${repostOn ? 'is-on' : ''}`}
+              onClick={() => {
+                setOptionsOpen((v) => !v);
+                setVisMenuOpen(false);
               }}
-            />
-            <RepeatIcon size={14} aria-hidden="true" />
-            <span>{tx('Yeniden paylaşıma izin ver')}</span>
-          </label>
+              aria-expanded={optionsOpen}
+              aria-haspopup="dialog"
+              aria-label={tx('Gönderi seçenekleri')}
+            >
+              <MoreHorizontal size={16} />
+              {repostOn && <RepeatIcon size={12} className="x-options-badge" aria-hidden="true" />}
+            </button>
+          </div>
         )}
+        </div>
+
+        {repostable && optionsOpen && (
+          <div ref={optionsMenuRef} className="x-visibility-menu x-options-menu" role="dialog" aria-label={tx('Gönderi seçenekleri')}>
+            <p>{tx('Gönderi seçenekleri')}</p>
+            <label className="x-option-row">
+              <span className="x-visibility-text">
+                <strong>{tx('Yeniden paylaşıma izin ver')}</strong>
+                <small>{tx('Kampüsündeki öğrenciler bu yazıyı kendi takipçileriyle paylaşabilir. İznini sonradan da kapatabilirsin.')}</small>
+              </span>
+              <span className="switch">
+                <input type="checkbox" checked={allowRepost} onChange={(e) => setRepost(e.target.checked)} aria-label={tx('Yeniden paylaşıma izin ver')} />
+                <span className="switch-track" />
+              </span>
+            </label>
+            <p className="x-visibility-note">
+              <ImagePlus size={12} /> {tx('Fotoğraflı gönderiler yeniden paylaşılamaz.')}
+            </p>
+          </div>
+        )}
+
 
         {showEmoji && (
           <EmojiPicker
@@ -770,7 +825,7 @@ function PostRow({ post, onLike, onRepost, onToggleRepost, onSave, onOpenComment
                 </button>
                 {post.isOwn ? (
                   <>
-                    {post.visibility === 'campus' && (
+                    {post.visibility === 'campus' && !post.imageUrl && (
                       <button role="menuitem" onClick={() => { onToggleRepost(post); setMenuOpen(false); }}>
                         <RepeatIcon size={15} /> {post.allowRepost ? tx('Yeniden paylaşımı kapat') : tx('Yeniden paylaşıma izin ver')}
                       </button>
@@ -816,16 +871,19 @@ function PostRow({ post, onLike, onRepost, onToggleRepost, onSave, onOpenComment
             <HeartIcon size={18} fill={post.likedByMe ? 'currentColor' : 'none'} />
             <span>{post.likeCount || ''}</span>
           </button>
-          <button
-            className={`x-action repost ${post.repostedByMe ? 'active' : ''} ${post.canRepost || post.repostedByMe ? '' : 'locked'}`}
-            onClick={() => onRepost(post)}
-            aria-label={post.repostedByMe ? tx('Yeniden paylaşımı geri al') : tx('Yeniden paylaş')}
-            aria-pressed={post.repostedByMe}
-            title={post.canRepost || post.repostedByMe ? tx('Yeniden paylaş') : tx('Sahibi yeniden paylaşıma izin vermiyor')}
-          >
-            <RepeatIcon size={18} />
-            <span>{post.repostCount || ''}</span>
-          </button>
+          {/* Yalnızca sahibinin izin verdiği yazılı gönderilerde (kendi gönderinde sayaç olarak) */}
+          {(post.canRepost || post.repostedByMe || (post.isOwn && post.allowRepost)) && (
+            <button
+              className={`x-action repost ${post.repostedByMe ? 'active' : ''} ${post.isOwn ? 'is-own' : ''}`}
+              onClick={() => !post.isOwn && onRepost(post)}
+              disabled={post.isOwn}
+              aria-label={post.isOwn ? tx('{n} yeniden paylaşım', { n: post.repostCount }) : post.repostedByMe ? tx('Yeniden paylaşımı geri al') : tx('Yeniden paylaş')}
+              aria-pressed={post.isOwn ? undefined : post.repostedByMe}
+            >
+              <RepeatIcon size={18} />
+              <span>{post.repostCount || ''}</span>
+            </button>
+          )}
           <button className="x-action" onClick={() => onCopyLink(post)} aria-label={tx("Bağlantıyı kopyala")}>
             <ShareIcon size={18} />
           </button>
