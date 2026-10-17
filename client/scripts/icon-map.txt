@@ -167,3 +167,6 @@ X X
 XCircle XCircle
 ZapIcon Lightning
 GithubLogo GithubLogo
+Repeat Repeat
+TrendingUp TrendUp
+FlipHorizontal FlipHorizontal

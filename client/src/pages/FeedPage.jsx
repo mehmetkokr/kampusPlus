@@ -26,6 +26,8 @@ import {
   Send as SendIcon,
   Bookmark as BookmarkIcon,
   BadgeCheck as VerifiedIcon,
+  Repeat as RepeatIcon,
+  TrendingUp,
 } from '../components/icons';
 import api from '../api';
 import { API_BASE_URL } from '../config';
@@ -36,7 +38,7 @@ import NotificationBell from '../components/NotificationBell';
 import PageHeader from '../components/PageHeader';
 import { useConfirm } from '../context/ConfirmContext';
 import { useI18n } from '../i18n';
-import { PenLine, Sprout, UsersRound } from '../components/icons';
+import { PenLine, UsersRound } from '../components/icons';
 import { compressImage } from '../utils/image';
 import EmojiPicker from '../components/EmojiPicker';
 import { usePhotoEditor } from '../context/PhotoEditorContext';
@@ -44,7 +46,11 @@ import { usePhotoEditor } from '../context/PhotoEditorContext';
 const PAGE_SIZE = 10;
 const CAPTION_MAX = 280;
 
-// Akış sekmeleri: kampüsteki herkes, takip ettiklerim, benim paylaşımlarım.
+// Akış sekmeleri (Twitter mantığı):
+//  Kampüs        : yalnızca kampüsün gündemi (son 3 günde beğeni, yorum ve yeniden
+//                  paylaşımla öne çıkan gönderiler; sunucuda trendingPosts)
+//  Takip         : takip ettiklerinin gönderileri ve yeniden paylaştıkları
+//  Paylaşımlarım : kendi gönderilerin ve yeniden paylaştıkların
 // Gönderiler sen silene kadar kalır; hikayeler 24 saat sonra kaybolur.
 const TABS = [
   { value: 'campus', label: 'Kampüs' },
@@ -181,6 +187,35 @@ export default function FeedPage() {
     }
   }
 
+  // Yeniden paylaş / geri al: yalnızca gönderi sahibi izin verdiyse
+  async function handleRepost(post) {
+    if (!post.repostedByMe && !post.canRepost) {
+      toast.info(post.isOwn ? tx('Kendi gönderini yeniden paylaşamazsın.') : tx('Bu gönderinin sahibi yeniden paylaşıma izin vermiyor.'));
+      return;
+    }
+    patchPost(post.id, (p) => ({ repostedByMe: !p.repostedByMe, repostCount: p.repostCount + (p.repostedByMe ? -1 : 1) }));
+    try {
+      const res = await api.post(`/posts/${post.id}/repost`);
+      patchPost(post.id, () => ({ repostedByMe: res.data.reposted, repostCount: res.data.repostCount }));
+      if (res.data.reposted) toast.success(tx('Yeniden paylaştın; takipçilerinin akışında görünecek.'));
+    } catch (err) {
+      patchPost(post.id, () => ({ repostedByMe: post.repostedByMe, repostCount: post.repostCount }));
+      toast.error(err.response?.data?.error || tx('İşlem tamamlanamadı.'));
+    }
+  }
+
+  // Gönderi sahibi: yeniden paylaşım iznini aç/kapat (kapatınca mevcut paylaşımlar kalkar)
+  async function handleToggleRepostPermission(post) {
+    const next = !post.allowRepost;
+    try {
+      await api.patch(`/posts/${post.id}`, { allowRepost: next });
+      patchPost(post.id, () => ({ allowRepost: next, repostCount: next ? post.repostCount : 0 }));
+      toast.success(next ? tx('Yeniden paylaşıma izin verdin.') : tx('Yeniden paylaşım kapatıldı.'));
+    } catch (err) {
+      toast.error(err.response?.data?.error || tx('İşlem tamamlanamadı.'));
+    }
+  }
+
   async function handleSave(post) {
     patchPost(post.id, (p) => ({ savedByMe: !p.savedByMe }));
     try {
@@ -253,13 +288,14 @@ export default function FeedPage() {
   }
 
   function handleCreated(newPost) {
-    // Yeni gönderi "Kampüs" ve "Paylaşımlarım" sekmelerinde en üstte görünür;
-    // "Takip" sekmesi yalnızca başkalarının gönderilerini gösterir.
-    if (filter !== 'following') setPosts((prev) => [newPost, ...prev]);
+    // Yeni gönderi "Paylaşımlarım"da en üstte görünür; Kampüs sekmesine
+    // etkileşim aldıkça (gündeme girince) gelir.
+    if (filter === 'mine') setPosts((prev) => [newPost, ...prev]);
+    else toast.success(tx('Paylaşıldı. Beğeni ve yorum aldıkça Kampüs gündemine girer.'));
   }
 
   const emptyByTab = {
-    campus: { icon: Sprout, title: 'Kampüste henüz paylaşım yok', text: 'İlk gönderiyi sen paylaş; kampüsteki herkes görebilir.' },
+    campus: { icon: TrendingUp, title: 'Gündemde henüz bir şey yok', text: 'Son 3 günde beğeni, yorum ve yeniden paylaşım alan gönderiler burada gündeme girer.' },
     following: { icon: UsersRound, title: 'Takip ettiklerin henüz paylaşmadı', text: 'Kampüsünden yeni kişiler keşfet ve takip etmeye başla.' },
     mine: { icon: PenLine, title: 'Henüz paylaşımın yok', text: 'Paylaştıkların, sen silene kadar burada kalır.' },
   }[filter];
@@ -354,11 +390,19 @@ export default function FeedPage() {
             </div>
           )}
 
+          {filter === 'campus' && !loading && posts.length > 0 && (
+            <p className="x-trend-head">
+              <TrendingUp size={15} aria-hidden="true" /> {tx('Kampüs gündemi · son 3 gün')}
+            </p>
+          )}
+
           {posts.map((post) => (
             <PostRow
               key={post.id}
               post={post}
               onLike={handleLike}
+              onRepost={handleRepost}
+              onToggleRepost={handleToggleRepostPermission}
               onSave={handleSave}
               onOpenComments={() => setOpenComments(post.id)}
               onCopyLink={handleCopyLink}
@@ -415,6 +459,14 @@ function Composer({ user, onCreated }) {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [visibility, setVisibility] = useState('campus');
+  // Yeniden paylaşım izni: kullanıcının son seçimi hatırlanır (varsayılan kapalı)
+  const [allowRepost, setAllowRepost] = useState(() => {
+    try {
+      return localStorage.getItem('kp-allow-repost') === '1';
+    } catch {
+      return false;
+    }
+  });
   const [visMenuOpen, setVisMenuOpen] = useState(false);
   const [showEmoji, setShowEmoji] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -460,6 +512,7 @@ function Composer({ user, onCreated }) {
     const form = new FormData();
     form.append('caption', text);
     form.append('visibility', visibility);
+    form.append('allowRepost', visibility === 'campus' && allowRepost ? 'true' : 'false');
     if (file) form.append('photo', await compressImage(file));
     try {
       const res = await api.post('/posts', form, { headers: { 'Content-Type': 'multipart/form-data' } });
@@ -538,6 +591,25 @@ function Composer({ user, onCreated }) {
             </div>
           )}
         </div>
+
+        {visibility === 'campus' && (
+          <label className="x-repost-toggle">
+            <input
+              type="checkbox"
+              checked={allowRepost}
+              onChange={(e) => {
+                setAllowRepost(e.target.checked);
+                try {
+                  localStorage.setItem('kp-allow-repost', e.target.checked ? '1' : '0');
+                } catch {
+                  // tercih hatırlanmazsa sorun değil
+                }
+              }}
+            />
+            <RepeatIcon size={14} aria-hidden="true" />
+            <span>{tx('Yeniden paylaşıma izin ver')}</span>
+          </label>
+        )}
 
         {showEmoji && (
           <EmojiPicker
@@ -638,7 +710,7 @@ function FeedSidebar({ sidebar, onFollow }) {
 // ---------------------------------------------------------
 // Zaman akışı satırı (Twitter tarzı gönderi)
 // ---------------------------------------------------------
-function PostRow({ post, onLike, onSave, onOpenComments, onCopyLink, onReport, onBlock, onDelete }) {
+function PostRow({ post, onLike, onRepost, onToggleRepost, onSave, onOpenComments, onCopyLink, onReport, onBlock, onDelete }) {
   const { t: tx } = useI18n();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
@@ -652,7 +724,21 @@ function PostRow({ post, onLike, onSave, onOpenComments, onCopyLink, onReport, o
   }, [menuOpen]);
 
   return (
-    <article className="x-post">
+    <article className={`x-post ${post.repostedBy || post.trendRank ? 'has-context' : ''}`}>
+      {(post.repostedBy || post.trendRank) && (
+        <p className="x-post-context">
+          {post.repostedBy ? (
+            <>
+              <RepeatIcon size={13} aria-hidden="true" />
+              <Link to={`/users/${post.repostedBy.id}`}>{tx('{name} yeniden paylaştı', { name: post.repostedBy.fullName })}</Link>
+            </>
+          ) : (
+            <>
+              <TrendingUp size={13} aria-hidden="true" /> {tx('Gündemde #{n}', { n: post.trendRank })}
+            </>
+          )}
+        </p>
+      )}
       <Link to={`/users/${post.author.id}`} className="x-avatar-link" aria-label={post.author.fullName}>
         <img className="x-avatar" src={post.author.photoUrl ? `${API_BASE_URL}${post.author.photoUrl}` : undefined} alt="" />
       </Link>
@@ -683,9 +769,16 @@ function PostRow({ post, onLike, onSave, onOpenComments, onCopyLink, onReport, o
                   <ShareIcon width={15} height={15} /> {tx("Bağlantıyı Kopyala")}
                 </button>
                 {post.isOwn ? (
-                  <button role="menuitem" className="danger" onClick={() => { onDelete(post); setMenuOpen(false); }}>
-                    <Trash2 size={15} /> {tx("Gönderiyi Sil")}
-                  </button>
+                  <>
+                    {post.visibility === 'campus' && (
+                      <button role="menuitem" onClick={() => { onToggleRepost(post); setMenuOpen(false); }}>
+                        <RepeatIcon size={15} /> {post.allowRepost ? tx('Yeniden paylaşımı kapat') : tx('Yeniden paylaşıma izin ver')}
+                      </button>
+                    )}
+                    <button role="menuitem" className="danger" onClick={() => { onDelete(post); setMenuOpen(false); }}>
+                      <Trash2 size={15} /> {tx("Gönderiyi Sil")}
+                    </button>
+                  </>
                 ) : (
                   <>
                     <button role="menuitem" onClick={() => { onReport(); setMenuOpen(false); }}>
@@ -722,6 +815,16 @@ function PostRow({ post, onLike, onSave, onOpenComments, onCopyLink, onReport, o
           >
             <HeartIcon size={18} fill={post.likedByMe ? 'currentColor' : 'none'} />
             <span>{post.likeCount || ''}</span>
+          </button>
+          <button
+            className={`x-action repost ${post.repostedByMe ? 'active' : ''} ${post.canRepost || post.repostedByMe ? '' : 'locked'}`}
+            onClick={() => onRepost(post)}
+            aria-label={post.repostedByMe ? tx('Yeniden paylaşımı geri al') : tx('Yeniden paylaş')}
+            aria-pressed={post.repostedByMe}
+            title={post.canRepost || post.repostedByMe ? tx('Yeniden paylaş') : tx('Sahibi yeniden paylaşıma izin vermiyor')}
+          >
+            <RepeatIcon size={18} />
+            <span>{post.repostCount || ''}</span>
           </button>
           <button className="x-action" onClick={() => onCopyLink(post)} aria-label={tx("Bağlantıyı kopyala")}>
             <ShareIcon size={18} />

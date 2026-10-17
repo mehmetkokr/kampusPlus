@@ -54,6 +54,7 @@ const TEXT = {
     like: (n) => [n, 'gönderini beğendi.'],
     comment: (n) => [n, 'gönderine yorum yaptı.'],
     comment_like: (n) => [n, 'yorumunu beğendi.'],
+    repost: (n) => [n, 'gönderini yeniden paylaştı.'],
     club_event: () => ['Yeni kulüp etkinliği', 'Kulübünde yeni bir etkinlik var.'],
     event_reminder: () => ['Etkinlik yaklaşıyor', 'Katılacağın etkinlik birazdan başlıyor.'],
     badge_approved: () => ['Belgen onaylandı', 'Artık isminin yanında onay rozeti var.'],
@@ -69,6 +70,7 @@ const TEXT = {
     like: (n) => [n, 'liked your post.'],
     comment: (n) => [n, 'commented on your post.'],
     comment_like: (n) => [n, 'liked your comment.'],
+    repost: (n) => [n, 'reposted your post.'],
     club_event: () => ['New club event', 'There is a new event in your club.'],
     event_reminder: () => ['Event starting soon', 'An event you are attending starts soon.'],
     badge_approved: () => ['Document approved', 'You now have a verified badge.'],
@@ -90,6 +92,7 @@ function linkFor(n) {
     case 'like':
     case 'comment':
     case 'comment_like':
+    case 'repost':
       return n.targetId ? `/feed?post=${n.targetId}` : '/feed';
     case 'club_event':
     case 'event_reminder':

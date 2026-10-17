@@ -494,3 +494,65 @@ test('Plus ile Premium farkı: geri alma, seni beğenenler, gizli mod ve filtrel
   const status = await api('GET', '/api/premium/status', { token: ta });
   assert.deepEqual(status.data.features, ['campus']);
 });
+
+test('yeniden paylaşım yalnızca sahibinin izniyle; takip akışında görünür, izin kapanınca kalkar', async () => {
+  const uni = await isolatedUni('repost');
+  const extra = { department: 'Felsefe', classYear: 2, birthDate: new Date('2003-01-01'), age: 23, schoolEmailVerifiedAt: new Date(), universityId: uni };
+  const author = await createUser('rp-yazar@test.edu.tr', extra);
+  const fan = await createUser('rp-fan@test.edu.tr', extra);
+  const follower = await createUser('rp-takipci@test.edu.tr', extra);
+  await prisma.follow.create({ data: { followerId: follower.id, followingId: fan.id } });
+  const closed = await prisma.post.create({ data: { authorId: author.id, caption: 'İzinsiz gönderi' } });
+  const open = await prisma.post.create({ data: { authorId: author.id, caption: 'Paylaşılabilir', allowRepost: true } });
+  const tf = await tokenFor(fan.email);
+
+  const denied = await api('POST', `/api/posts/${closed.id}/repost`, { token: tf });
+  assert.equal(denied.status, 403);
+  assert.equal(denied.data.code, 'REPOST_NOT_ALLOWED');
+  const own = await api('POST', `/api/posts/${open.id}/repost`, { token: await tokenFor(author.email) });
+  assert.equal(own.status, 400, 'kendi gönderisi yeniden paylaşılamaz');
+
+  const ok = await api('POST', `/api/posts/${open.id}/repost`, { token: tf });
+  assert.equal(ok.status, 200);
+  assert.deepEqual(ok.data, { reposted: true, repostCount: 1 });
+  assert.ok(await prisma.notification.findFirst({ where: { userId: author.id, type: 'repost', actorId: fan.id } }));
+
+  const feed = await api('GET', '/api/posts/feed?filter=following', { token: await tokenFor(follower.email) });
+  const entry = feed.data.posts.find((p) => p.id === open.id);
+  assert.ok(entry, 'takipçinin akışında yeniden paylaşılan gönderi var');
+  assert.equal(entry.repostedBy.id, fan.id);
+  assert.equal(entry.repostCount, 1);
+
+  // Yalnızca sahibi izni değiştirebilir; kapanınca yeniden paylaşımlar silinir
+  assert.equal((await api('PATCH', `/api/posts/${open.id}`, { token: tf, body: { allowRepost: false } })).status, 403);
+  assert.equal((await api('PATCH', `/api/posts/${open.id}`, { token: await tokenFor(author.email), body: { allowRepost: false } })).status, 200);
+  assert.equal(await prisma.repost.count({ where: { postId: open.id } }), 0);
+  const after = await api('GET', '/api/posts/feed?filter=following', { token: await tokenFor(follower.email) });
+  assert.ok(!after.data.posts.some((p) => p.id === open.id));
+});
+
+test('Kampüs sekmesi yalnızca gündemdeki gönderileri sıralı gösterir', async () => {
+  const uni = await isolatedUni('gundem');
+  const extra = { department: 'Tarih', classYear: 2, birthDate: new Date('2003-01-01'), age: 23, schoolEmailVerifiedAt: new Date(), universityId: uni };
+  const people = [];
+  for (let i = 0; i < 5; i++) people.push(await createUser(`gundem-${i}@test.edu.tr`, extra));
+  const [me, a, b] = people;
+  const quiet = await prisma.post.create({ data: { authorId: a.id, caption: 'Kimse beğenmedi' } });
+  const hot = await prisma.post.create({ data: { authorId: a.id, caption: 'Herkes konuşuyor', allowRepost: true } });
+  const warm = await prisma.post.create({ data: { authorId: b.id, caption: 'Biraz ilgi' } });
+  const old = await prisma.post.create({ data: { authorId: b.id, caption: 'Eski', createdAt: new Date(Date.now() - 5 * 86400000) } });
+  const followersOnly = await prisma.post.create({ data: { authorId: b.id, caption: 'Takipçilere', visibility: 'followers' } });
+  for (const u of people.slice(1)) {
+    await prisma.postLike.create({ data: { postId: hot.id, userId: u.id } });
+    await prisma.postLike.create({ data: { postId: old.id, userId: u.id } });
+  }
+  await prisma.comment.create({ data: { postId: hot.id, authorId: me.id, content: 'Katılıyorum' } });
+  await prisma.repost.create({ data: { postId: hot.id, userId: b.id } });
+  for (const u of people.slice(2, 5)) await prisma.postLike.create({ data: { postId: warm.id, userId: u.id } });
+
+  const res = await api('GET', '/api/posts/feed?filter=campus', { token: await tokenFor(me.email) });
+  const ids = res.data.posts.map((p) => p.id);
+  assert.deepEqual(ids, [hot.id, warm.id], 'yalnızca gündemdekiler, puana göre');
+  assert.equal(res.data.posts[0].trendRank, 1);
+  assert.ok(![quiet.id, old.id, followersOnly.id].some((id) => ids.includes(id)));
+});

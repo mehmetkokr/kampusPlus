@@ -128,8 +128,56 @@ const POST_INCLUDE = (userId) => ({
   author: { select: AUTHOR_SELECT },
   likes: { select: { userId: true } },
   savedBy: { where: { userId }, select: { id: true } },
-  _count: { select: { comments: true } },
+  reposts: { where: { userId }, select: { id: true } },
+  _count: { select: { comments: true, reposts: true } },
 });
+
+// Gündem (Kampüs sekmesi, Twitter'daki TT): kendi kampüsünde herkese açık,
+// son TREND_WINDOW_H saatte paylaşılmış gönderiler etkileşim puanına göre
+// sıralanır (beğeni 1, yorum 2, yeniden paylaşım 3); puanı TREND_MIN altında
+// kalanlar gündeme girmez. Puan yaşla birlikte azalır, eski gönderi gündemi tıkamaz.
+const TREND_WINDOW_H = 72;
+const TREND_MIN = 3;
+const trendScore = (p) => p.likes.length + 2 * p._count.comments + 3 * p._count.reposts;
+
+async function trendingPosts(ctx, userId) {
+  const where = visiblePostsWhere(ctx);
+  where.AND.push({ visibility: 'campus', author: { universityId: ctx.universityId }, createdAt: { gte: new Date(Date.now() - TREND_WINDOW_H * 3600 * 1000) } });
+  const rows = await prisma.post.findMany({ where, orderBy: { createdAt: 'desc' }, take: 400, include: POST_INCLUDE(userId) });
+  const now = Date.now();
+  return rows
+    .map((p) => ({ p, score: trendScore(p), age: (now - new Date(p.createdAt).getTime()) / 3600000 }))
+    .filter((x) => x.score >= TREND_MIN)
+    .sort((a, b) => b.score / Math.pow(b.age + 2, 1.3) - a.score / Math.pow(a.age + 2, 1.3))
+    .map((x) => x.p);
+}
+
+// Takip ve Paylaşımlarım sekmeleri: kişilerin kendi gönderileri ve yeniden
+// paylaştıkları (izin verilmiş, izleyicinin görebildiği) gönderiler tek akışta,
+// en yeni hareket önce. Aynı gönderi bir kez görünür (en son hareketle).
+async function postsAndReposts(ctx, userId, authorIds, limit) {
+  const postsWhere = visiblePostsWhere(ctx);
+  postsWhere.AND.push({ authorId: { in: authorIds } });
+  const [posts, reposts] = await Promise.all([
+    prisma.post.findMany({ where: postsWhere, orderBy: { createdAt: 'desc' }, take: limit, include: POST_INCLUDE(userId) }),
+    prisma.repost.findMany({
+      where: {
+        userId: { in: authorIds },
+        user: { isFrozen: false, isBanned: false },
+        post: { AND: [visiblePostsWhere(ctx), { allowRepost: true, visibility: 'campus' }] },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+      include: { user: { select: { id: true, fullName: true } }, post: { include: POST_INCLUDE(userId) } },
+    }),
+  ]);
+  const entries = [
+    ...posts.map((p) => ({ at: p.createdAt, post: p, by: null })),
+    ...reposts.map((r) => ({ at: r.createdAt, post: r.post, by: r.user })),
+  ].sort((a, b) => new Date(b.at) - new Date(a.at));
+  const seen = new Set();
+  return entries.filter((e) => (seen.has(e.post.id) ? false : seen.add(e.post.id)));
+}
 
 function serializePost(p, ctx) {
   return {
@@ -144,6 +192,11 @@ function serializePost(p, ctx) {
     canComment: canCommentOn(p, ctx),
     likeCount: p.likes.length,
     commentCount: p._count.comments,
+    // Yeniden paylaşım: yalnızca sahibi izin verdiyse ve gönderi kampüse açıksa
+    allowRepost: Boolean(p.allowRepost),
+    canRepost: p.authorId !== ctx.userId && Boolean(p.allowRepost) && p.visibility === 'campus',
+    repostCount: p._count.reposts ?? 0,
+    repostedByMe: (p.reposts?.length ?? 0) > 0,
     likedByMe: p.likes.some((l) => l.userId === ctx.userId),
     savedByMe: p.savedBy.length > 0,
   };
@@ -155,9 +208,9 @@ function serializePost(p, ctx) {
 
 // GET /api/posts/feed
 // Query: filter (campus|following|mine), skip, take
-//  campus    : kampüsteki herkesin görünür gönderileri (varsayılan)
-//  following : yalnızca takip ettiklerim
-//  mine      : yalnızca benim gönderilerim
+//  campus    : kampüsün gündemi (yalnızca gündemdeki gönderiler, bkz. trendingPosts)
+//  following : takip ettiklerimin gönderileri ve yeniden paylaştıkları
+//  mine      : benim gönderilerim ve yeniden paylaştıklarım
 router.get('/posts/feed', requireAuth, async (req, res) => {
   try {
     const filter = ['following', 'mine'].includes(req.query.filter) ? req.query.filter : 'campus';
@@ -167,20 +220,23 @@ router.get('/posts/feed', requireAuth, async (req, res) => {
     const ctx = await getViewerContext(req.userId);
     if (!ctx.universityId) return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
 
-    const where = visiblePostsWhere(ctx);
-    if (filter === 'mine') where.AND.push({ authorId: req.userId });
-    if (filter === 'following') where.AND.push({ authorId: { in: [...ctx.followingIds] } });
-
-    const posts = await prisma.post.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      skip,
-      take: take + 1, // bir fazlasını isteyip "daha fazla var mı" bilgisini anlıyoruz
-      include: POST_INCLUDE(req.userId),
+    // Bir fazlasını isteyip "daha fazla var mı" bilgisini anlıyoruz
+    let entries;
+    if (filter === 'campus') {
+      entries = (await trendingPosts(ctx, req.userId)).map((p, i) => ({ post: p, by: null, rank: i + 1 }));
+    } else {
+      const ids = filter === 'mine' ? [req.userId] : [...ctx.followingIds];
+      entries = await postsAndReposts(ctx, req.userId, ids, skip + take + 1);
+    }
+    const page = entries.slice(skip, skip + take);
+    res.json({
+      posts: page.map((e) => ({
+        ...serializePost(e.post, ctx),
+        repostedBy: e.by ? { id: e.by.id, fullName: e.by.fullName } : null,
+        trendRank: e.rank || null,
+      })),
+      hasMore: entries.length > skip + take,
     });
-
-    const hasMore = posts.length > take;
-    res.json({ posts: posts.slice(0, take).map((p) => serializePost(p, ctx)), hasMore });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Akış yüklenemedi.' });
@@ -273,6 +329,8 @@ router.post('/posts', requireAuth, upload.single('photo'), verifyUpload('photo')
       return res.status(400).json({ error: `Gönderi en fazla ${CAPTION_MAX} karakter olabilir.` });
     }
     const visibility = VISIBILITIES.includes(req.body.visibility) ? req.body.visibility : 'campus';
+    // Yeniden paylaşım izni (çok parçalı formda metin gelir); yalnızca kampüse açık gönderide
+    const allowRepost = visibility === 'campus' && ['true', '1', true].includes(req.body.allowRepost);
 
     const post = await prisma.post.create({
       data: {
@@ -280,6 +338,7 @@ router.post('/posts', requireAuth, upload.single('photo'), verifyUpload('photo')
         imageUrl: req.file ? `/uploads/${req.file.filename}` : null,
         caption: caption ? await maskBannedWords(caption) : null,
         visibility,
+        allowRepost,
       },
       include: POST_INCLUDE(req.userId),
     });
@@ -289,6 +348,61 @@ router.post('/posts', requireAuth, upload.single('photo'), verifyUpload('photo')
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Gönderi paylaşılamadı.' });
+  }
+});
+
+// POST /api/posts/:id/repost — yeniden paylaş / geri al (yalnızca sahibi izin verdiyse)
+router.post('/posts/:id/repost', requireAuth, async (req, res) => {
+  try {
+    const postId = Number(req.params.id);
+    const ctx = await getViewerContext(req.userId);
+    const post = await loadVisiblePost(postId, ctx);
+    if (!post) return res.status(404).json({ error: 'Gönderi bulunamadı.' });
+    if (post.authorId === req.userId) return res.status(400).json({ error: 'Kendi gönderini yeniden paylaşamazsın.' });
+    const key = { postId_userId: { postId, userId: req.userId } };
+    const existing = await prisma.repost.findUnique({ where: key });
+    if (existing) {
+      await prisma.repost.delete({ where: key });
+    } else {
+      if (!post.allowRepost || post.visibility !== 'campus') {
+        return res.status(403).json({ error: 'Bu gönderinin sahibi yeniden paylaşıma izin vermiyor.', code: 'REPOST_NOT_ALLOWED' });
+      }
+      await prisma.repost.create({ data: { postId, userId: req.userId } });
+      await createNotification(req.app.get('io'), {
+        userId: post.authorId,
+        type: 'repost',
+        actorId: req.userId,
+        targetType: 'post',
+        targetId: postId,
+      });
+    }
+    const repostCount = await prisma.repost.count({ where: { postId } });
+    res.json({ reposted: !existing, repostCount });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'İşlem tamamlanamadı.' });
+  }
+});
+
+// PATCH /api/posts/:id { allowRepost } — sahibi yeniden paylaşım iznini değiştirir.
+// İzin kapanınca mevcut yeniden paylaşımlar da kalkar.
+router.patch('/posts/:id', requireAuth, async (req, res) => {
+  try {
+    const post = await prisma.post.findUnique({ where: { id: Number(req.params.id) } });
+    if (!post) return res.status(404).json({ error: 'Gönderi bulunamadı.' });
+    if (post.authorId !== req.userId) return res.status(403).json({ error: 'Bu gönderiyi değiştiremezsin.' });
+    if (typeof req.body?.allowRepost !== 'boolean') return res.status(400).json({ error: 'Geçersiz istek.' });
+    if (req.body.allowRepost && post.visibility !== 'campus') {
+      return res.status(400).json({ error: 'Yalnızca kampüse açık gönderiler yeniden paylaşılabilir.' });
+    }
+    await prisma.$transaction([
+      prisma.post.update({ where: { id: post.id }, data: { allowRepost: req.body.allowRepost } }),
+      ...(req.body.allowRepost ? [] : [prisma.repost.deleteMany({ where: { postId: post.id } })]),
+    ]);
+    res.json({ allowRepost: req.body.allowRepost });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Gönderi güncellenemedi.' });
   }
 });
 

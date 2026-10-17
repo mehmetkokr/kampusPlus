@@ -48,6 +48,11 @@ export function formatNotification(n, t = plain) {
         text: t('{name} yorumunu beğendi.', { name }),
         link: n.targetId ? `/feed?post=${n.targetId}` : '/feed',
       };
+    case 'repost':
+      return {
+        text: t('{name} gönderini yeniden paylaştı.', { name }),
+        link: n.targetId ? `/feed?post=${n.targetId}` : '/feed',
+      };
     case 'birthday':
       return {
         text: t('İyi ki doğdun! kampüs+ ailesi olarak seni kutluyoruz.'),

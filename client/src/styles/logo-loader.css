@@ -4,7 +4,7 @@
      Logo yumuşakça belirir; yükleme sürerse hafifçe nefes alır.
    - Açılış (.is-intro): sitenin her açılışı (en az ~3 sn, bkz. lib/splash.js). Kurdele gibi
      açılır: önce gövde aşağıdan yukarı uzar, üst kol ve alt bacak gövdeden
-     katlanarak çıkar, "+" dönerek yerine oturur, altında "kampüs+" harf harf
+     katlanarak çıkar, "+" dönerek yerine oturur, altında "kampüsplus" harf harf
      yazılır. Sayfa hazır olunca (.is-leaving) logo büyüyüp solarak sayfaya
      geçer. Otomatik test tarayıcılarında theme-init.js <html data-intro="seen">
      koyar, sade hâl görünür.
@@ -184,7 +184,7 @@ html:not([data-intro='seen']) .logo-loader.is-intro .ll-dot {
 html:not([data-intro='seen']) .logo-loader.is-intro .ll-ring { animation-delay: 1.2s; }
 html:not([data-intro='seen']) .logo-loader.is-intro .ll-label { display: none; }
 
-/* "kampüs+" harf harf */
+/* "kampüsplus" harf harf; "plus" kırmızı ve sonda yaylanarak belirir */
 html:not([data-intro='seen']) .logo-loader.is-intro .ll-word {
   display: flex;
   margin: 0;
@@ -208,6 +208,7 @@ html:not([data-intro='seen']) .logo-loader.is-intro .ll-word {
   color: var(--ll-red);
   opacity: 1;
   transform: scale(0);
+  transform-origin: left center;
   animation: ll-pop 0.45s cubic-bezier(0.34, 1.6, 0.64, 1) 1.45s forwards;
 }
 

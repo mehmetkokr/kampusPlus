@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Crop, RotateCcw, Sparkles, SunMedium, Undo2 } from './icons';
+import { Crop, FlipHorizontal, RotateCcw, Sparkles, SunMedium, Undo2 } from './icons';
 import { useI18n } from '../i18n';
-import { loadBitmap } from '../utils/image';
+import { isFrontCameraPhoto, loadBitmap } from '../utils/image';
 import { ADJUSTMENTS, NO_ADJUST, PRESETS, applyMatrix, buildMatrix, combine, isIdentity, toSvgValues } from '../utils/colorMatrix';
 
 // Paylaşmadan önce fotoğrafı kırp, döndür, ışığını ayarla, filtre uygula.
@@ -31,6 +31,8 @@ export default function PhotoEditor({ file, options = {}, onDone, onCancel }) {
   const [nat, setNat] = useState(null); // { w, h } EXIF yönü uygulanmış boyut
   const [aspectKey, setAspectKey] = useState(options.defaultAspect || aspects[0]);
   const [rot, setRot] = useState(0);
+  // Yatay aynalama: ön kamera fotoğrafı önizlemedeki gibi görünsün diye
+  const [flip, setFlip] = useState(false);
   const [view, setView] = useState({ zoom: 1, nx: 0, ny: 0 });
   const [tab, setTab] = useState('crop');
   const [preset, setPreset] = useState('none');
@@ -47,7 +49,12 @@ export default function PhotoEditor({ file, options = {}, onDone, onCancel }) {
   useEffect(() => {
     const url = URL.createObjectURL(file);
     setSrc(url);
-    return () => URL.revokeObjectURL(url);
+    let alive = true;
+    isFrontCameraPhoto(file).then((front) => alive && setFlip(front));
+    return () => {
+      alive = false;
+      URL.revokeObjectURL(url);
+    };
   }, [file]);
 
   useLayoutEffect(() => {
@@ -186,7 +193,7 @@ export default function PhotoEditor({ file, options = {}, onDone, onCancel }) {
       ctx.imageSmoothingQuality = 'high';
       ctx.translate(outW / 2 + v.nx * fw * k, outH / 2 + v.ny * fh * k);
       ctx.rotate((rot * Math.PI) / 180);
-      ctx.scale(s * k, s * k);
+      ctx.scale(s * k * (flip ? -1 : 1), s * k);
       ctx.drawImage(bmp, -iw / 2, -ih / 2);
       bmp.close?.();
 
@@ -209,7 +216,7 @@ export default function PhotoEditor({ file, options = {}, onDone, onCancel }) {
     nat && {
       width: nat.w * s,
       height: nat.h * s,
-      transform: `translate(-50%, -50%) translate(${v.nx * geom.fw}px, ${v.ny * geom.fh}px) rotate(${rot}deg)`,
+      transform: `translate(-50%, -50%) translate(${v.nx * geom.fw}px, ${v.ny * geom.fh}px) rotate(${rot}deg)${flip ? ' scaleX(-1)' : ''}`,
       filter: identity ? undefined : `url(#pe-main-${uid})`,
     };
 
@@ -300,6 +307,16 @@ export default function PhotoEditor({ file, options = {}, onDone, onCancel }) {
                   ))}
                 <button type="button" className="pe-chip pe-icon-chip" onClick={() => { setRot((r) => (r + 270) % 360); setView({ zoom: 1, nx: 0, ny: 0 }); }} aria-label={t('Sola döndür')}>
                   <RotateCcw size={17} />
+                </button>
+                <button
+                  type="button"
+                  className={`pe-chip pe-icon-chip ${flip ? 'is-on' : ''}`}
+                  onClick={() => setFlip((f) => !f)}
+                  aria-label={t('Aynala')}
+                  aria-pressed={flip}
+                  title={t('Aynala (ön kamera fotoğrafı ters göründüyse)')}
+                >
+                  <FlipHorizontal size={17} />
                 </button>
                 <button type="button" className="pe-chip pe-icon-chip" onClick={resetCrop} aria-label={t('Kırpmayı sıfırla')}>
                   <Undo2 size={17} />

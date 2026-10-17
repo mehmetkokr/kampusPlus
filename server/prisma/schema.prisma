@@ -226,6 +226,7 @@ model User {
 
   posts        Post[]
   postLikes    PostLike[]
+  reposts      Repost[]
   savedPosts   SavedPost[]
   commentLikes CommentLike[]
   comments     Comment[]
@@ -387,22 +388,41 @@ model ClubMessage {
 // Gönderi (Instagram tarzı akış)
 // ----------------------------
 model Post {
-  id         Int      @id @default(autoincrement())
-  author     User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  authorId   Int
+  id          Int      @id @default(autoincrement())
+  author      User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId    Int
   // Metin-yalnızca gönderiler desteklenir; imageUrl bu yüzden opsiyoneldir.
   // (create route caption veya fotoğraftan en az birini zorunlu kılar)
-  imageUrl   String?
-  caption    String?
+  imageUrl    String?
+  caption     String?
   // Kimler görebilir: campus (kampüsteki herkes) | followers (takipçilerim) | mutual (karşılıklı takip)
-  visibility String   @default("campus")
-  createdAt  DateTime @default(now())
+  visibility  String   @default("campus")
+  // Yeniden paylaşım yalnızca sahibinin izniyle (gönderi oluştururken ya da sonradan açılır)
+  allowRepost Boolean  @default(false)
+  createdAt   DateTime @default(now())
 
   likes    PostLike[]
   comments Comment[]
   savedBy  SavedPost[]
+  reposts  Repost[]
 
   @@index([authorId])
+}
+
+// ----------------------------
+// Yeniden paylaşım (Twitter'daki retweet). Takipçilerin akışında
+// "X yeniden paylaştı" olarak görünür ve gündem puanına katılır.
+// ----------------------------
+model Repost {
+  id        Int      @id @default(autoincrement())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int
+  createdAt DateTime @default(now())
+
+  @@unique([postId, userId])
+  @@index([userId, createdAt])
 }
 
 // ----------------------------

@@ -11,6 +11,7 @@ const TYPE_PREFERENCE_FIELD = {
   like: 'notifyPostActivity',
   comment: 'notifyPostActivity',
   comment_like: 'notifyPostActivity',
+  repost: 'notifyPostActivity',
 };
 
 const ACTOR_SELECT = { id: true, fullName: true, photoUrl: true };
