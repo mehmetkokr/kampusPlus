@@ -72,10 +72,10 @@ app.use(cors({ origin: ORIGINS }));
 // İçerik Güvenlik Politikası: betikler yalnızca sitenin kendi dosyalarından
 // gelir (satır içi betik yok), yazı tipleri Google Fonts'tan gelir; gerçek
 // zamanlı bağlantı (socket.io) aynı adrese ws/wss ile yapılır.
-// Tarayıcı izinleri: mikrofon yalnızca sitenin kendisi (sesli mesaj), kamera,
-// konum, ödeme vb. tamamen kapalı. Gömülü üçüncü taraf çerçeveler bunları isteyemez.
+// Tarayıcı izinleri: mikrofon (sesli mesaj) ve kamera (uygulama içi hikâye
+// kamerası) yalnızca sitenin kendisi; konum, ödeme vb. tamamen kapalı. Gömülü üçüncü taraf çerçeveler bunları isteyemez.
 app.use((req, res, next) => {
-  res.setHeader('Permissions-Policy', 'camera=(), microphone=(self), geolocation=(), payment=(), usb=(), interest-cohort=()');
+  res.setHeader('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=(), payment=(), usb=(), interest-cohort=()');
   next();
 });
 app.use(

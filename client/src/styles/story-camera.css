@@ -1,0 +1,137 @@
+/* Uygulama içi hikâye kamerası (components/StoryCamera.jsx).
+   Tam ekran siyah zemin, ortada canlı görüntü (9:16'yı dolduracak şekilde),
+   altta galeri · deklanşör · kamera çevir. Ön kamerada önizleme aynalıdır;
+   çekilen fotoğraf da aynı şekilde aynalanır. */
+.story-cam {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  overflow: hidden;
+  background: #000;
+  color: #fff;
+  touch-action: none;
+}
+
+.story-cam-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.story-cam-video.is-live { opacity: 1; }
+.story-cam-video.is-mirrored { transform: scaleX(-1); }
+
+/* Deklanşör anında kısa beyaz parlama */
+.story-cam-flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  pointer-events: none;
+  animation: story-cam-flash 0.28s ease-out forwards;
+}
+@keyframes story-cam-flash {
+  from { opacity: 0.85; }
+  to { opacity: 0; }
+}
+
+.story-cam-message {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 16px;
+  padding: 24px;
+  text-align: center;
+}
+.story-cam-message p { max-width: 320px; margin: 0; font-size: 15px; line-height: 1.5; color: rgba(255, 255, 255, 0.82); }
+
+.story-cam-top,
+.story-cam-bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+}
+.story-cam-top {
+  top: 0;
+  justify-content: flex-start;
+  padding-top: calc(16px + env(safe-area-inset-top, 0px));
+  background: linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0));
+}
+.story-cam-bottom {
+  bottom: 0;
+  justify-content: space-between;
+  padding-top: 28px;
+  padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.5));
+}
+
+.story-cam-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 0;
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.35);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  cursor: pointer;
+  transition: transform 0.16s cubic-bezier(0.23, 1, 0.32, 1), opacity 0.2s ease;
+}
+.story-cam-icon:active { transform: scale(0.92); }
+.story-cam-icon:disabled { opacity: 0.4; }
+
+/* Deklanşör: beyaz halka içinde dolu daire */
+.story-cam-shutter {
+  display: grid;
+  place-items: center;
+  width: 78px;
+  height: 78px;
+  padding: 0;
+  border: 4px solid #fff;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+}
+.story-cam-shutter span {
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.14s cubic-bezier(0.23, 1, 0.32, 1);
+}
+.story-cam-shutter:active span { transform: scale(0.86); }
+.story-cam-shutter:disabled { opacity: 0.45; cursor: default; }
+
+.story-cam-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 999px;
+  color: #000;
+  background: #fff;
+  font: 650 15px/1 -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+  cursor: pointer;
+}
+
+.story-cam-icon:focus-visible,
+.story-cam-shutter:focus-visible,
+.story-cam-pill:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .story-cam-video,
+  .story-cam-icon,
+  .story-cam-shutter span { transition: none; }
+  .story-cam-flash { animation: none; display: none; }
+}

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Crop, FlipHorizontal, RotateCcw, Sparkles, SunMedium, Undo2 } from './icons';
 import { useI18n } from '../i18n';
-import { isFrontCameraPhoto, loadBitmap } from '../utils/image';
+import { loadBitmap } from '../utils/image';
 import { ADJUSTMENTS, NO_ADJUST, PRESETS, applyMatrix, buildMatrix, combine, isIdentity, toSvgValues } from '../utils/colorMatrix';
 
 // Paylaşmadan önce fotoğrafı kırp, döndür, ışığını ayarla, filtre uygula.
@@ -31,7 +31,7 @@ export default function PhotoEditor({ file, options = {}, onDone, onCancel }) {
   const [nat, setNat] = useState(null); // { w, h } EXIF yönü uygulanmış boyut
   const [aspectKey, setAspectKey] = useState(options.defaultAspect || aspects[0]);
   const [rot, setRot] = useState(0);
-  // Yatay aynalama: ön kamera fotoğrafı önizlemedeki gibi görünsün diye
+  // Yatay aynalama (elle): fotoğraf galeride nasıl görünüyorsa öyle açılır
   const [flip, setFlip] = useState(false);
   const [view, setView] = useState({ zoom: 1, nx: 0, ny: 0 });
   const [tab, setTab] = useState('crop');
@@ -49,12 +49,7 @@ export default function PhotoEditor({ file, options = {}, onDone, onCancel }) {
   useEffect(() => {
     const url = URL.createObjectURL(file);
     setSrc(url);
-    let alive = true;
-    isFrontCameraPhoto(file).then((front) => alive && setFlip(front));
-    return () => {
-      alive = false;
-      URL.revokeObjectURL(url);
-    };
+    return () => URL.revokeObjectURL(url);
   }, [file]);
 
   useLayoutEffect(() => {
@@ -314,7 +309,7 @@ export default function PhotoEditor({ file, options = {}, onDone, onCancel }) {
                   onClick={() => setFlip((f) => !f)}
                   aria-label={t('Aynala')}
                   aria-pressed={flip}
-                  title={t('Aynala (ön kamera fotoğrafı ters göründüyse)')}
+                  title={t('Aynala')}
                 >
                   <FlipHorizontal size={17} />
                 </button>

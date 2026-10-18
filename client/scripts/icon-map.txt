@@ -170,3 +170,4 @@ GithubLogo GithubLogo
 Repeat Repeat
 TrendingUp TrendUp
 FlipHorizontal FlipHorizontal
+SwitchCamera CameraRotate

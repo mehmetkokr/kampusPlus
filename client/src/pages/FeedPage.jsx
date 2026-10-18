@@ -41,6 +41,7 @@ import { useI18n } from '../i18n';
 import { PenLine, UsersRound } from '../components/icons';
 import { compressImage } from '../utils/image';
 import EmojiPicker from '../components/EmojiPicker';
+import StoryCamera from '../components/StoryCamera';
 import { usePhotoEditor } from '../context/PhotoEditorContext';
 
 const PAGE_SIZE = 10;
@@ -111,7 +112,8 @@ export default function FeedPage() {
   const [openComments, setOpenComments] = useState(null);
   const [reportingPostId, setReportingPostId] = useState(null);
   const [reportingStoryId, setReportingStoryId] = useState(null);
-  const storyFileRef = useRef(null);
+  // Hikâye: uygulama içi kamera (çekildiği gibi kaydeder) ya da galeriden seçim
+  const [storyCameraOpen, setStoryCameraOpen] = useState(false);
   const sentinelRef = useRef(null);
 
   function loadStoriesAndSidebar() {
@@ -268,9 +270,8 @@ export default function FeedPage() {
     }
   }
 
-  async function handleStoryPhotoSelect(e) {
-    const file = e.target.files?.[0];
-    e.target.value = '';
+  async function handleStoryPhoto(file) {
+    setStoryCameraOpen(false);
     if (!file) return;
     const edited = await editPhoto(file, { aspects: ['9:16', '4:5', '1:1'], title: 'Hikâye', doneLabel: 'Paylaş' });
     if (!edited) return;
@@ -282,8 +283,6 @@ export default function FeedPage() {
       loadStoriesAndSidebar();
     } catch (err) {
       toast.error('Hikaye paylaşılamadı.');
-    } finally {
-      e.target.value = '';
     }
   }
 
@@ -315,7 +314,7 @@ export default function FeedPage() {
         {/* Hikayeler: yalnızca karşılıklı takipleştiklerin */}
         <div className="story-bar">
           <div className="story-item">
-            <button className="story-add-btn" onClick={() => storyFileRef.current?.click()} aria-label={tx("Hikaye ekle")}>
+            <button className="story-add-btn" onClick={() => setStoryCameraOpen(true)} aria-label={tx("Hikaye ekle")}>
               <img
                 src={user?.photoUrl ? `${API_BASE_URL}${user.photoUrl}` : undefined}
                 alt={tx("Sen")}
@@ -326,13 +325,6 @@ export default function FeedPage() {
               </span>
             </button>
             <span className="story-label">{tx("Hikayen")}</span>
-            <input
-              ref={storyFileRef}
-              type="file"
-              accept="image/png,image/jpeg,image/webp"
-              style={{ display: 'none' }}
-              onChange={handleStoryPhotoSelect}
-            />
           </div>
 
           {storyGroups.map((g) => {
@@ -416,6 +408,8 @@ export default function FeedPage() {
           {loadingMore && <PostSkeleton />}
           {!loading && !hasMore && posts.length > 0 && <p className="feed-end">{tx("Hepsini gördün")}</p>}
         </div>
+
+        {storyCameraOpen && <StoryCamera onCapture={handleStoryPhoto} onClose={() => setStoryCameraOpen(false)} />}
 
         {activeStoryGroup && (
           <StoryViewer
