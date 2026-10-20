@@ -44,3 +44,23 @@ export function hideSplashWhenReady() {
   const fallback = setTimeout(leave, MAX_WAIT_MS);
   if (ready()) leave();
 }
+
+// Açılış ekranı kalkmaya başlayınca (ya da hiç yoksa hemen) cb çağrılır.
+// Altında bekleyen sayfa kendi giriş animasyonunu bu ana göre başlatır;
+// yoksa animasyon açılış ekranının arkasında oynayıp bitmiş olur.
+export function whenSplashLeaves(cb) {
+  const splash = document.getElementById('boot-splash');
+  if (!splash || splash.classList.contains('is-leaving')) {
+    cb();
+    return () => {};
+  }
+  const observer = new MutationObserver(() => {
+    if (!splash.isConnected || splash.classList.contains('is-leaving')) {
+      observer.disconnect();
+      cb();
+    }
+  });
+  observer.observe(splash, { attributes: true, attributeFilter: ['class'] });
+  observer.observe(document.body, { childList: true });
+  return () => observer.disconnect();
+}

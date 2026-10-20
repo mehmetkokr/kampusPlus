@@ -564,3 +564,32 @@ html:not([data-theme='light']) .landing-hero-gradient::after {
   color: var(--color-paper);
   box-shadow: inset 0 0 0 1px var(--color-line);
 }
+
+/* Telefonda karşılama ekranı (MobileWelcome): tam bir ekran, uygulama açılışı
+   gibi. Düğmeler başparmak hizasında, alt güvenli alanın üstünde. */
+.mobile-welcome {
+  min-height: 100vh;
+  min-height: 100svh;
+  padding-top: max(12px, env(safe-area-inset-top));
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+}
+.mobile-welcome-top { min-height: 48px; }
+.mobile-welcome-mark { filter: drop-shadow(0 14px 28px rgba(240, 34, 47, 0.3)); }
+.mobile-welcome-title { font-size: min(2.5rem, 10.5vw); }
+.mobile-welcome-actions { margin: 0 auto; max-width: 26rem; }
+/* Kısa ekranlarda (küçük telefonlar, tarayıcı çubukları açıkken) sıkıştır */
+@media (max-height: 700px) {
+  .mobile-welcome-title { font-size: min(2.125rem, 9.5vw); margin-top: 1rem; }
+  .mobile-welcome-mark svg { width: 60px; height: 60px; }
+}
+@keyframes mobile-welcome-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(3px); }
+}
+.mobile-welcome-bounce { animation: mobile-welcome-bounce 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .mobile-welcome-bounce { animation: none; }
+}
+@media (max-height: 600px) {
+  .mobile-welcome-features { display: none; }
+}

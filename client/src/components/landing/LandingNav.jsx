@@ -16,7 +16,7 @@ const LINKS = [
 
 // Dil düğmesi: tek dokunuşla TR ⇄ EN. Seçim tarayıcıda hatırlanır ve kayıt
 // olunduğunda hesabın dil tercihi olarak da kullanılır.
-function LangSwitch() {
+export function LangSwitch() {
   const { lang, setLang } = useI18n();
   const next = lang === 'en' ? 'tr' : 'en';
   return (
@@ -34,14 +34,17 @@ function LangSwitch() {
   );
 }
 
-export default function LandingNav() {
+// hideAtTop: telefondaki karşılama ekranı görünürken menü gizli kalır
+export default function LandingNav({ hideAtTop = false }) {
   const { t } = useI18n();
   const [scrolled, setScrolled] = useState(false);
+  const [pastWelcome, setPastWelcome] = useState(false);
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
     function onScroll() {
       setScrolled(window.scrollY > 12);
+      setPastWelcome(window.scrollY > window.innerHeight * 0.85);
     }
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
@@ -52,7 +55,8 @@ export default function LandingNav() {
     <header
       className={`fixed inset-x-0 top-[env(safe-area-inset-top)] z-50 transition-all duration-300 ${
         scrolled ? 'py-2' : 'py-4'
-      }`}
+      } ${hideAtTop && !pastWelcome ? 'pointer-events-none -translate-y-full opacity-0' : ''}`}
+      inert={hideAtTop && !pastWelcome ? '' : undefined}
     >
       <div className="mx-auto max-w-6xl px-4">
         <div
