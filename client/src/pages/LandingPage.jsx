@@ -11,14 +11,20 @@ import PricingSection from '../components/landing/PricingSection';
 import CTASection from '../components/landing/CTASection';
 import Footer from '../components/landing/Footer';
 import StickyCTA from '../components/landing/StickyCTA';
+import MobileWelcome from '../components/landing/MobileWelcome';
+import useMediaQuery from '../hooks/useMediaQuery';
 import '../styles/landing.css';
 
+// Telefonda ilk ekran uygulama açılışı gibi (MobileWelcome); tanıtım bölümleri
+// altında kalır ve üst menü ancak o bölümlere inilince görünür.
 export default function LandingPage() {
+  const phone = useMediaQuery('(max-width: 767px)');
   return (
     <div className="landing-root min-h-screen">
-      <LandingNav />
+      <LandingNav hideAtTop={phone} />
       <main>
-        <Hero />
+        {phone ? <MobileWelcome tourId="tanitim" /> : <Hero />}
+        <div id="tanitim" className="scroll-mt-20" />
         <CampusMapSection />
         <HowItWorks />
         <Bento />

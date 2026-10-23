@@ -18,7 +18,7 @@ import HeroGradient from './HeroGradient';
 const ROTATING = ['ders arkadaşını', 'kulübünü', 'yeni arkadaşlarını', 'kahve arkadaşını'];
 const EASE = [0.16, 1, 0.3, 1];
 
-function RotatingWord() {
+export function RotatingWord() {
   const { t } = useI18n();
   const [index, setIndex] = useState(0);
   const reduceMotion = useReducedMotion();
