@@ -171,3 +171,4 @@ Repeat Repeat
 TrendingUp TrendUp
 FlipHorizontal FlipHorizontal
 SwitchCamera CameraRotate
+Gem Diamond

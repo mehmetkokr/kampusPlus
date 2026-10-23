@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import api from '../api';
 import { API_BASE_URL } from '../config';
@@ -6,6 +6,7 @@ import NotificationBell from '../components/NotificationBell';
 import { ChevronRight as ChevronRightIcon, MessageCircle as ChatIcon } from '../components/icons';
 import PageHeader from '../components/PageHeader';
 import { useI18n } from '../i18n';
+import PullToRefresh from '../components/PullToRefresh';
 import { useAuth } from '../context/AuthContext';
 import { useSocket } from '../lib/socket';
 import '../styles/matches-list.css';
@@ -45,6 +46,16 @@ export default function MatchesPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Aşağı çekip yenile (telefon uygulaması)
+  const refresh = useCallback(
+    () =>
+      api
+        .get('/matches')
+        .then((res) => setMatches(res.data))
+        .catch(() => {}),
+    []
+  );
+
   // Yeni mesaj gelince ya da okununca liste anında güncellenir
   useEffect(() => {
     if (!socket) return undefined;
@@ -81,6 +92,7 @@ export default function MatchesPage() {
 
   return (
     <div className="container">
+      <PullToRefresh onRefresh={refresh} />
       <PageHeader
         tone="teal"
         icon={ChatIcon}

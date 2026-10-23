@@ -12,18 +12,35 @@ export const PLAN_BADGE = { premium: 'EN KAPSAMLI' };
 
 // Plana açık özellikler (sunucudaki PLANS.features)
 export const PLAN_FEATURES = {
-  plus: ['campus'],
-  premium: ['campus', 'undo', 'seeLikes', 'filters', 'incognito'],
+  plus: ['campus', 'badge'],
+  premium: ['campus', 'badge', 'priority', 'undo', 'seeLikes', 'filters', 'incognito'],
 };
 
-// Planların kartlarda yazan özellik listesi (kısa, yalnızca gerçekten çalışanlar)
+// Plus ve Premium karşılaştırması: yalnızca uygulamada gerçekten çalışan haklar.
+// plus / premium: [çevrilecek metin, değerler] üreten fonksiyon (plan bilgisinden) ya da true / false
+export const FEATURE_ROWS = [
+  { key: 'likes', label: 'Günlük beğeni', desc: 'Kart Modu ve Keşfet’te', plus: (p) => ['{n}', { n: p?.dailyLikes ?? 30 }], premium: () => ['Sınırsız'] },
+  { key: 'super', label: 'Süper Beğeni', desc: 'Karşı tarafa bildirim gider, destesinde ilk sen çıkarsın', plus: (p) => ['Günde {n}', { n: p?.dailySuperLikes ?? 1 }], premium: (p) => ['Günde {n}', { n: p?.dailySuperLikes ?? 5 }] },
+  { key: 'boost', label: 'Boost', desc: 'Profilin 30 dakika kampüsünde en üstte', plus: (p) => ['Ayda {n}', { n: p?.boosts ?? 1 }], premium: (p) => ['Ayda {n}', { n: p?.boosts ?? 4 }] },
+  { key: 'campus', label: 'Başka üniversitede Kart Modu', desc: 'İstediğin üniversitenin öğrencileriyle tanış', plus: true, premium: true },
+  { key: 'search', label: 'Tüm üniversitelerde arama', desc: 'Aramada kampüs sınırı kalkar', plus: true, premium: true },
+  { key: 'badge', label: 'Profil rozeti', desc: 'Profilinde ve kartında Plus / Premium rozeti', plus: true, premium: true },
+  { key: 'seeLikes', label: 'Seni beğenenleri gör', desc: 'Listeden tek dokunuşla eşleş', plus: false, premium: true },
+  { key: 'priority', label: 'Öncelikli görünürlük', desc: 'Destelerde Premium olmayanlardan önce çıkarsın', plus: false, premium: true },
+  { key: 'filters', label: 'Gelişmiş filtreler', desc: 'Yaş, sınıf ve ne aradığına göre', plus: false, premium: true },
+  { key: 'incognito', label: 'Gizli mod', desc: 'Yalnızca beğendiğin kişiler seni görür', plus: false, premium: true },
+  { key: 'undo', label: 'Son kararı geri al', desc: 'Yanlışlıkla geçtiğin kişiyi geri getir', plus: false, premium: true },
+];
+
+// Plan kartlarında yazan özellik listesi (beğeni, Süper Beğeni, Boost ayrıca gösterilir)
 export const PLAN_HIGHLIGHTS = {
-  plus: ['Başka bir üniversitede Kart Modu', 'Aramada tüm üniversiteler'],
+  plus: ['Başka bir üniversitede Kart Modu', 'Tüm üniversitelerde arama', 'Profilinde Plus rozeti'],
   premium: [
     'Plus’taki her şey',
     'Seni kimlerin beğendiğini gör',
-    'Gizli mod',
+    'Destelerde öncelikli görünürlük',
     'Gelişmiş filtreler (yaş, sınıf, ne arıyor)',
+    'Gizli mod',
     'Kart Modu’nda son kararını geri al',
   ],
 };

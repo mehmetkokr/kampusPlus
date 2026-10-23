@@ -3,6 +3,7 @@ import { VerifiedBadge } from '@/components/ui/icon-badge';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Flag, MoreHorizontal, ShieldOff, Sparkles, UserPlus, UserRound } from './icons';
 import { API_BASE_URL } from '../config';
+import { isNative, shareLink, shareUrl } from '../lib/native';
 import { useI18n } from '../i18n';
 import { useToast } from '../context/ToastContext';
 
@@ -27,9 +28,13 @@ export default function SuggestedPeopleRail({ users, followedIds, onToggleFollow
 
   // Paylaşım sayfası (telefonda yerel paylaşım menüsü); yoksa bağlantıyı kopyala
   async function invite() {
-    const url = `${window.location.origin}/`;
+    const url = shareUrl('/');
     const text = t('kampüs+: üniversitendeki öğrencilerle tanış. Okul e-postanla katıl:');
     try {
+      if (isNative) {
+        await shareLink({ title: 'kampüs+', text, path: '/' });
+        return;
+      }
       if (navigator.share) {
         await navigator.share({ title: 'kampüs+', text, url });
         return;

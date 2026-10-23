@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ImagePlus, SwitchCamera, X } from './icons';
 import { useI18n } from '../i18n';
+import { haptic } from '../lib/native';
 import '../styles/story-camera.css';
 
 // Uygulama içi hikâye kamerası (Instagram'daki gibi).
@@ -111,7 +112,7 @@ export default function StoryCamera({ onCapture, onClose }) {
     }
     ctx.drawImage(video, 0, 0, w, h);
     setFlash(true);
-    navigator.vibrate?.(12);
+    haptic(12);
     const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.92));
     stop();
     if (blob) onCapture(new File([blob], `hikaye-${Date.now()}.jpg`, { type: 'image/jpeg', lastModified: Date.now() }));

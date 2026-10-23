@@ -12,6 +12,7 @@ const fs = require('fs');
 const path = require('path');
 const webpush = require('web-push');
 const prisma = require('./prisma');
+const { sendToDevices } = require('./nativePush');
 const { STORAGE_DIR } = require('./paths');
 
 const KEY_FILE = path.join(STORAGE_DIR, 'vapid-keys.json');
@@ -146,8 +147,21 @@ function buildPayload(notification, lang = 'tr') {
   return { title, body, url: linkFor(notification), tag };
 }
 
+// Kullanıcının tüm cihazlarına: web tarayıcıları (Web Push) ve telefon
+// uygulamaları (iOS APNs / Android FCM, bkz. lib/nativePush.js)
 async function sendToUser(userId, payload) {
   if (!payload) return 0;
+  const [web, native] = await Promise.all([
+    sendToWeb(userId, payload),
+    sendToDevices(userId, payload).catch((err) => {
+      console.warn('[bildirim] Telefon bildirimi gönderilemedi:', err?.message || err);
+      return 0;
+    }),
+  ]);
+  return web + native;
+}
+
+async function sendToWeb(userId, payload) {
   ensureConfigured();
   const subs = await prisma.pushSubscription.findMany({ where: { userId } });
   if (!subs.length) return 0;
@@ -194,13 +208,14 @@ async function pushToUsers(userIds, payload) {
   try {
     const { getOnlineUserIds } = require('../socket');
     const online = new Set(getOnlineUserIds().map(Number));
-    const targets = await prisma.pushSubscription.findMany({
-      where: { userId: { in: userIds.filter((id) => !online.has(Number(id))) } },
-      select: { userId: true },
-      distinct: ['userId'],
-    });
+    const offline = userIds.filter((id) => !online.has(Number(id)));
+    const [web, devices] = await Promise.all([
+      prisma.pushSubscription.findMany({ where: { userId: { in: offline } }, select: { userId: true }, distinct: ['userId'] }),
+      prisma.pushDevice.findMany({ where: { userId: { in: offline } }, select: { userId: true }, distinct: ['userId'] }),
+    ]);
+    const targets = [...new Set([...web, ...devices].map((r) => r.userId))];
     let sent = 0;
-    for (const { userId } of targets) sent += await sendToUser(userId, payload);
+    for (const userId of targets) sent += await sendToUser(userId, payload);
     return sent;
   } catch (err) {
     console.warn('[bildirim] Toplu anlık bildirim gönderilemedi:', err?.message || err);

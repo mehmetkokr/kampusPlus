@@ -7,6 +7,7 @@ import { useToast } from '../context/ToastContext';
 import { formatNotification } from '../constants/notifications';
 import PageHeader from '../components/PageHeader';
 import { useI18n } from '../i18n';
+import PullToRefresh from '../components/PullToRefresh';
 
 const TYPE_ICON = {
   announcement: Megaphone,
@@ -87,6 +88,7 @@ export default function NotificationsPage() {
 
   return (
     <div className="container">
+      <PullToRefresh onRefresh={load} />
       <PageHeader
         compact
         tone="amber"

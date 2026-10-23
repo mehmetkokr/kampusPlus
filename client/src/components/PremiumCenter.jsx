@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Crown, Heart, Rocket, CalendarDays, Loader2, Star, EyeOff } from './icons';
+import { Heart, Rocket, CalendarDays, Loader2, Star, EyeOff } from './icons';
+import { FeatureComparison, PlanIcon } from './Membership';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { useI18n } from '../i18n';
-import { PLAN_ORDER, PERIOD_LABEL, formatTL, formatTime } from '../lib/premium';
+import { PLAN_ORDER, formatTime } from '../lib/premium';
 import CampusSwitchSheet from './CampusSwitchSheet';
 
 // Ayarlar > Üyelik alanı: üyelik durumu (Plus ya da Premium), bugünkü beğeni
@@ -111,7 +112,9 @@ export default function PremiumCenter({ onOpenPaywall }) {
   return (
     <div className={`settings-premium-card ${status.isPremium ? 'is-active' : ''}`}>
       <div className="settings-premium-card-top">
-        <Crown size={20} weight="fill" color={status.isPremium ? 'var(--amber)' : 'var(--text-muted)'} />
+        <span className={`premium-card-icon ${status.isPremium ? `is-${status.plan}` : ''}`}>
+          <PlanIcon plan={status.plan || 'premium'} size={18} />
+        </span>
         <h4>{status.isPremium ? t('{plan} üyesin', { plan: t(current?.label || 'Premium') }) : t('kampüs+ üyelikleri')}</h4>
         {status.isPremium && <span className="premium-badge">{t('AKTİF')}</span>}
       </div>
@@ -195,41 +198,14 @@ export default function PremiumCenter({ onOpenPaywall }) {
           </button>
         )}
         <button type="button" className={status.isPremium ? 'btn-secondary' : 'btn-premium-cta'} onClick={onOpenPaywall}>
-          <Crown size={16} /> {status.isPremium ? t('Planı yenile ya da değiştir') : t('Plus ya da Premium’a geç')}
+          <PlanIcon plan="premium" size={16} /> {status.isPremium ? t('Planı yenile ya da değiştir') : t('Plus ya da Premium’a geç')}
         </button>
       </div>
 
-      {/* Tüm planlar tek bakışta */}
-      <div className="premium-table-wrap">
-        <table className="premium-table">
-          <caption className="sr-only">{t('Planların karşılaştırması')}</caption>
-          <thead>
-            <tr>
-              <th scope="col">{t('Plan')}</th>
-              <th scope="col">{t('Ücret')}</th>
-              <th scope="col">{t('Beğeni / gün')}</th>
-              <th scope="col">{t('Süper / gün')}</th>
-              <th scope="col">{t('Boost')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {plans.map((p) => (
-              <tr key={p.key} className={status.plan === p.key ? 'is-current' : ''}>
-                <th scope="row">{t(p.label)}</th>
-                <td>
-                  {formatTL(p.amount)}
-                  <span className="premium-table-period">{t(PERIOD_LABEL[p.key])}</span>
-                </td>
-                <td>{p.dailyLikes === null ? t('Sınırsız') : p.dailyLikes}</td>
-                <td>{p.dailySuperLikes}</td>
-                <td>{p.boosts}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {/* Plus ve Premium: her satır uygulamada çalışan bir hak */}
+      <FeatureComparison plans={plans} current={status.plan} />
       <p className="premium-footnote">
-        {t('Plus: başka bir üniversitede Kart Modu ve tüm üniversitelerde arama. Premium: bunlara ek olarak seni beğenenleri görme, Gizli mod, gelişmiş filtreler ve Kart Modu’nda geri alma. Boost hakların üyeliğin bitse de kaybolmaz.')}
+        {t('Üyelik 30 gün sürer ve aynı planla her ay yenilenir. Yenilemeyi kapatırsan üyeliğin dönem sonuna kadar devam eder. Beğeni ve Süper Beğeni hakların her gece 00:00’da (Türkiye saati) yenilenir; Boost hakları her ay eklenir ve üyeliğin bitse de kaybolmaz.')}
       </p>
 
       {showCampus && <CampusSwitchSheet onClose={() => setShowCampus(false)} onChanged={load} />}

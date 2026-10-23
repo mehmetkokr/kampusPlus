@@ -630,6 +630,9 @@ router.get('/discover', requireAuth, async (req, res) => {
       intent: true,
       birthDate: true,
       studentDocStatus: true,
+      isPremium: true,
+      premiumUntil: true,
+      premiumPlan: true,
       university: { select: { name: true } },
       photos: { orderBy: { position: 'asc' }, select: { id: true, url: true, position: true } },
     };
@@ -673,16 +676,26 @@ router.get('/discover', requireAuth, async (req, res) => {
         (iWantDating || visibleIntentFor(c.intent, me.intent) !== null) &&
         (!filters.intent || (c.intent || 'friendship').split(',').map((s) => s.trim()).includes(filters.intent))
     );
+    // Sıra: beni Süper Beğenenler, Boost'takiler, Premium üyeler (öncelikli
+    // görünürlük), sonra ortak "ne arıyorsun" etiketi sayısı
     const sorted = visibleCandidates
-      .map((c) => ({ c, superLiked: superIds.has(c.id), boosted: boostedIds.has(c.id), score: overlapCount(c) }))
-      .sort((a, b) => Number(b.superLiked) - Number(a.superLiked) || Number(b.boosted) - Number(a.boosted) || b.score - a.score)
+      .map((c) => ({ c, superLiked: superIds.has(c.id), boosted: boostedIds.has(c.id), premium: hasFeature(c, 'priority'), score: overlapCount(c) }))
+      .sort(
+        (a, b) =>
+          Number(b.superLiked) - Number(a.superLiked) ||
+          Number(b.boosted) - Number(a.boosted) ||
+          Number(b.premium) - Number(a.premium) ||
+          b.score - a.score
+      )
       .map(({ c }) => c);
 
     res.json(
       sorted.slice(0, 20).map((c) => {
-        const { birthDate: _b, studentDocStatus, ...rest } = withLiveAge(c);
+        const { birthDate: _b, studentDocStatus, isPremium: _p, premiumUntil: _u, premiumPlan: _pl, ...rest } = withLiveAge(c);
         return {
           ...rest,
+          // Kartta görünen üyelik rozeti (plus | premium | null)
+          membership: activePlan(c),
           intent: visibleIntentFor(c.intent, me.intent),
           isStudentVerified: studentDocStatus === 'approved',
           superLikedYou: superIds.has(c.id),

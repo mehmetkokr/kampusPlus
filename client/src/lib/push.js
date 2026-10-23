@@ -1,8 +1,14 @@
-// Anlık bildirim (Web Push) aboneliği: izin isteme, cihazı kaydetme, kapatma.
+// Anlık bildirim aboneliği: izin isteme, cihazı kaydetme, kapatma.
+// Tarayıcıda Web Push; telefon uygulamasında telefonun kendi bildirim sistemi
+// (lib/nativePush.js). Dışarıya açılan fonksiyonlar ikisinde de aynıdır.
 import api from '../api';
 import { isIOS, isStandalone } from './pwa';
+import { isNative } from './native';
+
+const nativePush = () => import('./nativePush');
 
 export function pushSupport() {
+  if (isNative) return 'ok';
   const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
   // iPhone/iPad'de anlık bildirim yalnızca ana ekrana eklenmiş uygulamada çalışır
   if (!supported && isIOS() && !isStandalone()) return 'ios-install';
@@ -27,6 +33,7 @@ async function registration() {
 }
 
 export async function currentSubscription() {
+  if (isNative) return (await (await nativePush()).nativeSubscribed()) ? { native: true } : null;
   if (pushSupport() !== 'ok') return null;
   const reg = await navigator.serviceWorker.getRegistration('/');
   return reg ? reg.pushManager.getSubscription() : null;
@@ -52,6 +59,7 @@ const isOff = () => {
 
 export async function enablePush() {
   setOff(false);
+  if (isNative) return (await nativePush()).enableNativePush();
   const permission = await Notification.requestPermission();
   if (permission !== 'granted') return { ok: false, reason: permission === 'denied' ? 'denied' : 'dismissed' };
   const reg = await registration();
@@ -75,6 +83,7 @@ export async function enablePush() {
 // byUser: kullanıcı Ayarlar'dan kapattı (çıkışta değil)
 export async function disablePush(token, { byUser = false } = {}) {
   if (byUser) setOff(true);
+  if (isNative) return (await nativePush()).disableNativePush(token);
   const sub = await currentSubscription().catch(() => null);
   if (!sub) return;
   const headers = token ? { Authorization: `Bearer ${token}` } : undefined;
@@ -87,7 +96,13 @@ export async function disablePush(token, { byUser = false } = {}) {
 // giriş yapan hesaba bağlanır.
 export async function resyncPush() {
   try {
-    if (!isOff() && pushSupport() === 'ok' && Notification.permission === 'granted') await enablePush();
+    if (isOff()) return;
+    // Uygulamada izin daha önce verildiyse cihaz anahtarı sessizce yenilenir
+    if (isNative) {
+      if ((await (await nativePush()).nativePermission()) === 'granted') await enablePush();
+      return;
+    }
+    if (pushSupport() === 'ok' && Notification.permission === 'granted') await enablePush();
   } catch {
     // önemsiz
   }

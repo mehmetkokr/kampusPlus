@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import api, { setFileToken } from '../api';
 import { disablePush, resyncPush } from '../lib/push';
 import { applyTheme, getStoredTheme, systemTheme, takeGuestThemeChoice } from '../utils/theme';
+import { isNative } from '../lib/native';
 
 const AuthContext = createContext(null);
 
@@ -89,7 +90,9 @@ export function AuthProvider({ children }) {
     // Önce her iki depolamayı da temizle, sonra tercihe göre yaz
     localStorage.removeItem('token');
     sessionStorage.removeItem('token');
-    if (rememberMe) {
+    // Telefon uygulamasında oturum her zaman hatırlanır (uygulama kapanınca
+    // sessionStorage silinir, kullanıcı her açılışta yeniden giriş yapmasın)
+    if (rememberMe || isNative) {
       localStorage.setItem('token', newToken);
     } else {
       sessionStorage.setItem('token', newToken);

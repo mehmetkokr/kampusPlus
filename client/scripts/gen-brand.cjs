@@ -1,12 +1,16 @@
 // Uygulama simgelerini ve paylaşım görselini kırmızı kurdele "K+" logosundan üretir:
 // apple-touch-icon.png (180), icon-192.png, icon-512.png,
 // icon-maskable-512.png (güvenli alanlı) ve og-image.png (1200x630).
+// Telefon uygulaması (Capacitor) kaynakları da resources/ altına yazılır;
+// "npx @capacitor/assets generate" bunlardan iOS/Android simge ve açılış
+// ekranlarının tüm boyutlarını üretir.
 // Uygulama koyu moda göre tasarlandığı için koyu tonlar kullanılır.
 // Kullanım: node scripts/gen-brand.cjs   (E2E_CHANNEL=msedge ile kurulu Edge)
 const path = require('path');
 const { chromium } = require('@playwright/test');
 
 const PUBLIC = path.join(__dirname, '..', 'public');
+const RESOURCES = path.join(__dirname, '..', 'resources');
 const BG = '#0b0b0b';
 
 // Logonun çizimi (BrandMark.jsx ile aynı), koyu mod renkleri
@@ -60,7 +64,15 @@ const og = page(
     ['icon-512.png', icon(512), 512, 512, true],
     ['icon-maskable-512.png', maskable(512), 512, 512, false],
     ['og-image.png', og, 1200, 630, false],
+    // Telefon uygulaması: iOS simgesi saydam olamaz (zeminli); Android uyarlanabilir
+    // simgesi ön plan (saydam, güvenli alanda) + düz zemin; açılış ekranı siyah
+    ['../resources/icon-only.png', img(markSvg(0.7, BG), 1024), 1024, 1024, false],
+    ['../resources/icon-foreground.png', img(markSvg(0.5), 1024), 1024, 1024, true],
+    ['../resources/icon-background.png', page('<div style="width:1024px;height:1024px;background:' + BG + '"></div>', 1024, 1024), 1024, 1024, false],
+    ['../resources/splash.png', page('<div style="width:2732px;height:2732px;background:#000;display:grid;place-items:center"><img src="' + dataUrl(markSvg(1)) + '" width="360" height="360"></div>', 2732, 2732), 2732, 2732, false],
+    ['../resources/splash-dark.png', page('<div style="width:2732px;height:2732px;background:#000;display:grid;place-items:center"><img src="' + dataUrl(markSvg(1)) + '" width="360" height="360"></div>', 2732, 2732), 2732, 2732, false],
   ];
+  require('fs').mkdirSync(RESOURCES, { recursive: true });
   for (const [file, html, w, h, transparent] of jobs) {
     const p = await browser.newPage({ viewport: { width: w, height: h } });
     await p.setContent(html, { waitUntil: 'networkidle' });

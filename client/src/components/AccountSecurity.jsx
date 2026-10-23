@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { AtSign, ChevronRight, Download, Eye, EyeOff, KeyRound, X as CloseIcon } from './icons';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
+import { isNative, saveFile } from '../lib/native';
 import { useToast } from '../context/ToastContext';
 import { useI18n } from '../i18n';
 import { useSocket } from '../lib/socket';
@@ -22,13 +23,9 @@ export default function AccountSecurity() {
     setExporting(true);
     try {
       const res = await api.get('/profile/me/export', { responseType: 'blob' });
-      const url = URL.createObjectURL(res.data);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `kampus-verilerim-${new Date().toISOString().slice(0, 10)}.json`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      toast.success('Verilerin indirildi.');
+      // Tarayıcıda indirilir, telefon uygulamasında paylaşım menüsü açılır
+      await saveFile(res.data, `kampus-verilerim-${new Date().toISOString().slice(0, 10)}.json`);
+      if (!isNative) toast.success('Verilerin indirildi.');
     } catch (err) {
       // Hata yanıtı da blob olarak gelir: içindeki mesajı oku
       let message = 'Verilerin hazırlanamadı.';

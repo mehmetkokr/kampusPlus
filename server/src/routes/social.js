@@ -14,6 +14,7 @@ const { withLiveAge } = require('../lib/age');
 const { discoverableUserWhere, reachCheck } = require('../lib/privacy');
 
 const { numericIdParams } = require('../lib/idParams');
+const { activePlan } = require('../lib/premium');
 const router = express.Router();
 
 numericIdParams(router);
@@ -1013,6 +1014,9 @@ const PUBLIC_PROFILE_SELECT = {
   isFrozen: true,
   isBanned: true,
   isAdmin: true,
+  isPremium: true,
+  premiumUntil: true,
+  premiumPlan: true,
   photos: { orderBy: { position: 'asc' }, select: { id: true, url: true, position: true } },
   profileVisibility: true,
   universityId: true,
@@ -1052,8 +1056,10 @@ router.get('/users/:id', requireAuth, async (req, res) => {
     ]);
 
     // Doğum tarihinin kendisi başkalarına gösterilmez; yalnızca güncel yaş döner.
-    const { profileVisibility, universityId, birthDate: _birth, isFrozen: _f, isBanned: _b, isAdmin: _a, studentDocStatus, ...publicFields } = withLiveAge(target);
+    const { profileVisibility, universityId, birthDate: _birth, isFrozen: _f, isBanned: _b, isAdmin: _a, studentDocStatus, isPremium: _p, premiumUntil: _u, premiumPlan: _pl, ...publicFields } = withLiveAge(target);
     publicFields.isStudentVerified = studentDocStatus === 'approved';
+    // Profilde görünen üyelik rozeti (plus | premium | null)
+    publicFields.membership = activePlan(target);
     // Flört tercihleri yalnızca flört modundaki öğrencilere görünür
     if (targetId !== req.userId) publicFields.intent = visibleIntentFor(publicFields.intent, me.intent);
     res.json({ ...publicFields, followerCount, followingCount, isFollowing: !!isFollowing, matchId: match?.id ?? null });

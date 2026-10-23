@@ -169,6 +169,8 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
+// Telefon uygulaması bağlantı doğrulama dosyaları (/.well-known/...)
+app.use(require('./routes/wellKnown'));
 app.use('/api/auth', authRoutes);
 app.use('/api/universities', universityRoutes);
 app.use('/api/profile', profileRoutes);

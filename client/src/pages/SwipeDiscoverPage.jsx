@@ -19,6 +19,7 @@ import { FileText, Telescope } from '../components/icons';
 import { formatTime } from '../lib/premium';
 import SwipeFilters, { activeFilterCount, filterParams, readSavedFilters } from '../components/SwipeFilters';
 import CampusSwitchSheet from '../components/CampusSwitchSheet';
+import { MembershipBadge } from '../components/Membership';
 import { hasFeature } from '../lib/premium';
 
 const SWIPE_THRESHOLD = 110;
@@ -449,6 +450,7 @@ export default function SwipeDiscoverPage() {
                   {current.fullName}
                   {current.age ? <span className="swipe-card-age">{current.age}</span> : null}
                   {current.isStudentVerified && <VerifiedBadge size="lg" className="ml-1.5" label={t("Onaylı öğrenci")} />}
+                  <MembershipBadge plan={current.membership} className="ml-1.5" />
                 </h3>
               </div>
               <div className="swipe-info-actions">

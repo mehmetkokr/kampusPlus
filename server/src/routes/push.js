@@ -60,6 +60,40 @@ router.delete('/subscribe', requireAuth, async (req, res) => {
   }
 });
 
+// POST /api/push/device { token, platform } — telefon uygulamasını (iOS/Android)
+// bildirim almaya kaydet. Aynı telefonda başka hesaba geçilirse cihaz yeni hesaba taşınır.
+router.post('/device', requireAuth, async (req, res) => {
+  try {
+    const token = typeof req.body?.token === 'string' ? req.body.token.trim() : '';
+    const platform = req.body?.platform;
+    if (!token || token.length > 500 || !/^[\w:.-]+$/.test(token)) return res.status(400).json({ error: 'Geçersiz cihaz anahtarı.' });
+    if (!['ios', 'android'].includes(platform)) return res.status(400).json({ error: 'Geçersiz platform.' });
+    const existing = await prisma.pushDevice.findUnique({ where: { token } });
+    await prisma.pushDevice.upsert({
+      where: { token },
+      create: { token, platform, userId: req.userId },
+      update: { platform, userId: req.userId },
+    });
+    if (!existing || existing.userId !== req.userId) track('push_enabled', { userId: req.userId, props: { platform } });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Anlık bildirimler açılamadı.' });
+  }
+});
+
+// DELETE /api/push/device { token } — bu telefonun kaydını kaldır (çıkış ya da kapatma)
+router.delete('/device', requireAuth, async (req, res) => {
+  try {
+    const token = String(req.body?.token || '');
+    if (token) await prisma.pushDevice.deleteMany({ where: { token, userId: req.userId } });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Anlık bildirimler kapatılamadı.' });
+  }
+});
+
 // POST /api/push/test — kendine deneme bildirimi
 router.post('/test', requireAuth, async (req, res) => {
   try {

@@ -23,7 +23,7 @@ const DOCS = {
         'Öğrencilik doğrulaması: okul e-postanın en son doğrulandığı tarih. Yılda bir aynı adrese gelen kodla yenilenir.',
         'Uygulama istatistikleri: hangi sayfaların açıldığı ve kayıt adımları. Giriş yapmadıysan bunlar tarayıcında üretilen rastgele bir kimlikle sayılır; IP adresi, konum veya cihaz bilgisi kaydedilmez.',
         'Hata raporları: uygulamada bir hata oluşursa hatanın teknik ayrıntısı, açık olan sayfa ve tarayıcı türü.',
-        'Anlık bildirimleri açarsan, tarayıcının bu cihaz için verdiği bildirim adresi.',
+        'Anlık bildirimleri açarsan, tarayıcının ya da telefon uygulamasının bu cihaz için verdiği bildirim adresi (cihaz anahtarı).',
         'Premium ve ödeme: seçtiğin plan, satın alma tarihi, tutar, Mesafeli Satış Sözleşmesi onayının zamanı ve otomatik yenileme tercihin. Kart bilgilerin ödeme kuruluşunda işlenir; bizde saklanmaz.',
         'Beğeni hakkı ve Boost: o gün kaç beğeni gönderdiğin, Boost hakkı sayın ve Boost’un başlayıp bittiği zaman.',
         'Onaylar: kullanım şartlarını, yurt dışına aktarım açık rızasını ve (verdiysen) ticari ileti iznini verdiğin tarih.',
@@ -48,7 +48,7 @@ const DOCS = {
       ['Kimlerle paylaşıyoruz?', [
         'Verilerini satmayız ve reklam amacıyla üçüncü taraflarla paylaşmayız.',
         'Hizmeti sunmak için çalıştığımız altyapı sağlayıcıları (sunucu, e-posta gönderimi, hata takibi) verilere yalnızca bu amaçla ve sözleşmeyle bağlı olarak erişebilir.',
-        'Anlık bildirimler, tarayıcının bildirim servisi (ör. Google, Apple, Mozilla) üzerinden iletilir. Bildirimde yalnızca kısa bir başlık gider; mesaj içerikleri gönderilmez.',
+        'Anlık bildirimler, tarayıcının bildirim servisi (ör. Google, Apple, Mozilla) ya da telefon uygulamasında Apple Push Notification service (iOS) ve Firebase Cloud Messaging (Android) üzerinden iletilir. Bildirimde yalnızca kısa bir başlık gider; mesaj içerikleri gönderilmez.',
         'Kanunen yetkili kurumların talebi halinde mevzuatın gerektirdiği ölçüde paylaşım yapılabilir.',
       ]],
       ['Profilini kimler görebilir?', [

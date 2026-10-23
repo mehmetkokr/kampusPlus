@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useEffect } from 'react';
-import { Navigate, Routes, Route, useLocation } from 'react-router-dom';
+import { Navigate, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import PublicRoute from './components/PublicRoute';
 import AppBackdrop from './components/AppBackdrop';
@@ -10,6 +10,9 @@ import LogoLoader from './components/LogoLoader';
 import PageMeta from './components/PageMeta';
 import ErrorBoundary from './components/ErrorBoundary';
 import { track } from './lib/telemetry';
+import { isNative } from './lib/native';
+import { NAVIGATE_EVENT } from './lib/nativeApp';
+import OfflineScreen from './components/OfflineScreen';
 
 // Sayfalar ayrı parçalar halinde, ihtiyaç olunca yüklenir (ilk açılış hızlanır;
 // tanıtım sayfasına gelen ziyaretçi uygulama ve yönetim ekranlarını indirmez).
@@ -56,6 +59,7 @@ const NAV_PREFIXES = ['/discover/', '/users/'];
 export default function App() {
   const { token, user } = useAuth();
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const isAppRoute = Boolean(token) && !pathname.startsWith('/admin') && pathname !== '/reset-password';
   const showNav =
     isAppRoute &&
@@ -66,11 +70,20 @@ export default function App() {
     if (!pathname.startsWith('/admin')) track('page_view');
   }, [pathname]);
 
+  // Telefon uygulaması: bildirime ya da site bağlantısına dokununca o sayfaya git
+  useEffect(() => {
+    if (!isNative) return undefined;
+    const onNavigate = (e) => navigate(e.detail);
+    window.addEventListener(NAVIGATE_EVENT, onNavigate);
+    return () => window.removeEventListener(NAVIGATE_EVENT, onNavigate);
+  }, [navigate]);
+
   return (
     <>
     {isAppRoute && <AppBackdrop />}
     {isAppRoute && (needsReverify(user) ? <ReverifyBanner /> : <AnnouncementBanner />)}
     <PageMeta />
+    <OfflineScreen />
     <ErrorBoundary resetKey={pathname}>
     <Suspense fallback={<LogoLoader mode="fullscreen" />}>
     <Routes>
@@ -78,7 +91,8 @@ export default function App() {
         path="/"
         element={
           <PublicRoute>
-            <LandingPage />
+            {/* Telefon uygulamasında tanıtım sayfası yerine doğrudan giriş */}
+            {isNative ? <Navigate to="/login" replace /> : <LandingPage />}
           </PublicRoute>
         }
       />

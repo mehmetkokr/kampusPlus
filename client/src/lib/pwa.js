@@ -2,6 +2,8 @@
 // Service worker yalnızca yayın derlemesinde kaydolur; yerelde Vite'ın anında
 // yenileme özelliğiyle karışmasın diye kapalıdır (VITE_SW_DEV=true ile açılır).
 
+import { isNative } from './native';
+
 let installPrompt = null;
 const listeners = new Set();
 const notify = () => listeners.forEach((fn) => fn());
@@ -27,7 +29,8 @@ export function registerServiceWorker() {
     notify();
   });
 
-  if (!('serviceWorker' in navigator)) return;
+  // Telefon uygulamasında dosyalar zaten telefonda; service worker gerekmez
+  if (isNative || !('serviceWorker' in navigator)) return;
   if (!import.meta.env.PROD && import.meta.env.VITE_SW_DEV !== 'true') return;
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(() => {});

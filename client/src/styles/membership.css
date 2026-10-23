@@ -1,0 +1,83 @@
+/* Üyelik görselleri (components/Membership.jsx): rozet ve karşılaştırma tablosu.
+   Plus nötr (gri zemin), Premium marka kırmızısı. */
+
+.membership-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.membership-badge.is-plus {
+  color: var(--text);
+  background: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.membership-badge.is-premium {
+  color: #fff;
+  background: linear-gradient(135deg, #f0222f, #a80c16);
+}
+
+/* Karşılaştırma tablosu */
+.fc-wrap {
+  overflow-x: auto;
+  margin-top: 14px;
+  border-radius: 16px;
+  box-shadow: inset 0 0 0 1px var(--glass-border, var(--border));
+}
+.fc-table { width: 100%; min-width: 300px; border-collapse: collapse; font-size: 13px; }
+.fc-table th,
+.fc-table td { padding: 10px 10px; text-align: center; vertical-align: middle; border-bottom: 1px solid var(--border-soft); }
+.fc-table tbody tr:last-child th,
+.fc-table tbody tr:last-child td { border-bottom: 0; }
+.fc-table tbody th { text-align: left; font-weight: 400; }
+.fc-feature-head { text-align: left !important; font-size: 12px; font-weight: 700; color: var(--text-muted); }
+.fc-label { display: block; font-weight: 650; color: var(--text); }
+.fc-desc { display: block; margin-top: 2px; font-size: 11.5px; line-height: 1.35; color: var(--text-muted); }
+
+.fc-plan { position: relative; width: 26%; padding-top: 12px !important; }
+.fc-plan-name { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 800; color: var(--text); }
+.fc-plan.is-premium .fc-plan-name svg { color: var(--brand-red); }
+.fc-plan-price { display: block; margin-top: 3px; font-size: 12px; font-weight: 700; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.fc-plan-price small { margin-left: 2px; font-weight: 500; }
+.fc-current {
+  display: inline-block;
+  margin-top: 5px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 750;
+  color: var(--on-accent);
+  background: var(--accent-fill);
+}
+
+/* Premium sütunu hafif kırmızı tonda öne çıkar */
+.fc-table th.fc-plan.is-premium,
+.fc-table td:last-child { background: color-mix(in srgb, var(--brand-red) 7%, transparent); }
+
+.fc-value { font-weight: 700; color: var(--text); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.fc-yes,
+.fc-no { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; }
+.fc-yes { color: #fff; background: #1f9d55; }
+.fc-table td:last-child .fc-yes { background: var(--brand-red); }
+.fc-no { color: var(--text-faint); background: var(--surface-2); }
+
+/* Ayarlar > Üyelik kartının başlık simgesi */
+.premium-card-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: 10px;
+  color: var(--text-muted);
+  background: var(--surface-2);
+}
+.premium-card-icon.is-plus { color: var(--text); }
+.premium-card-icon.is-premium { color: #fff; background: linear-gradient(135deg, #f0222f, #a80c16); }

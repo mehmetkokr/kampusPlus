@@ -10,7 +10,6 @@ import {
   Bell as BellIcon,
   Settings as SettingsIcon,
   Layers as LayersIcon,
-  Crown as CrownIcon,
 } from './icons';
 import { useAuth } from '../context/AuthContext';
 import { API_BASE_URL } from '../config';
@@ -18,6 +17,7 @@ import { useI18n } from '../i18n';
 import ThemeToggle from './ThemeToggle';
 import { useChatUnread } from '../hooks/useChatUnread';
 import BrandMark from './BrandMark';
+import { PlanIcon } from './Membership';
 
 // Kart Modu'nu kapatan kullanıcı menüde onu görmez
 export function navItemsFor(user) {
@@ -118,7 +118,7 @@ function SideNav({ chatUnread }) {
       {user && !user.isPremium && (
         <Link to="/settings" className="side-nav-upsell">
           <span className="side-nav-upsell-icon">
-            <CrownIcon size={16} />
+            <PlanIcon plan="premium" size={16} />
           </span>
           <span>
             <strong>{t('Plus ya da Premium')}</strong>
@@ -139,7 +139,7 @@ function SideNav({ chatUnread }) {
           <span className="side-nav-user-text">
             <strong>
               {user.fullName}
-              {user.isPremium && <CrownIcon size={13} className="side-nav-crown" />}
+              {user.isPremium && <PlanIcon plan={user.premiumPlan} size={13} className="side-nav-crown" />}
             </strong>
             <small>{user.university?.name || t("Kampüs")}</small>
           </span>

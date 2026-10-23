@@ -12,12 +12,14 @@ const BOOST_MINUTES = 30;
 // dailySuperLikes: günlük Süper Beğeni hakkı (ücretsiz hesapta yok).
 // features: plana açık özellikler
 //   campus    Kart Modu'nda başka üniversiteye geçme, tüm kampüslerde arama
+//   badge     profilde ve Kart Modu kartında Plus / Premium rozeti
+//   priority  Kart Modu destelerinde öncelikli görünürlük
 //   undo      Kart Modu'nda son kararı geri alma
 //   seeLikes  seni beğenenleri görme
 //   filters   gelişmiş filtreler (yaş, sınıf, ne arıyor)
 //   incognito gizli mod
 const PLANS = {
-  plus: { days: 30, amount: 59.9, label: 'Plus', dailyLikes: 30, boosts: 1, dailySuperLikes: 1, features: ['campus'] },
+  plus: { days: 30, amount: 59.9, label: 'Plus', dailyLikes: 30, boosts: 1, dailySuperLikes: 1, features: ['campus', 'badge'] },
   premium: {
     days: 30,
     amount: 129.9,
@@ -25,7 +27,7 @@ const PLANS = {
     dailyLikes: null,
     boosts: 4,
     dailySuperLikes: 5,
-    features: ['campus', 'undo', 'seeLikes', 'filters', 'incognito'],
+    features: ['campus', 'badge', 'priority', 'undo', 'seeLikes', 'filters', 'incognito'],
   },
 };
 const PLAN_KEYS = Object.keys(PLANS);

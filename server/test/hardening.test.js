@@ -159,7 +159,7 @@ test('site ayarları: adres, proxy ve izinli kaynaklar', () => {
   assert.equal(siteConfig.trustProxy({}), false);
   assert.equal(siteConfig.trustProxy({ RAILWAY_ENVIRONMENT_NAME: 'production' }), true);
   assert.equal(siteConfig.trustProxy({ RAILWAY_ENVIRONMENT_NAME: 'production', TRUST_PROXY: 'false' }), false);
-  assert.deepEqual(siteConfig.allowedOrigins({ CLIENT_URL: 'https://x.com', RAILWAY_PUBLIC_DOMAIN: 'a.up.railway.app' }), ['https://x.com', 'https://a.up.railway.app']);
+  assert.deepEqual(siteConfig.allowedOrigins({ CLIENT_URL: 'https://x.com', RAILWAY_PUBLIC_DOMAIN: 'a.up.railway.app' }), ['https://x.com', 'capacitor://localhost', 'https://localhost', 'https://a.up.railway.app']);
   assert.deepEqual(siteConfig.productionConfigWarnings({}), []);
   assert.ok(siteConfig.productionConfigWarnings({ RAILWAY_ENVIRONMENT_NAME: 'p' }).some((w) => w.includes('SMTP')));
 });

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Anlık bildirim (App Store sürümünde Xcode bunu otomatik "production" yapar) -->
+	<key>aps-environment</key>
+	<string>development</string>
+	<!-- kampusplus.com.tr bağlantıları uygulamada açılsın (evrensel bağlantı) -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:kampusplus.com.tr</string>
+	</array>
+</dict>
+</plist>

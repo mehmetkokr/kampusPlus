@@ -492,7 +492,7 @@ test('Plus ile Premium farkı: geri alma, seni beğenenler, gizli mod ve filtrel
   assert.equal((await api('PUT', '/api/premium/incognito', { token: ta, body: { enabled: true } })).status, 403);
   assert.equal((await api('POST', `/api/matches/undo/${b.id}`, { token: ta })).status, 403);
   const status = await api('GET', '/api/premium/status', { token: ta });
-  assert.deepEqual(status.data.features, ['campus']);
+  assert.deepEqual(status.data.features, ['campus', 'badge']);
 });
 
 test('yeniden paylaşım yalnızca sahibinin izniyle; takip akışında görünür, izin kapanınca kalkar', async () => {
@@ -566,4 +566,44 @@ test('fotoğraflı gönderi yeniden paylaşılamaz, izin de açılamaz', async (
   const patch = await api('PATCH', `/api/posts/${photo.id}`, { token: ta, body: { allowRepost: true } });
   assert.equal(patch.status, 400);
   assert.equal(b.id > 0, true);
+});
+
+test('telefon uygulaması bildirim cihazı: kayıt, hesap değişince taşınma, silme', async () => {
+  const { a, b, ta, tb } = await studentPair('cihaz');
+  const token = 'a'.repeat(64);
+  assert.equal((await api('POST', '/api/push/device', { token: ta, body: { token: 'kötü anahtar', platform: 'ios' } })).status, 400);
+  assert.equal((await api('POST', '/api/push/device', { token: ta, body: { token, platform: 'windows' } })).status, 400);
+  assert.equal((await api('POST', '/api/push/device', { token: ta, body: { token, platform: 'ios' } })).status, 200);
+  assert.equal((await prisma.pushDevice.findUnique({ where: { token } })).userId, a.id);
+  await api('POST', '/api/push/device', { token: tb, body: { token, platform: 'ios' } });
+  assert.equal((await prisma.pushDevice.findUnique({ where: { token } })).userId, b.id, 'aynı telefon yeni hesaba geçer');
+  await api('DELETE', '/api/push/device', { token: tb, body: { token } });
+  assert.equal(await prisma.pushDevice.count({ where: { token } }), 0);
+});
+
+test('uygulama bağlantı doğrulama dosyaları: değer yoksa 404, varsa doğru içerik', async () => {
+  const res = await fetch(`${BASE}/.well-known/apple-app-site-association`);
+  assert.equal(res.status, 404, 'APPLE_TEAM_ID yokken dosya verilmez');
+  const { appleAssociation, androidAssetLinks } = require('../src/routes/wellKnown');
+  assert.deepEqual(appleAssociation('ABCDE12345').applinks.details[0].appIDs, ['ABCDE12345.tr.com.kampusplus.app']);
+  assert.equal(androidAssetLinks(['AA'])[0].target.package_name, 'tr.com.kampusplus.app');
+});
+
+test('üyelik rozeti kartta ve profilde görünür; Premium destede öne çıkar', async () => {
+  const uni = await isolatedUni('rozet');
+  const extra = { department: 'Kimya', classYear: 2, birthDate: new Date('2003-01-01'), age: 23, schoolEmailVerifiedAt: new Date(), universityId: uni };
+  const viewer = await createUser('rozet-bakan@test.edu.tr', extra);
+  const normal = await createUser('rozet-normal@test.edu.tr', extra);
+  const plus = await createUser('rozet-plus@test.edu.tr', { ...extra, isPremium: true, premiumPlan: 'plus', premiumUntil: new Date(Date.now() + 86400000) });
+  const prem = await createUser('rozet-premium@test.edu.tr', { ...extra, isPremium: true, premiumPlan: 'premium', premiumUntil: new Date(Date.now() + 86400000) });
+  const token = await tokenFor(viewer.email);
+  const deck = (await api('GET', '/api/profile/discover', { token })).data;
+  assert.equal(deck[0].id, prem.id, 'Premium üye destede önce gelir');
+  const byId = Object.fromEntries(deck.map((c) => [c.id, c]));
+  assert.equal(byId[plus.id].membership, 'plus');
+  assert.equal(byId[normal.id].membership, null);
+  assert.ok(!('premiumUntil' in byId[prem.id]), 'üyelik bitiş tarihi gösterilmez');
+  const profile = await api('GET', `/api/users/${prem.id}`, { token });
+  assert.equal(profile.data.membership, 'premium');
+  assert.ok(!('premiumPlan' in profile.data));
 });

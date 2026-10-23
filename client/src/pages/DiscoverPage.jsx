@@ -28,8 +28,10 @@ import ReportModal from '../components/ReportModal';
 import PaywallModal from '../components/PaywallModal';
 import { useConfirm } from '../context/ConfirmContext';
 import { useI18n } from '../i18n';
-import { Crown } from '../components/icons';
+import PullToRefresh from '../components/PullToRefresh';
+import { MembershipBadge } from '../components/Membership';
 import Select from '../components/Select';
+import { isNative, shareLink } from '../lib/native';
 
 function timeAgo(dateStr) {
   const diffMs = Date.now() - new Date(dateStr).getTime();
@@ -177,6 +179,10 @@ export default function DiscoverPage() {
 
   async function handlePostShare(post) {
     const shareText = `${post.author.fullName} bir gönderi paylaştı: ${post.caption || ''}`;
+    if (isNative) {
+      await shareLink({ title: 'kampüs+', text: shareText, path: `/feed?post=${post.id}` });
+      return;
+    }
     if (navigator.share) {
       try {
         await navigator.share({ text: shareText });
@@ -197,6 +203,7 @@ export default function DiscoverPage() {
 
   return (
     <div className="container">
+      <PullToRefresh onRefresh={() => load({ department: filterDepartment, classYear: filterClassYear })} />
       <div className="discover-sticky-header">
         <PageHeader
           compact
@@ -204,7 +211,7 @@ export default function DiscoverPage() {
           icon={Compass}
           eyebrow={user?.university?.name || t("Kampüsünü keşfet")}
           title={t("Keşfet")}
-          badge={user?.isPremium && <span className="premium-badge"><Crown size={11} /> {user.premiumPlan === 'plus' ? t('PLUS') : t('PREMIUM')}</span>}
+          badge={user?.isPremium && <MembershipBadge plan={user.premiumPlan === 'plus' ? 'plus' : 'premium'} />}
           actions={
             <>
               <NotificationBell />

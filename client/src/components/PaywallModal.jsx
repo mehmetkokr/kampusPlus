@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { X, Crown, Loader2, Check } from './icons';
+import { X, Loader2, Check } from './icons';
+import { PlanIcon } from './Membership';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -71,7 +72,7 @@ export default function PaywallModal({ onClose, onUpgraded, contextText, require
         </div>
 
         <div className="paywall-icon">
-          <Crown size={26} weight="fill" />
+          <PlanIcon plan="premium" size={26} />
         </div>
         <h3 id="paywall-title">{t('kampüs+ üyelikleri')}</h3>
         <p className="paywall-modal-sub">{t(contextText || 'Bu özellik üyelere açık.')}</p>
@@ -90,7 +91,9 @@ export default function PaywallModal({ onClose, onUpgraded, contextText, require
                 onClick={() => ok && setPlan(p.key)}
               >
                 {PLAN_BADGE[p.key] && <span className="plan-badge">{t(PLAN_BADGE[p.key])}</span>}
-                <span className="plan-label">{t(p.label || { plus: 'Plus', premium: 'Premium' }[p.key])}</span>
+                <span className="plan-label">
+                  <PlanIcon plan={p.key} size={14} /> {t(p.label || { plus: 'Plus', premium: 'Premium' }[p.key])}
+                </span>
                 <span className="plan-price">{formatTL(p.amount)}</span>
                 <span className="plan-period">{t(PERIOD_LABEL[p.key])}</span>
                 <span className="plan-perks">
@@ -129,7 +132,7 @@ export default function PaywallModal({ onClose, onUpgraded, contextText, require
           onClick={handleUpgrade}
           disabled={saving || !checkoutAvailable || !consent || !selected || !allowed(plan)}
         >
-          {saving ? <Loader2 size={16} className="spin" /> : <Crown size={16} weight="fill" />}
+          {saving ? <Loader2 size={16} className="spin" /> : <PlanIcon plan={plan} size={16} />}
           {saving
             ? t('İşleniyor...')
             : checkoutAvailable

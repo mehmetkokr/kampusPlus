@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Check, Crown, Heart, Rocket, Star } from '../icons';
+import { ArrowRight, Check, Heart, Rocket, Star } from '../icons';
+import { FeatureComparison, PlanIcon } from '../Membership';
 import api from '../../api';
 import Reveal from './Reveal';
 import { useI18n } from '../../i18n';
@@ -48,7 +49,7 @@ export default function PricingSection() {
             {t('İki üyelik,')} <span className="landing-gradient-text">{t('sana uygun olanı seç.')}</span>
           </h2>
           <p className="mx-auto mt-4 max-w-md text-[1.0625rem] leading-relaxed text-paper-muted">
-            {t('Plus ile başka kampüslerde de tanış. Premium ile seni beğenenleri gör, sınırsız beğen ve tüm özellikleri aç.')}
+            {t('Uygulamanın temeli herkese açık: kayıt, eşleşme, sohbet, akış ve kulüpler. Plus ile Kart Modu’nu başka üniversitelere taşırsın; Premium ile seni beğenenleri görür, sınırsız beğenir ve destelerde öne çıkarsın.')}
           </p>
         </Reveal>
 
@@ -60,7 +61,7 @@ export default function PricingSection() {
                 {PLAN_BADGE[p.key] && <span className="landing-price-badge">{t(PLAN_BADGE[p.key])}</span>}
                 <div className="flex items-center justify-between gap-3">
                   <h3 className="flex items-center gap-2 text-[1.125rem] font-bold tracking-[-0.01em] text-paper">
-                    <Crown size={18} weight={featured ? 'fill' : undefined} className="text-brand" aria-hidden="true" />
+                    <PlanIcon plan={p.key} size={18} className={featured ? 'text-brand' : ''} />
                     {t(p.label || { plus: 'Plus', premium: 'Premium' }[p.key])}
                   </h3>
                   {info && !open && <span className="landing-price-soon">{t('Çok yakında')}</span>}
@@ -97,9 +98,15 @@ export default function PricingSection() {
             );
           })}
         </div>
+        {/* Ayrıntılı karşılaştırma: her satır uygulamada çalışan bir hak */}
+        <Reveal className="mx-auto mt-12 max-w-3xl">
+          <h3 className="text-center text-[1.125rem] font-bold tracking-[-0.01em] text-paper">{t('Plus ve Premium karşılaştırması')}</h3>
+          <FeatureComparison plans={plans} />
+        </Reveal>
+
         <p className="mx-auto mt-8 max-w-2xl text-center text-[0.8438rem] leading-relaxed text-paper-faint">
           {t('Her Boost profilini {m} dakika boyunca kampüsünde en üste taşır.', { m: info?.boostMinutes ?? 30 })}{' '}
-          {t('Ücretler vergiler dahildir. Üyelik her ay otomatik yenilenir, Ayarlar’dan istediğin an kapatabilirsin. Ayrıntılar')}{' '}
+          {t('Ücretler vergiler dahildir. Üyelik 30 gün sürer ve aynı planla her ay yenilenir; yenilemeyi Ayarlar’dan istediğin an kapatabilirsin, üyeliğin dönem sonuna kadar devam eder. Ayrıntılar')}{' '}
           <Link to="/mesafeli-satis-sozlesmesi" className="underline underline-offset-2 hover:text-paper">
             {t('Mesafeli Satış Sözleşmesi')}
           </Link>

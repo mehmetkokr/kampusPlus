@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { VerifiedBadge } from '@/components/ui/icon-badge';
 import { useNavigate } from 'react-router-dom';
-import { Heart, Crown, Eye } from './icons';
+import { Heart, Eye } from './icons';
+import { PlanIcon } from './Membership';
 import api from '../api';
 import { API_BASE_URL } from '../config';
 import { useToast } from '../context/ToastContext';
@@ -68,7 +69,7 @@ export default function LikesReceived({ data, onChanged, onGoCards }) {
           <h3>{count} {t("kişi seni beğendi")}</h3>
           <p>{t("Kim olduklarını gör ve tek dokunuşla eşleş. Bu özellik yalnızca Premium üyelere açık.")}</p>
           <button className="btn-premium-cta" onClick={() => setShowPaywall(true)}>
-            <Crown size={15} /> {t("Premium ile Gör")}
+            <PlanIcon plan="premium" size={15} /> {t("Premium ile Gör")}
           </button>
         </div>
 

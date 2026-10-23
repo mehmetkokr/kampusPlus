@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Ban, CornerUpLeft, Flag, HeartOff, MoreHorizontal, Smile, UserRound, X as XIcon } from '../components/icons';
+import { Ban, Copy, CornerUpLeft, Flag, HeartOff, MoreHorizontal, Smile, UserRound, X as XIcon } from '../components/icons';
 import api, { buildFileUrl } from '../api';
 import { API_BASE_URL } from '../config';
 import { useToast } from '../context/ToastContext';
@@ -634,6 +634,20 @@ export default function ChatPage() {
                       <button type="button" onClick={() => startReply(m)}>
                         <CornerUpLeft size={15} aria-hidden="true" /> {tx('Yanıtla')}
                       </button>
+                      {m.content && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard
+                              .writeText(m.content)
+                              .then(() => toast.success(tx('Mesaj kopyalandı.')))
+                              .catch(() => {});
+                            setActiveId(null);
+                          }}
+                        >
+                          <Copy size={15} aria-hidden="true" /> {tx('Kopyala')}
+                        </button>
+                      )}
                       {!mine && (
                         <button
                           type="button"

@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { Heart, MessageCircle } from './icons';
 import { API_BASE_URL } from '../config';
 import { useI18n } from '../i18n';
+import { haptic, maybeAskForReview } from '../lib/native';
 
 // Eşleşme anı: iki kişinin buluşması gibi.
 // İki fotoğraf iki yandan, adım atar gibi hafifçe sekerek birbirine yaklaşır,
@@ -46,13 +47,16 @@ export default function MatchCelebration({ me, other, matchId, onMessage, onClos
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     // Buluşma anında kalp atışı gibi iki kısa titreşim (destekleyen telefonlarda)
-    const buzz = reduce ? null : setTimeout(() => navigator.vibrate?.([14, 90, 22]), MEET * 1000 + 150);
+    const buzz = reduce ? null : setTimeout(() => haptic([14, 90, 22]), MEET * 1000 + 150);
     return () => {
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = prev;
       clearTimeout(buzz);
     };
   }, [onClose, reduce]);
+
+  // Telefon uygulaması: birkaç eşleşmeden sonra, bu ekran kapanınca puan isteği
+  useEffect(() => () => maybeAskForReview(), []);
 
   // dir: -1 soldaki (sen), 1 sağdaki (o). Kendi tarafından başlar, ortaya
   // yürür; sonunda öbürüne doğru eğilir.

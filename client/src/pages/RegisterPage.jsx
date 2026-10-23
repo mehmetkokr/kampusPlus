@@ -10,6 +10,7 @@ import UniversitySelect from '../components/UniversitySelect';
 import { minDuration } from '../utils/wait';
 import { toTitleCaseTR, normalizeEmail } from '../utils/text';
 import { useI18n } from '../i18n';
+import { isNative } from '../lib/native';
 import ThemeToggle from '../components/ThemeToggle';
 
 const PASSWORD_MIN = 8;
@@ -241,8 +242,9 @@ export default function RegisterPage() {
 
       <ThemeToggle className="auth-theme-toggle" />
 
-      <Link to="/" className="auth-back">
-        <ArrowLeft size={15} /> {tx("Anasayfa")}
+      {/* Telefon uygulamasında geri düğmesi tanıtım sayfası yerine girişe döner */}
+      <Link to={isNative ? '/login' : '/'} className="auth-back">
+        <ArrowLeft size={15} /> {isNative ? tx('Giriş') : tx("Anasayfa")}
       </Link>
 
       <div className="auth-content">

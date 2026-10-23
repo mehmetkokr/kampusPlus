@@ -5,6 +5,7 @@ import { useToast } from '../context/ToastContext';
 import { useI18n } from '../i18n';
 import { currentSubscription, disablePush, enablePush, pushSupport } from '../lib/push';
 import { canPromptInstall, isIOS, isStandalone, onInstallChange, promptInstall } from '../lib/pwa';
+import { isNative } from '../lib/native';
 
 // Ayarlar > Bildirimler: bu cihaza anlık bildirim ve uygulamayı ana ekrana yükleme
 export default function PushSettings() {
@@ -57,9 +58,13 @@ export default function PushSettings() {
   let desc = t('Uygulama kapalıyken de bu cihaza bildirim gelsin.');
   if (support === 'ios-install') desc = t("iPhone'da önce uygulamayı ana ekrana ekle, sonra buradan aç.");
   else if (support === 'unsupported') desc = t('Bu tarayıcı anlık bildirimleri desteklemiyor.');
-  else if (denied) desc = t('Bildirim izni tarayıcı ayarlarından kapatılmış. Açmak için tarayıcının site ayarlarına git.');
+  else if (denied)
+    desc = isNative
+      ? t('Bildirim izni kapalı. Telefonunun Ayarlar > kampüs+ > Bildirimler bölümünden açabilirsin.')
+      : t('Bildirim izni tarayıcı ayarlarından kapatılmış. Açmak için tarayıcının site ayarlarına git.');
   const available = support === 'ok' && !denied;
-  const showIosHint = isIOS() && !isStandalone();
+  // Telefon uygulamasında "ana ekrana ekle" önerileri gösterilmez
+  const showIosHint = !isNative && isIOS() && !isStandalone();
 
   return (
     <>
@@ -89,7 +94,7 @@ export default function PushSettings() {
         </label>
       </div>
 
-      {installable && !isStandalone() && (
+      {!isNative && installable && !isStandalone() && (
         <button
           type="button"
           className="settings-link-row"

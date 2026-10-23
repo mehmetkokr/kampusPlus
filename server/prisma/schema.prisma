@@ -156,6 +156,7 @@ model User {
 
   // Anlık bildirim (Web Push) abonelikleri: her cihaz/tarayıcı için bir kayıt
   pushSubscriptions PushSubscription[]
+  pushDevices       PushDevice[]
   analyticsEvents   AnalyticsEvent[]
 
   // Kart Modu'nda "Geç" denen kişiler (bir süre desteye geri gelmez)
@@ -737,6 +738,22 @@ model PushSubscription {
   p256dh     String
   auth       String
   userAgent  String?
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+
+  @@index([userId])
+}
+
+// ----------------------------
+// Telefon uygulamasının (iOS/Android) bildirim cihazları. iOS'ta Apple (APNs),
+// Android'de Google (FCM) cihaz anahtarı tutulur; web aboneliklerinden ayrıdır.
+// ----------------------------
+model PushDevice {
+  id         Int       @id @default(autoincrement())
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     Int
+  token      String    @unique
+  platform   String // ios | android
   createdAt  DateTime  @default(now())
   lastUsedAt DateTime?
 

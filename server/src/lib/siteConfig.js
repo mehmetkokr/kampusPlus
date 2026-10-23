@@ -38,10 +38,16 @@ function trustProxy(env = process.env) {
   return isRailway(env);
 }
 
+// Telefon uygulamaları (Capacitor): iOS uygulaması capacitor://localhost,
+// Android uygulaması https://localhost adresinden açılır ve API'ye buradan
+// istek atar. Oturum çerez değil Authorization başlığıyla taşındığı için bu
+// adreslere izin vermek başka sitelere yetki vermez.
+const NATIVE_APP_ORIGINS = ['capacitor://localhost', 'https://localhost'];
+
 // İzin verilen tarayıcı kaynakları (CORS, socket.io). Yayında site ve API aynı
-// adreste olduğundan bu liste yalnızca ayrı adresten açılan arayüz içindir.
+// adreste; liste ayrı adresten açılan arayüz ve telefon uygulamaları içindir.
 function allowedOrigins(env = process.env) {
-  const list = [siteUrl(env)];
+  const list = [siteUrl(env), ...NATIVE_APP_ORIGINS];
   if (env.RAILWAY_PUBLIC_DOMAIN) list.push(`https://${trimUrl(env.RAILWAY_PUBLIC_DOMAIN).replace(/^https?:\/\//, '')}`);
   for (const extra of (env.EXTRA_ORIGINS || '').split(',')) if (extra.trim()) list.push(trimUrl(extra));
   return [...new Set(list)];

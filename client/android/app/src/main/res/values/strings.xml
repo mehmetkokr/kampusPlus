@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">kampüs+</string>
+    <string name="title_activity_main">kampüs+</string>
+    <string name="package_name">tr.com.kampusplus.app</string>
+    <string name="custom_url_scheme">tr.com.kampusplus.app</string>
+</resources>

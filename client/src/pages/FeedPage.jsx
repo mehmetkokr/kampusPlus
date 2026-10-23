@@ -38,10 +38,12 @@ import NotificationBell from '../components/NotificationBell';
 import PageHeader from '../components/PageHeader';
 import { useConfirm } from '../context/ConfirmContext';
 import { useI18n } from '../i18n';
+import PullToRefresh from '../components/PullToRefresh';
 import { PenLine, UsersRound } from '../components/icons';
 import { compressImage } from '../utils/image';
 import EmojiPicker from '../components/EmojiPicker';
 import StoryCamera from '../components/StoryCamera';
+import { isNative, shareLink } from '../lib/native';
 import { usePhotoEditor } from '../context/PhotoEditorContext';
 
 const PAGE_SIZE = 10;
@@ -142,6 +144,18 @@ export default function FeedPage() {
     loadStoriesAndSidebar();
   }, []);
 
+  // Aşağı çekip yenile (telefon uygulaması): sekmenin ilk sayfası ve hikâyeler
+  const refresh = useCallback(async () => {
+    loadStoriesAndSidebar();
+    try {
+      const res = await fetchPage(0);
+      setPosts(res.data.posts);
+      setHasMore(res.data.hasMore);
+    } catch {
+      // bir sonraki denemede yenilenir
+    }
+  }, [fetchPage]);
+
   // Bildirimden /feed?post=<id> ile gelinirse yorum panelini doğrudan aç
   useEffect(() => {
     const postId = searchParams.get('post');
@@ -229,11 +243,14 @@ export default function FeedPage() {
     }
   }
 
-  function handleCopyLink(post) {
-    navigator.clipboard
-      .writeText(`${window.location.origin}/feed?post=${post.id}`)
-      .then(() => toast.success('Bağlantı kopyalandı.'))
-      .catch(() => toast.error('Bağlantı kopyalanamadı.'));
+  // Uygulamada telefonun paylaşım menüsü, tarayıcıda bağlantıyı kopyala
+  async function handleCopyLink(post) {
+    try {
+      const result = await shareLink({ title: 'kampüs+', text: post.caption || undefined, path: `/feed?post=${post.id}` });
+      if (result === 'copied') toast.success('Bağlantı kopyalandı.');
+    } catch {
+      toast.error('Bağlantı kopyalanamadı.');
+    }
   }
 
   async function handleDeletePost(post) {
@@ -301,6 +318,7 @@ export default function FeedPage() {
 
   return (
     <div className="feed-shell">
+      <PullToRefresh onRefresh={refresh} />
       <div className="feed-main">
         <PageHeader
           tone="amber"
@@ -815,7 +833,7 @@ function PostRow({ post, onLike, onRepost, onToggleRepost, onSave, onOpenComment
                   <BookmarkIcon width={15} height={15} /> {post.savedByMe ? tx("Kaydı Kaldır") : tx("Kaydet")}
                 </button>
                 <button role="menuitem" onClick={() => { onCopyLink(post); setMenuOpen(false); }}>
-                  <ShareIcon width={15} height={15} /> {tx("Bağlantıyı Kopyala")}
+                  <ShareIcon width={15} height={15} /> {isNative ? tx('Paylaş') : tx("Bağlantıyı Kopyala")}
                 </button>
                 {post.isOwn ? (
                   <>
@@ -878,7 +896,7 @@ function PostRow({ post, onLike, onRepost, onToggleRepost, onSave, onOpenComment
               <span>{post.repostCount || ''}</span>
             </button>
           )}
-          <button className="x-action" onClick={() => onCopyLink(post)} aria-label={tx("Bağlantıyı kopyala")}>
+          <button className="x-action" onClick={() => onCopyLink(post)} aria-label={isNative ? tx('Paylaş') : tx("Bağlantıyı kopyala")}>
             <ShareIcon size={18} />
           </button>
           <button

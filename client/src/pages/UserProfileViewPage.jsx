@@ -11,6 +11,7 @@ import { socialHandle, socialUrl } from '../utils/social';
 import { INTENT_LABEL, INTENT_CHIP_CLASS, parseIntents } from '../constants/intents';
 import { useConfirm } from '../context/ConfirmContext';
 import { useI18n } from '../i18n';
+import { MembershipBadge } from '../components/Membership';
 import '../styles/profile.css';
 
 const initialsOf = (name = '') =>
@@ -127,6 +128,7 @@ export default function UserProfileViewPage() {
               {profile.fullName}
               {profile.age ? `, ${profile.age}` : ''}
               {profile.isStudentVerified && <VerifiedBadge size="lg" className="ml-1.5" label={t('Onaylı öğrenci')} />}
+              <MembershipBadge plan={profile.membership} className="ml-1.5" />
             </h2>
             <p className="pf-uni">{profile.university?.name}</p>
             {profile.department && (

@@ -8,6 +8,7 @@ import AuthBackdrop from '../components/AuthBackdrop';
 import LogoLoader from '../components/LogoLoader';
 import { minDuration } from '../utils/wait';
 import { useI18n } from '../i18n';
+import { isNative } from '../lib/native';
 import ThemeToggle from '../components/ThemeToggle';
 import { NeonCheckbox } from '@/components/ui/animated-check-box';
 
@@ -70,9 +71,12 @@ export default function LoginPage() {
 
       <ThemeToggle className="auth-theme-toggle" />
 
-      <Link to="/" className="auth-back">
-        <ArrowLeft size={15} /> {t("Anasayfa")}
-      </Link>
+      {/* Telefon uygulamasında tanıtım sayfası yok; geri düğmesi gösterilmez */}
+      {!isNative && (
+        <Link to="/" className="auth-back">
+          <ArrowLeft size={15} /> {t("Anasayfa")}
+        </Link>
+      )}
 
       <div className="auth-content">
         <div className="auth-wordmark">
@@ -119,13 +123,18 @@ export default function LoginPage() {
             </div>
 
             <div className="auth-row-between">
-              <NeonCheckbox
-                className="remember-me-check"
-                size={22}
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                label={t("Beni Hatırla")}
-              />
+              {/* Telefon uygulamasında oturum hep hatırlanır; kutu gösterilmez */}
+              {isNative ? (
+                <span />
+              ) : (
+                <NeonCheckbox
+                  className="remember-me-check"
+                  size={22}
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  label={t("Beni Hatırla")}
+                />
+              )}
               <Link to="/forgot-password" className="forgot-password-link">
                 {t("Şifremi Unuttum")}
               </Link>

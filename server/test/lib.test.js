@@ -195,3 +195,14 @@ test('mailer: Brevo API ile gönderim ve hata durumu panele yansır', async () =
     else process.env.MAIL_REPLY_TO = saved.reply;
   }
 });
+
+test('telefon bildirimi: APNs ve FCM içeriği, anahtar yoksa gönderim kapalı', () => {
+  const { apnsBody, fcmMessage, nativePushStatus } = require('../src/lib/nativePush');
+  const payload = { title: 'Ayşe', body: 'sana mesaj gönderdi.', url: '/chat/5', tag: 'message-5' };
+  assert.deepEqual(apnsBody(payload), { aps: { alert: { title: 'Ayşe', body: 'sana mesaj gönderdi.' }, sound: 'default', 'thread-id': 'message-5' }, url: '/chat/5' });
+  const m = fcmMessage('tok', payload).message;
+  assert.equal(m.token, 'tok');
+  assert.equal(m.data.url, '/chat/5');
+  assert.deepEqual(nativePushStatus({}), { ios: false, android: false });
+  assert.deepEqual(nativePushStatus({ APNS_KEY: 'x', APNS_KEY_ID: 'K', APNS_TEAM_ID: 'T' }), { ios: true, android: false });
+});
